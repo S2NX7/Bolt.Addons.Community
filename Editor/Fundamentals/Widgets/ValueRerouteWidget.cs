@@ -35,8 +35,6 @@ namespace Unity.VisualScripting.Community
 
         EditorTexture valueIcon;
 
-        protected override bool snapToGrid => unit.SnapToGrid;
-
         public override bool foregroundRequiresInput => true;
 
         private bool mouseIsOver;
@@ -61,7 +59,7 @@ namespace Unity.VisualScripting.Community
             inputs[0].y = _position.y + 5;
             outputs[0].y = _position.y + 5;
 
-            if (valueIcon == null && (inputPort.Descriptor()).description.icon != null) valueIcon = ((UnitPortDescriptor)inputPort.Descriptor()).description.icon;
+            if (valueIcon == null && inputPort.Descriptor().description.icon != null) valueIcon = ((UnitPortDescriptor)inputPort.Descriptor()).description.icon;
 
 #if !VISUAL_SCRIPTING_1_7_3
             if (inputHasConnection && !outputHasConnection) { ((UnitPortDescriptor)inputPort.Descriptor()).description.icon = null; }

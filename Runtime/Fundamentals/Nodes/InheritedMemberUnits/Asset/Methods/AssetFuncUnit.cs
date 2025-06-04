@@ -38,7 +38,7 @@ namespace Unity.VisualScripting.Community
         private Type GetFuncType()
         {
             var result = method.returnType;
-            List<Type> parameters = method.parameters.Select(param => param.type).ToList();
+            List<Type> parameters = method.parameters.Select(param => param.type is FakeGenericParameterType fakeGenericParameterType ? GetFakeGenericType(fakeGenericParameterType) : param.type).ToList();
             var paramCount = parameters.Count;
 
             return paramCount switch
@@ -63,6 +63,12 @@ namespace Unity.VisualScripting.Community
                 _ => throw new ArgumentException("Too many parameters. Func only supports up to 16 parameters."),
             };
         }
+
+        private Type GetFakeGenericType(FakeGenericParameterType fakeGenericParameterType)
+        {
+            return fakeGenericParameterType._baseTypeConstraint ?? fakeGenericParameterType._interfaceConstraints.FirstOrDefault() ?? typeof(object);
+        }
+
         private bool isRegistered;
         protected override void Definition()
         {

@@ -155,9 +155,10 @@ namespace Unity.VisualScripting.Community
             {
                 data.SetExpectedType(input.type);
                 var connectedCode = GetNextValueUnit(input, data);
+                var shouldCast = ShouldCast(input, data, false);
                 data.RemoveExpectedType();
-                if (input.type.IsSubclassOf(typeof(Component))) return new ValueCode(GetNextValueUnit(input, data), typeof(GameObject), ShouldCast(input, data, false));
-                return new ValueCode(connectedCode, input.type, ShouldCast(input, data, false));
+                if (input.type.IsSubclassOf(typeof(Component))) return new ValueCode(GetNextValueUnit(input, data), typeof(GameObject), shouldCast);
+                return new ValueCode(connectedCode, input.type, shouldCast);
             }
             else if (input.hasDefaultValue)
             {

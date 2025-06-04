@@ -36,7 +36,7 @@ namespace Unity.VisualScripting.Community
         public Type actionType;
         private Type GetActionType()
         {
-            List<Type> parameters = method.parameters.Select(param => param.type).ToList();
+            List<Type> parameters = method.parameters.Select(param => param.type is FakeGenericParameterType fakeGenericParameterType ? GetFakeGenericType(fakeGenericParameterType) : param.type).ToList();
             var paramCount = parameters.Count;
 
             return paramCount switch
@@ -60,6 +60,11 @@ namespace Unity.VisualScripting.Community
                 16 => typeof(Action<,,,,,,,,,,,,,,,>).MakeGenericType(parameters[0], parameters[1], parameters[2], parameters[3], parameters[4], parameters[5], parameters[6], parameters[7], parameters[8], parameters[9], parameters[10], parameters[11], parameters[12], parameters[13], parameters[14], parameters[15]),
                 _ => throw new ArgumentException("Too many parameters. Action only supports up to 16 parameters."),
             };
+        }
+
+        private Type GetFakeGenericType(FakeGenericParameterType fakeGenericParameterType)
+        {
+            return fakeGenericParameterType._baseTypeConstraint ?? fakeGenericParameterType._interfaceConstraints.FirstOrDefault() ?? typeof(object);
         }
 
         private bool isRegistered;

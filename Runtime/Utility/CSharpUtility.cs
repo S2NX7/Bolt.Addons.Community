@@ -58,9 +58,9 @@ namespace Unity.VisualScripting.Community
             else return value;
         }
     
-        private static readonly HashSet<(GameObject, EventHook, System.Action<CustomEventArgs>)> registeredEvents = new HashSet<(GameObject, EventHook, System.Action<CustomEventArgs>)>();
+        private static readonly HashSet<(GameObject, EventHook, Action<CustomEventArgs>)> registeredEvents = new HashSet<(GameObject, EventHook, Action<CustomEventArgs>)>();
     
-        public static void RegisterCustomEvent(GameObject target, System.Action<CustomEventArgs> action)
+        public static void RegisterCustomEvent(GameObject target, Action<CustomEventArgs> action)
         {
             var hook = new EventHook(EventHooks.Custom, target);
             var eventKey = (target, hook, action);

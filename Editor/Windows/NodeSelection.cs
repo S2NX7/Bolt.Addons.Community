@@ -176,12 +176,13 @@ namespace Unity.VisualScripting.Community
         {
             List<ConnectionData> controlConnectionData = new List<ConnectionData>();
             var original = GraphWindow.active.reference.graph as FlowGraph;
-            var units = selection.Where((element) => { return element.GetType() != typeof(GraphGroup); }).ToListPooled();
+            var units = selection.Where((element) => { return element.GetType() != typeof(GraphGroup) && element is not FunctionNode; }).ToListPooled();
 
             var controlConnections = original.controlConnections.Where((connection) =>
             {
                 return connection.sourceExists &&
                 connection.destinationExists &&
+                connection.source.unit is not FunctionNode &&
                 selection.Contains(connection.source.unit) &&
                 selection.Contains(connection.destination.unit);
             }).ToList();
@@ -190,6 +191,7 @@ namespace Unity.VisualScripting.Community
             {
                 return connection.sourceExists &&
                 connection.destinationExists &&
+                connection.source.unit is not FunctionNode &&
                 !selection.Contains(connection.source.unit) &&
                 selection.Contains(connection.destination.unit);
             }).ToList();
@@ -198,6 +200,7 @@ namespace Unity.VisualScripting.Community
             {
                 return connection.sourceExists &&
                 connection.destinationExists &&
+                connection.source.unit is not FunctionNode &&
                 selection.Contains(connection.source.unit) &&
                 !selection.Contains(connection.destination.unit);
             }).ToList();
@@ -264,12 +267,13 @@ namespace Unity.VisualScripting.Community
         {
             List<ConnectionData> valueConnectionData = new List<ConnectionData>();
             var original = GraphWindow.active.reference.graph as FlowGraph;
-            var units = selection.Where((element) => { return element.GetType() != typeof(GraphGroup); }).ToListPooled();
+            var units = selection.Where((element) => { return element.GetType() != typeof(GraphGroup) && element is not FunctionNode; }).ToListPooled();
 
             var valueConnections = original.valueConnections.Where((connection) =>
             {
                 return connection.sourceExists &&
                 connection.destinationExists &&
+                connection.source.unit is not FunctionNode &&
                 selection.Contains(connection.source.unit) &&
                 selection.Contains(connection.destination.unit);
             }).ToList();
@@ -278,6 +282,7 @@ namespace Unity.VisualScripting.Community
             {
                 return connection.sourceExists &&
                 connection.destinationExists &&
+                connection.source.unit is not FunctionNode &&
                 !selection.Contains(connection.source.unit) &&
                 selection.Contains(connection.destination.unit);
             }).ToList();
@@ -286,6 +291,7 @@ namespace Unity.VisualScripting.Community
             {
                 return connection.sourceExists &&
                 connection.destinationExists &&
+                connection.source.unit is not FunctionNode &&
                 selection.Contains(connection.source.unit) &&
                 !selection.Contains(connection.destination.unit);
             }).ToList();
@@ -360,6 +366,7 @@ namespace Unity.VisualScripting.Community
             {
                 return connection.sourceExists &&
                 connection.destinationExists &&
+                connection.source.unit is not FunctionNode &&
                 selection.Contains(connection.source.unit) &&
                 selection.Contains(connection.destination.unit);
             }).ToList();
@@ -398,7 +405,8 @@ namespace Unity.VisualScripting.Community
                     superUnitCanvas?.graph.groups.Add(copy);
                     continue;
                 }
-                superUnitCanvas?.AddUnit(((IUnit)elements[i]).CloneViaFakeSerialization(), ((Unit)elements[i]).position);
+                if (elements[i] is not FunctionNode)
+                    superUnitCanvas?.AddUnit(((IUnit)elements[i]).CloneViaFakeSerialization(), ((Unit)elements[i]).position);
             }
         }
 

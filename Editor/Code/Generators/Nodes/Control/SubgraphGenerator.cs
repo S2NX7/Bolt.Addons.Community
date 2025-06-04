@@ -53,11 +53,11 @@ public class SubgraphGenerator : NodeGenerator<SubgraphUnit>
             {
                 if (_graphinput != null || _graphOutput != null)
                 {
-                    output += "\n" + CodeBuilder.Indent(indent) + $"//Subgraph: \"{subgraphName}\" Port({input.key}) \n".CommentHighlight();
+                    output += "\n" + CodeBuilder.Indent(indent) + MakeSelectableForThisUnit($"//Subgraph: \"{subgraphName}\" Port({input.key}) \n".CommentHighlight());
                 }
                 else
                 {
-                    output += "\n" + CodeBuilder.Indent(indent) + $"/* Subgraph \"{subgraphName}\" is empty */ \n".WarningHighlight();
+                    output += "\n" + CodeBuilder.Indent(indent) + MakeSelectableForThisUnit($"/* Subgraph \"{subgraphName}\" is empty */ \n".WarningHighlight());
                 }
             }
 

@@ -63,7 +63,10 @@ namespace Unity.VisualScripting.Community
         {
             paths.EnsureDirectories();
 
-            CompileAssets(Selection.GetFiltered<CodeAsset>(SelectionMode.Assets));
+            foreach (var item in Selection.GetFiltered<CodeAsset>(SelectionMode.Assets))
+            {
+                CompileAsset(item);
+            }
             CompileAssets(Selection.GetFiltered<ScriptGraphAsset>(SelectionMode.Assets));
             CompileGameObjects(Selection.GetFiltered<GameObject>(SelectionMode.Unfiltered)
                 .SelectMany(go => go.GetComponents<ScriptMachine>()));

@@ -18,11 +18,10 @@ namespace Unity.VisualScripting.Community
 
         public override string GenerateControl(ControlInput input, ControlGenerationData data, int indent)
         {
-            string output = string.Empty;
             var keyCode = "";
             var valueCode = "";
             data.SetExpectedType(typeof(System.Collections.IDictionary));
-            output = output + Unity.VisualScripting.Community.Libraries.CSharp.CodeBuilder.Indent(indent) + base.GenerateValue(this.Unit.dictionaryInput, data) + MakeSelectableForThisUnit(".Add(", true);
+            string output = Unity.VisualScripting.Community.Libraries.CSharp.CodeBuilder.Indent(indent) + base.GenerateValue(this.Unit.dictionaryInput, data) + MakeSelectableForThisUnit(".Add(", true);
             var result = data.RemoveExpectedType();
             if (result.isMet && typeof(System.Collections.IDictionary).IsAssignableFrom(result.type))
             {

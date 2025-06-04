@@ -20,7 +20,7 @@ namespace Unity.VisualScripting.Community
         public override MethodModifier MethodModifier => MethodModifier.None;
         public override AccessModifier AccessModifier => AccessModifier.Private;
         public override Type ReturnType => typeof(void);
-        public override string Name => unit.GetType().DisplayName() + count;
+        public override string Name => unit.GetType().DisplayName().Replace(" ", "") + count;
         public abstract string GenerateAwakeCode(ControlGenerationData data, int indent);
         public override string GenerateControl(ControlInput input, ControlGenerationData data, int indent)
         {

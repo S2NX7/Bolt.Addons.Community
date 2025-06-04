@@ -16,23 +16,12 @@ namespace Unity.VisualScripting.Community
         public ValueOutput output;
         [Serialize]
         public Type portType = typeof(object);
-
         [Inspectable]
-        public bool SnapToGrid;
-
-        [Inspectable]
-        public bool inputVisible = true;
-
-        [Inspectable]
-        public bool outputVisible = true;
-
-        [Inspectable]
-        public bool showFlowOnHover = true;
-
+        public bool connectionValues = false;
         protected override void Definition()
         {
             input = ValueInput(portType, "in");
-            output = ValueOutput(portType, "out", (flow) => { return flow.GetValue(input); });
+            output = ValueOutput(portType, "out", (flow) => { return flow.GetValue(input); }).PredictableIf((flow) => connectionValues);
             Requirement(input, output);
         }
     }

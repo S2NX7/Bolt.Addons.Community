@@ -35,8 +35,6 @@ namespace Unity.VisualScripting.Community
 
         EditorTexture flowIcon;
 
-        protected override bool snapToGrid => unit.SnapToGrid;
-
         public override bool foregroundRequiresInput => true;
 
         private bool mouseIsOver;

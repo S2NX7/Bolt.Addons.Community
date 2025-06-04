@@ -3,8 +3,6 @@ using UnityEngine;
 using System;
 using System.Reflection;
 using Unity.VisualScripting.Community.Libraries.Humility;
-using System.Linq;
-using System.Diagnostics;
 
 namespace Unity.VisualScripting.Community.Libraries.CSharp
 {
@@ -393,12 +391,12 @@ namespace Unity.VisualScripting.Community.Libraries.CSharp
 
         public static string InitializeVariable(string name, Type type)
         {
-            return !type.Is().NullOrVoid() ? type.As().CSharpName() + " " + CodeBuilder.Assign(name, HUMValue.Create().New(type).As().Code(false)) + "\n" : string.Empty;
+            return !type.Is().NullOrVoid() ? type.As().CSharpName() + " " + name.Assign(HUMValue.Create().New(type).As().Code(false)) + "\n" : string.Empty;
         }
 
         public static string InitializeVariable(string name, Type type, string value)
         {
-            return !type.Is().NullOrVoid() ? type.As().CSharpName() + " " + CodeBuilder.Assign(name, value) + "\n" : string.Empty;
+            return !type.Is().NullOrVoid() ? type.As().CSharpName() + " " + name.Assign(value) + "\n" : string.Empty;
         }
 
         public static string Quote()
@@ -442,9 +440,39 @@ namespace Unity.VisualScripting.Community.Libraries.CSharp
             return ");";
         }
 
+        public static string End(this string code)
+        {
+            return code + ");";
+        }
+
+        public static string End(this string code, Unit unit)
+        {
+            return code + ");".MakeSelectable(unit);
+        }
+
+        public static string Parentheses(this string value)
+        {
+            return "(" + value + ")";
+        }
+
+        public static string Parentheses(this string value, Unit unit)
+        {
+            return "(".MakeSelectable(unit) + value + ")".MakeSelectable(unit);
+        }
+
         public static string SingleLineLambda(string parameters, string body)
         {
-            return "(" + parameters + ")=>{ " + body + " }";
+            return "(" + parameters + ") => { " + body + " }";
+        }
+
+        public static string ExpresionLambda(this string body, string parameters = "", Unit unit = null)
+        {
+            return "(".MakeSelectable(unit) + parameters + ") => ".MakeSelectable(unit) + body;
+        }
+
+        public static string ExpressionLambda(this string body, Unit unit = null)
+        {
+            return "() => ".MakeSelectable(unit) + body;
         }
 
         public static string MultiLineLambda(string parameters, string body, int Indent)
@@ -463,19 +491,53 @@ namespace Unity.VisualScripting.Community.Libraries.CSharp
                    CodeBuilder.Indent(Indent) + CodeUtility.MakeSelectable(unit, "}");
         }
 
-        public static string Assign(string member, string value, Type castedType)
+        public static string Assign(this string member, string value, Type castedType)
         {
             return member + " = " + value.Cast(castedType) + ";";
         }
 
-        public static string Assign(string member, string value)
+        public static string Assign(this string member, string value)
         {
             return member + " = " + value + ";";
         }
 
-        public static string Return(string value)
+        public static string Return(this string value, bool highlight = true, Unit unit = null)
         {
-            return "return ".ControlHighlight() + value + ";";
+            return (highlight ? "return ".ControlHighlight() : "return ").MakeSelectable(unit) + value + ";".MakeSelectable(unit);
+        }
+
+        public static string YieldReturn(this string value, bool highlight = true, Unit unit = null)
+        {
+            return (highlight ? "yield return ".ControlHighlight() : "yield return ").MakeSelectable(unit) + value + ";".MakeSelectable(unit);
+        }
+
+        public static string Create(this Type type, string parameters = "", bool fullName = true, bool highlight = true, Unit unit = null)
+        {
+            return ((highlight ? "new ".ConstructHighlight() : "new ") + type.As().CSharpName(false, fullName, highlight) + $"(").MakeSelectable(unit) + parameters + ")".MakeSelectable(unit);
+        }
+
+        private static string MakeSelectable(this string value, Unit unit)
+        {
+            if (unit != null)
+            {
+                return CodeUtility.MakeSelectable(unit, value);
+            }
+            else
+            {
+                return value;
+            }
+        }
+
+        private static string MakeSelectableIf(this string value, Unit unit, bool isTrue)
+        {
+            if (isTrue)
+            {
+                return CodeUtility.MakeSelectable(unit, value);
+            }
+            else
+            {
+                return value;
+            }
         }
 
         public static string Cast(this string value, Type type)
@@ -490,52 +552,53 @@ namespace Unity.VisualScripting.Community.Libraries.CSharp
 
         public static string LegalMemberName(this string memberName)
         {
-            if (string.IsNullOrEmpty(memberName)) return string.Empty;
+            if (string.IsNullOrEmpty(memberName))
+                return string.Empty;
 
-            var output = memberName;
-            output = output.Replace(" ", string.Empty);
+            var builder = new System.Text.StringBuilder(memberName.Length);
 
-            var newCopy = output;
-
-            for (int i = 0; i < newCopy.Length; i++)
+            foreach (var c in memberName)
             {
-                if (!char.IsLetter(newCopy[i]) && !char.IsNumber(newCopy[i]) && newCopy[i] != "_".ToCharArray()[0])
+                if (char.IsLetterOrDigit(c) || c == '_')
                 {
-                    output = output.Replace(newCopy[i].ToString(), string.Empty);
+                    builder.Append(c);
                 }
             }
 
-            if (!string.IsNullOrEmpty(output) && char.IsNumber(output[0]))
+            if (builder.Length > 0 && char.IsDigit(builder[0]))
             {
-                output = "_" + output;
+                builder.Insert(0, '_');
             }
 
-            return output;
+            return builder.ToString();
         }
 
         public static string GenericName(this string memberName, int count)
         {
-            if (string.IsNullOrEmpty(memberName)) return "T" + count;
+            if (string.IsNullOrWhiteSpace(memberName))
+                return "T" + count;
 
-            var output = memberName;
-            output = output.Replace(" ", string.Empty);
+            var builder = new System.Text.StringBuilder(memberName.Length);
 
-            var newCopy = output;
-
-            for (int i = 0; i < newCopy.Length; i++)
+            foreach (char c in memberName)
             {
-                if (!char.IsLetter(newCopy[i]) && !char.IsNumber(newCopy[i]) && newCopy[i] != "_".ToCharArray()[0])
+                if (char.IsLetterOrDigit(c) || c == '_')
                 {
-                    output = output.Replace(newCopy[i].ToString(), string.Empty);
+                    builder.Append(c);
                 }
             }
 
-            if (!string.IsNullOrEmpty(output) && char.IsNumber(output[0]))
+            if (builder.Length == 0)
             {
-                output = "T" + output;
+                return "T" + count;
             }
 
-            return output;
+            if (char.IsDigit(builder[0]))
+            {
+                builder.Insert(0, 'T');
+            }
+
+            return builder.ToString();
         }
 
         /// <summary>
@@ -565,20 +628,13 @@ namespace Unity.VisualScripting.Community.Libraries.CSharp
 
         public static string Highlight(string code, Color color)
         {
-            var output = string.Empty;
-            output += "[BeginUAPreviewHighlight]" + $"<color=#{UnityEngine.ColorUtility.ToHtmlStringRGB(color)}>" + "[EndUAPreviewHighlight]";
-            output += code;
-            output += "[BeginUAPreviewHighlight]" + "</color>" + "[EndUAPreviewHighlight]";
-            return output;
+            string hex = UnityEngine.ColorUtility.ToHtmlStringRGB(color);
+            return $"[BeginUAPreviewHighlight]<color=#{hex}>[EndUAPreviewHighlight]{code}[BeginUAPreviewHighlight]</color>[EndUAPreviewHighlight]";
         }
 
         public static string Highlight(string code, string hex)
         {
-            var output = string.Empty;
-            output += "[BeginUAPreviewHighlight]" + $"<color=#{hex}>" + "[EndUAPreviewHighlight]";
-            output += code;
-            output += "[BeginUAPreviewHighlight]" + "</color>" + "[EndUAPreviewHighlight]";
-            return output;
+            return $"[BeginUAPreviewHighlight]<color=#{hex}>[EndUAPreviewHighlight]{code}[BeginUAPreviewHighlight]</color>[EndUAPreviewHighlight]";
         }
 
         public static string MakeRecommendation(string Message)
@@ -594,12 +650,12 @@ namespace Unity.VisualScripting.Community.Libraries.CSharp
 
         public static string ConstructHighlight(this string code)
         {
-            //I did this to avoid having to change the scripts that already used Construct Higlights for if
-            //I will probably change this in the future though
-            if (code == "if".Replace(" ", "") || code == "else".Replace(" ", ""))
+            // Temporary compatibility with existing uses of "if" and "else"
+            if (code == "if" || code == "else")
             {
                 return code.ControlHighlight();
             }
+
             return Highlight(code, ConstructColor);
         }
 

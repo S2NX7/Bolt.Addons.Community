@@ -23,6 +23,7 @@ namespace Unity.VisualScripting.Community.Libraries.CSharp
         public static string AsString(this FieldModifier modifier)
         {
             if (modifier == FieldModifier.None) return string.Empty;
+            if (modifier == FieldModifier.Constant) return "const";
             return EnumToLower(modifier);
         }
 

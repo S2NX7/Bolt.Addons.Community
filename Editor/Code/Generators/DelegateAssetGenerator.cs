@@ -35,6 +35,7 @@ namespace Unity.VisualScripting.Community
                 }
 
                 var @class = ClassGenerator.Class(RootAccessModifier.Public, ClassModifier.None, title, typeof(object)).ImplementInterface(delegateType);
+                @class.AddUsings(new List<string>() { "Unity.VisualScripting.Community.Libraries.Humility" });
                 var properties = string.Empty;
                 var method = Data.type.type.GetMethod("Invoke");
                 var parameterUsings = new List<string>();

@@ -453,6 +453,7 @@ namespace Unity.VisualScripting.Community
                 {
                     if (UnityEngine.ColorUtility.TryParseHtmlString($"#{defaultVariableColor}", out var value))
                     {
+                        value = value.WithAlpha(1f);
                         settings.VariableColor = value;
                         field.value = value;
                     }
@@ -468,6 +469,7 @@ namespace Unity.VisualScripting.Community
                 {
                     if (UnityEngine.ColorUtility.TryParseHtmlString(defaultStringColor, out var value))
                     {
+                        value = value.WithAlpha(1f);
                         settings.StringColor = value;
                         field.value = value;
                     }
@@ -483,6 +485,7 @@ namespace Unity.VisualScripting.Community
                 {
                     if (UnityEngine.ColorUtility.TryParseHtmlString($"#{defaultNumericColor}", out var value))
                     {
+                        value = value.WithAlpha(1f);
                         settings.NumericColor = value;
                         field.value = value;
                     }
@@ -498,6 +501,7 @@ namespace Unity.VisualScripting.Community
                 {
                     if (UnityEngine.ColorUtility.TryParseHtmlString($"#{defaultConstructColor}", out var value))
                     {
+                        value = value.WithAlpha(1f);
                         settings.ConstructColor = value;
                         field.value = value;
                     }
@@ -513,6 +517,7 @@ namespace Unity.VisualScripting.Community
                 {
                     if (UnityEngine.ColorUtility.TryParseHtmlString($"#{defaultTypeColor}", out var value))
                     {
+                        value = value.WithAlpha(1f);
                         settings.TypeColor = value;
                         field.value = value;
                     }
@@ -528,6 +533,7 @@ namespace Unity.VisualScripting.Community
                 {
                     if (UnityEngine.ColorUtility.TryParseHtmlString($"#{defaultEnumColor}", out var value))
                     {
+                        value = value.WithAlpha(1f);
                         settings.EnumColor = value;
                         field.value = value;
                     }
@@ -543,6 +549,7 @@ namespace Unity.VisualScripting.Community
                 {
                     if (UnityEngine.ColorUtility.TryParseHtmlString($"#{defaultInterfaceColor}", out var value))
                     {
+                        value = value.WithAlpha(1f);
                         settings.InterfaceColor = value;
                         field.value = value;
                     }

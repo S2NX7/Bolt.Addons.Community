@@ -13,7 +13,7 @@ namespace Unity.VisualScripting.Community.Variables.Editor
         public static Dictionary<Type, FuzzyLiteralOption> dynamicLiteralOptions = new Dictionary<Type, FuzzyLiteralOption>();
         public static FuzzyExpressionOption fuzzyExpressionOption;
 
-        private static List<Type> dynamicOptionsOrder = new List<Type>
+        private readonly static List<Type> dynamicOptionsOrder = new List<Type>
         {
             typeof(string),
             typeof(int),

@@ -1,21 +1,24 @@
 using System;
 using Unity.VisualScripting;
+using Unity.VisualScripting.Community;
 using Unity.VisualScripting.Community.Libraries.Humility;
 
 public class ValueCode
 {
-    public ValueCode(string code)
+    public ValueCode(string code, Unit unit = null)
     {
         this.code = code;
+        this.unit = unit;
     }
 
-    public ValueCode(string code, Type castType)
+    public ValueCode(string code, Type castType, Unit unit = null)
     {
         this.code = code;
         this.castType = castType;
+        this.unit = unit;
     }
 
-    public ValueCode(string code, Type castType, bool shouldCast, bool convertType = true)
+    public ValueCode(string code, Type castType, bool shouldCast, bool convertType = true, Unit unit = null)
     {
         this.code = code;
         if (shouldCast)
@@ -23,11 +26,13 @@ public class ValueCode
             this.castType = castType;
         }
         this.convertType = convertType;
+        this.unit = unit;
     }
 
     private bool convertType;
     private Type castType;
     private string code;
+    private Unit unit;
     public bool isCasted
     {
         get
@@ -39,7 +44,7 @@ public class ValueCode
     public string GetCode()
     {
         var cast = isCasted ? convertType ? $"(({castType.As().CSharpName(false, true)})" : $"({castType.As().CSharpName(false, true)})" : string.Empty;
-        var _code = cast + code + (isCasted && convertType ? ")" : string.Empty);
+        var _code = unit != null ? CodeUtility.MakeSelectable(unit, cast) + code + (isCasted && convertType ? CodeUtility.MakeSelectable(unit, ")") : string.Empty) : cast + code + (isCasted && convertType ? ")" : string.Empty);
         return _code;
     }
 

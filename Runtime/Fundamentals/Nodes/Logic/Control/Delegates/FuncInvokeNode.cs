@@ -10,7 +10,7 @@ namespace Unity.VisualScripting.Community
         [DoNotSerialize]
         public ValueOutput @return;
 
-        protected override bool isPure => true;
+        protected override bool isPure => false;
 
         protected override void Definition()
         {

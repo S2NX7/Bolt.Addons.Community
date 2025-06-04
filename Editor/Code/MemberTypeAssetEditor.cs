@@ -1895,7 +1895,7 @@ namespace Unity.VisualScripting.Community
                                 {
                                     HUMEditor.Image(typeof(Type).Icon()[IconSize.Small], 16, 16);
 
-                                    GUILayout.Label("Generics");
+                                    GUILayout.Label(new GUIContent("Generics", "This feature is experimental and may cause issues in your graphs or behave unpredictably."));
                                 }, () =>
                                 {
                                     HUMEditor.Vertical().Box(HUMEditorColor.DefaultEditorBackground.Darken(0.1f), Color.black, new RectOffset(4, 4, 4, 4), new RectOffset(2, 2, 0, 2), () =>

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using Unity.VisualScripting;
 using System.Linq;
 using Unity.VisualScripting.Community.Libraries.Humility;
+using UnityEngine;
 
 namespace Unity.VisualScripting.Community
 {
@@ -17,6 +18,7 @@ namespace Unity.VisualScripting.Community
         {
             if (output == Unit.@delegate || output == Unit.Callback)
             {
+                data.CreateSymbol(Unit, Unit._delegate.GetDelegateType(), Unit._delegate.GetDelegateType().As().CSharpName(false, true));
                 _data = new ControlGenerationData(data);
                 _data.NewScope();
                 List<string> parameters = new List<string>();
@@ -26,9 +28,9 @@ namespace Unity.VisualScripting.Community
                     _data.returns = func.ReturnType;
                     foreach (var type in func.GetDelegateType().GetGenericArguments())
                     {
-                        if (type != func.GetDelegateType().GetGenericArguments().Last())
+                        if (index < func.GetDelegateType().GetGenericArguments().Length - 1)
                         {
-                            parameters.Add(_data.AddLocalNameInScope("arg" + index, Unit._delegate.GetDelegateType()).VariableHighlight());
+                            parameters.Add(_data.AddLocalNameInScope("arg" + index, Unit._delegate.GetDelegateType().GetGenericArguments()[index]).VariableHighlight());
                             index++;
                         }
                     }
@@ -39,11 +41,11 @@ namespace Unity.VisualScripting.Community
                     _data.returns = typeof(void);
                     foreach (var type in action.GetDelegateType().GetGenericArguments())
                     {
-                        parameters.Add(_data.AddLocalNameInScope("arg" + index, Unit._delegate.GetDelegateType()).VariableHighlight());
+                        parameters.Add(_data.AddLocalNameInScope("arg" + index, Unit._delegate.GetDelegateType().GetGenericArguments()[index]).VariableHighlight());
                         index++;
                     }
                 }
-                var delegateCode = CodeBuilder.MultiLineLambda(Unit, MakeSelectableForThisUnit(string.Join(", ", parameters)), GenerateControl(null, _data, CodeBuilder.currentIndent) + (Unit._delegate is IFunc ? "\n" + CodeBuilder.GetCurrentIndent(Unit.invoke.hasValidConnection ? 0 : 1) + MakeSelectableForThisUnit("return ".ControlHighlight()) + GenerateValue((Unit as FuncNode).@return, _data) : string.Empty), Unit.invoke.hasValidConnection ? CodeBuilder.currentIndent - 1 : (Unit._delegate is IFunc ? CodeBuilder.currentIndent - 1 : CodeBuilder.currentIndent));
+                var delegateCode = CodeBuilder.MultiLineLambda(Unit, MakeSelectableForThisUnit(string.Join(", ", parameters)), GenerateControl(null, _data, CodeBuilder.currentIndent) + (Unit._delegate is IFunc ? "\n" + CodeBuilder.GetCurrentIndent(Unit.invoke.hasValidConnection ? 0 : 1) + MakeSelectableForThisUnit("return ".ControlHighlight()) + GenerateValue((Unit as FuncNode).@return, _data) + MakeSelectableForThisUnit(";") : string.Empty), Unit.invoke.hasValidConnection ? CodeBuilder.currentIndent - 1 : (Unit._delegate is IFunc ? CodeBuilder.currentIndent - 1 : CodeBuilder.currentIndent));
                 _data.ExitScope();
                 return delegateCode;
             }

@@ -2,6 +2,7 @@ using Unity.VisualScripting.Community.Libraries.Humility;
 using Unity.VisualScripting.Community.Libraries.CSharp;
 using System.Collections.Generic;
 using System;
+using UnityEngine;
 
 namespace Unity.VisualScripting.Community
 {
@@ -71,6 +72,13 @@ namespace Unity.VisualScripting.Community
         {
             if (input.hasValidConnection)
             {
+                if(unit is InvokeMember)
+                {
+                    if (input.unit is GetVariable getVariable)
+                    {
+                        Debug.Log(data.IsCurrentExpectedTypeMet() + getVariable.defaultValues[getVariable.name.key].ToString());
+                    }
+                }
                 Type sourceType = GetSourceType(input, data);
                 Type targetType = input.type;
 

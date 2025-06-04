@@ -116,7 +116,6 @@ namespace Unity.VisualScripting.Community
             }
 
 #if ENABLE_IL2CPP
-
             if (Application.platform == RuntimePlatform.WindowsEditor || Application.platform == RuntimePlatform.LinuxEditor || Application.platform == RuntimePlatform.OSXEditor)
             {
                 string methodName;
@@ -134,7 +133,7 @@ namespace Unity.VisualScripting.Community
             {
                 Type aotSupportMethodsType = type;
                 var method = aotSupportMethodsType.GetMethods().First(method => method.ReturnType == delegateType);
-                return method?.Invoke(null, new object[] { reference, this });
+                return method?.InvokeOptimized(null, new object[] { reference, this });
             }
             else
             {
@@ -218,9 +217,15 @@ namespace Unity.VisualScripting.Community
         {
             return stack.GetElementData<OnUnityEventData>(this);
         }
-
+        private static Type AotSupportMethodsType;
+        private static bool aotSupportMethodsTypeChecked = false;
         private Type GetAotSupportMethodsType()
         {
+            if (AotSupportMethodsType != null || aotSupportMethodsTypeChecked)
+            {
+                return AotSupportMethodsType;
+            }
+            aotSupportMethodsTypeChecked = true;
             Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
 
             foreach (Assembly assembly in assemblies)
@@ -231,6 +236,7 @@ namespace Unity.VisualScripting.Community
                 {
                     if (type.Name == "AotSupportMethods")
                     {
+                        AotSupportMethodsType = type;
                         return type;
                     }
                 }

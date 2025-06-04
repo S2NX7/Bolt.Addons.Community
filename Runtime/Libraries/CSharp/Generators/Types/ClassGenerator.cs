@@ -19,16 +19,18 @@ namespace Unity.VisualScripting.Community.Libraries.CSharp
         public bool isNested;
 #pragma warning restore 0414
         public string name;
-        public List<AttributeGenerator> attributes = new List<AttributeGenerator>();
-        public List<FieldGenerator> fields = new List<FieldGenerator>();
-        public List<PropertyGenerator> properties = new List<PropertyGenerator>();
-        public List<MethodGenerator> methods = new List<MethodGenerator>();
-        public List<ConstructorGenerator> constructors = new List<ConstructorGenerator>();
-        public List<ClassGenerator> classes = new List<ClassGenerator>();
-        public List<StructGenerator> structs = new List<StructGenerator>();
-        public List<EnumGenerator> enums = new List<EnumGenerator>();
-        public List<InterfaceGenerator> subInterfaces = new List<InterfaceGenerator>();
-        public List<Type> interfaces = new List<Type>();
+        public List<AttributeGenerator> attributes = new List<AttributeGenerator>(4);
+        public List<FieldGenerator> fields = new List<FieldGenerator>(16);
+        public List<PropertyGenerator> properties = new List<PropertyGenerator>(8);
+        public List<MethodGenerator> methods = new List<MethodGenerator>(16);
+        public List<ConstructorGenerator> constructors = new List<ConstructorGenerator>(2);
+        public List<ClassGenerator> classes = new List<ClassGenerator>(4);
+        public List<StructGenerator> structs = new List<StructGenerator>(2);
+        public List<EnumGenerator> enums = new List<EnumGenerator>(2);
+        public List<InterfaceGenerator> subInterfaces = new List<InterfaceGenerator>(2);
+        public List<Type> interfaces = new List<Type>(4);
+        private readonly System.Text.StringBuilder _codeBuilder = new System.Text.StringBuilder(4096);
+        private readonly HashSet<string> _usingsSet = new HashSet<string>();
         public Type inherits;
         public bool generateUsings;
         private bool useAssemblyQualifiedNameForInheritance;
@@ -109,83 +111,138 @@ namespace Unity.VisualScripting.Community.Libraries.CSharp
             var canShowInherits = !(inherits == null && string.IsNullOrEmpty(assemblyQualifiedInheritanceType) || inherits == typeof(object) && inherits.BaseType == null);
             output += CodeBuilder.Indent(indent) + scope.AsString().ConstructHighlight() + (modifier == ClassModifier.None ? string.Empty : " " + modifier.AsString().ConstructHighlight()) + " class ".ConstructHighlight() + name.LegalMemberName().TypeHighlight();
             output += (canShowInherits || interfaces.Count > 0) && SupportsInheritance() ? " : " : string.Empty;
-            output += (canShowInherits || interfaces.Count > 0) && SupportsInheritance() ? (inherits == null ? assemblyQualifiedInheritanceType : inherits != typeof(object) ? inherits.As().CSharpName() : string.Empty) + (interfaces.Count > 0 ? ", " : string.Empty) : string.Empty;
+            output += (canShowInherits || interfaces.Count > 0) && SupportsInheritance() ? (inherits == null ? assemblyQualifiedInheritanceType : inherits != typeof(object) ? inherits.As().CSharpName() : string.Empty) + (interfaces.Count > 0 && IsVaildInheritance() ? ", " : string.Empty) : string.Empty;
 
-            for (int i = 0; i < interfaces.Count; i++)
-            {
-                output += interfaces[i].As().CSharpName();
-                output += i < interfaces.Count - 1 ? ", " : string.Empty;
-            }
+            output += string.Join(", ", interfaces.ConvertAll(i => i.As().CSharpName()));
 
             return output;
         }
 
-        public bool SupportsInheritance()
+        private bool SupportsInheritance()
         {
             return modifier != ClassModifier.Static && modifier != ClassModifier.StaticPartial;
+        }
+        
+        private bool IsVaildInheritance()
+        {
+            return (inherits != null && inherits != typeof(object)) || !string.IsNullOrEmpty(assemblyQualifiedInheritanceType);
         }
 
         protected override string GenerateBody(int indent)
         {
-            var output = string.Empty;
+            _codeBuilder.Clear();
 
-            for (int i = 0; i < fields.Count; i++)
+            if (fields.Count > 0)
             {
-                if (!string.IsNullOrEmpty(fields[i].name)) output += fields[i].Generate(indent) + (i < fields.Count - 1 ? "\n" : string.Empty);
+                for (int i = 0; i < fields.Count; i++)
+                {
+                    if (!string.IsNullOrEmpty(fields[i].name))
+                    {
+                        _codeBuilder.Append(fields[i].Generate(indent));
+                        if (i < fields.Count - 1) _codeBuilder.Append('\n');
+                    }
+                }
+
+                if (properties.Count > 0 || constructors.Count > 0 || methods.Count > 0 ||
+                    classes.Count > 0 || structs.Count > 0 || enums.Count > 0)
+                {
+                    _codeBuilder.Append("\n\n");
+                }
             }
 
-            output += fields.Count > 0 && (properties.Count > 0 || constructors.Count > 0 || methods.Count > 0 || classes.Count > 0 || structs.Count > 0 || enums.Count > 0) ? "\n\n" : string.Empty;
-
-            for (int i = 0; i < properties.Count; i++)
+            if (properties.Count > 0)
             {
-                if (!string.IsNullOrEmpty(properties[i].name)) output += properties[i].Generate(indent) + (i < properties.Count - 1 ? "\n\n" : string.Empty);
+                for (int i = 0; i < properties.Count; i++)
+                {
+                    if (!string.IsNullOrEmpty(properties[i].name))
+                    {
+                        _codeBuilder.Append(properties[i].Generate(indent));
+                        if (i < properties.Count - 1) _codeBuilder.Append("\n\n");
+                    }
+                }
+
+                if (constructors.Count > 0 || methods.Count > 0 || classes.Count > 0 ||
+                    structs.Count > 0 || enums.Count > 0)
+                {
+                    _codeBuilder.Append("\n\n");
+                }
             }
 
-            output += properties.Count > 0 && (constructors.Count > 0 || methods.Count > 0 || classes.Count > 0 || structs.Count > 0 || enums.Count > 0) ? "\n\n" : string.Empty;
-
-            for (int i = 0; i < constructors.Count; i++)
+            if (constructors.Count > 0)
             {
-                output += constructors[i].Generate(indent) + (i < constructors.Count - 1 ? "\n\n" : string.Empty);
+                for (int i = 0; i < constructors.Count; i++)
+                {
+                    _codeBuilder.Append(constructors[i].Generate(indent));
+                    if (i < constructors.Count - 1) _codeBuilder.Append("\n\n");
+                }
+
+                if (methods.Count > 0 || classes.Count > 0 || structs.Count > 0 || enums.Count > 0)
+                {
+                    _codeBuilder.Append("\n\n");
+                }
             }
 
-            output += constructors.Count > 0 && (methods.Count > 0 || classes.Count > 0 || structs.Count > 0 || enums.Count > 0) ? "\n\n" : string.Empty;
-
-            for (int i = 0; i < methods.Count; i++)
+            if (methods.Count > 0)
             {
-                if (!string.IsNullOrEmpty(methods[i].name)) output += methods[i].Generate(indent) + (i < methods.Count - 1 ? "\n\n" : string.Empty);
+                for (int i = 0; i < methods.Count; i++)
+                {
+                    if (!string.IsNullOrEmpty(methods[i].name))
+                    {
+                        _codeBuilder.Append(methods[i].Generate(indent));
+                        if (i < methods.Count - 1) _codeBuilder.Append("\n\n");
+                    }
+                }
+
+                if (classes.Count > 0 || structs.Count > 0 || enums.Count > 0)
+                {
+                    _codeBuilder.Append("\n\n");
+                }
             }
 
-            output += methods.Count > 0 && (classes.Count > 0 || structs.Count > 0 || enums.Count > 0) ? "\n\n" : string.Empty;
-
-            for (int i = 0; i < classes.Count; i++)
+            if (classes.Count > 0)
             {
-                output += classes[i].Generate(indent);
-                output += i < classes.Count - 1 ? "\n\n" : string.Empty;
+                for (int i = 0; i < classes.Count; i++)
+                {
+                    _codeBuilder.Append(classes[i].Generate(indent));
+                    if (i < classes.Count - 1) _codeBuilder.Append("\n\n");
+                }
+
+                if (structs.Count > 0 || enums.Count > 0)
+                {
+                    _codeBuilder.Append("\n\n");
+                }
             }
 
-            output += classes.Count > 0 && (structs.Count > 0 || enums.Count > 0) ? "\n\n" : string.Empty;
-
-            for (int i = 0; i < structs.Count; i++)
+            if (structs.Count > 0)
             {
-                output += structs[i].Generate(indent);
-                output += i < structs.Count - 1 ? "\n\n" : string.Empty;
+                for (int i = 0; i < structs.Count; i++)
+                {
+                    _codeBuilder.Append(structs[i].Generate(indent));
+                    if (i < structs.Count - 1) _codeBuilder.Append("\n\n");
+                }
+
+                if (enums.Count > 0)
+                {
+                    _codeBuilder.Append("\n\n");
+                }
             }
 
-            output += structs.Count > 0 && enums.Count > 0 ? "\n\n" : string.Empty;
-
-            for (int i = 0; i < enums.Count; i++)
+            if (enums.Count > 0)
             {
-                output += enums[i].Generate(indent);
-                output += i < enums.Count - 1 ? "\n\n" : string.Empty;
+                for (int i = 0; i < enums.Count; i++)
+                {
+                    _codeBuilder.Append(enums[i].Generate(indent));
+                    if (i < enums.Count - 1) _codeBuilder.Append("\n\n");
+                }
             }
 
             for (int i = 0; i < subInterfaces.Count; i++)
             {
-                output += subInterfaces[i].Generate(indent);
-                output += i < subInterfaces.Count - 1 ? "\n\n" : string.Empty;
+                _codeBuilder.Append(subInterfaces[i].Generate(indent));
+                if (i < subInterfaces.Count - 1) _codeBuilder.Append("\n\n");
             }
 
-            return output;
+            return _codeBuilder.ToString();
         }
 
         protected override string GenerateAfter(int indent)
@@ -195,51 +252,71 @@ namespace Unity.VisualScripting.Community.Libraries.CSharp
 
         public override List<string> Usings()
         {
-            var usings = new List<string>();
+            _usingsSet.Clear();
 
-            if (this.usings != null) usings.MergeUnique(this.usings);
+            if (this.usings != null)
+            {
+                foreach (var @using in this.usings)
+                {
+                    _usingsSet.Add(@using);
+                }
+            }
 
             if (useAssemblyQualifiedNameForInheritance)
             {
-                if (!string.IsNullOrEmpty(assemblyQualifiedInheritanceNamespace) && assemblyQualifiedInheritanceNamespace + "." + assemblyQualifiedInheritanceType != "System.Void") usings.Add(assemblyQualifiedInheritanceNamespace);
+                if (!string.IsNullOrEmpty(assemblyQualifiedInheritanceNamespace) && 
+                    assemblyQualifiedInheritanceNamespace + "." + assemblyQualifiedInheritanceType != "System.Void")
+                {
+                    _usingsSet.Add(assemblyQualifiedInheritanceNamespace);
+                }
             }
-            else
+            else if (inherits != null && !inherits.Is().PrimitiveStringOrVoid())
             {
-                if (inherits != null && !inherits.Is().PrimitiveStringOrVoid()) usings.Add(inherits.Namespace);
+                _usingsSet.Add(inherits.Namespace);
             }
 
-            var interfaceList = new List<string>();
-
-            for (int i = 0; i < interfaces.Count; i++)
+            foreach (var @interface in interfaces)
             {
-                if (!string.IsNullOrEmpty(interfaces[i].Namespace) && !interfaceList.Contains(interfaces[i].Namespace)) interfaceList.Add(interfaces[i].Namespace);
+                if (!string.IsNullOrEmpty(@interface.Namespace))
+                {
+                    _usingsSet.Add(@interface.Namespace);
+                }
             }
 
-            usings.MergeUnique(interfaceList);
-
-            for (int i = 0; i < attributes.Count; i++)
+            foreach (var attribute in attributes)
             {
-                usings.MergeUnique(attributes[i].Usings());
+                foreach (var @using in attribute.Usings())
+                {
+                    _usingsSet.Add(@using);
+                }
             }
 
-            for (int i = 0; i < fields.Count; i++)
+            foreach (var field in fields)
             {
-                usings.MergeUnique(fields[i].Usings());
+                foreach (var @using in field.Usings())
+                {
+                    _usingsSet.Add(@using);
+                }
             }
 
-            for (int i = 0; i < properties.Count; i++)
+            foreach (var property in properties)
             {
-                usings.MergeUnique(properties[i].Usings());
+                foreach (var @using in property.Usings())
+                {
+                    _usingsSet.Add(@using);
+                }
             }
 
-            for (int i = 0; i < methods.Count; i++)
+            foreach (var method in methods)
             {
-                usings.MergeUnique(methods[i].Usings());
+                foreach (var @using in method.Usings())
+                {
+                    _usingsSet.Add(@using);
+                }
             }
 
-            return usings;
+            return new List<string>(_usingsSet);
         }
-
 
         public ClassGenerator Inherit(Type type)
         {

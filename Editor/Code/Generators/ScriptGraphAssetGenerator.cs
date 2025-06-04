@@ -64,7 +64,13 @@ namespace Unity.VisualScripting.Community
         #region Private Fields
         private Dictionary<string, GraphMethodDecleration> _methods;
         private Dictionary<CustomEvent, int> _customEventIds;
-        private List<Unit> _specialUnits = new List<Unit>();
+        private HashSet<Unit> _specialUnits = new HashSet<Unit>();
+        private List<Unit> _allUnits;
+        private IReadOnlyList<IEventUnit> _eventUnits;
+        private Dictionary<Type, NodeGenerator> _generatorCache = new Dictionary<Type, NodeGenerator>();
+        private HashSet<string> _processedMethodNames = new HashSet<string>();
+        private Dictionary<Type, bool> _delegateTypeCache = new Dictionary<Type, bool>();
+        private Dictionary<Type, int> _generatorCount = new Dictionary<Type, int>();
         #endregion
 
         public override string Generate(int indent)
@@ -72,35 +78,48 @@ namespace Unity.VisualScripting.Community
             if (Data?.graph == null) return string.Empty;
 
             InitializeCollections();
-            var script = GenerateScriptHeader();
-            script += GenerateClassDefinition();
-            script += GenerateVariableDeclarations();
-            script += GenerateAwakeHandlers();
-            script += GenerateEventMethods();
-            script += GenerateSpecialUnits();
-            script += GenerateMethodDeclarations();
-            script += "}";
+            var script = new System.Text.StringBuilder();
+            script.Append(GenerateScriptHeader());
+            script.Append(GenerateClassDefinition());
+            script.Append(GenerateVariableDeclarations());
+            script.Append(GenerateAwakeHandlers());
+            script.Append(GenerateEventMethods());
+            script.Append(GenerateSpecialUnits());
+            script.Append(GenerateMethodDeclarations());
+            script.Append("}");
 
-            return script;
+            return script.ToString();
         }
 
         #region Private Methods
         private void InitializeCollections()
         {
-            _methods = new Dictionary<string, GraphMethodDecleration>();
-            _customEventIds = new Dictionary<CustomEvent, int>();
+            _methods = new Dictionary<string, GraphMethodDecleration>(32);
+            _customEventIds = new Dictionary<CustomEvent, int>(16);
             _specialUnits.Clear();
-            generatorCount.Clear();
+            _processedMethodNames.Clear();
+            _delegateTypeCache.Clear();
+            _generatorCount.Clear();
+            
+            _allUnits = Data.graph.GetUnitsRecursive(Recursion.New(Recursion.defaultMaxDepth)).Cast<Unit>().ToList();
+            
+            _eventUnits = _allUnits.OfType<IEventUnit>()
+                .Where(unit => !(unit is CustomEvent evt && evt.graph != Data.graph) && 
+                              !(unit is ReturnEvent) && 
+                              !(unit is TriggerReturnEvent))
+                .ToList()
+                .AsReadOnly();
+                
+            _specialUnits.UnionWith(_allUnits.Where(u => u is Timer || u is Cooldown));
         }
 
         private string GenerateScriptHeader()
         {
             units = Data.graph.GetUnitsRecursive(Recursion.New(Recursion.defaultMaxDepth)).Cast<Unit>().ToList();
             var usings = GetRequiredNamespaces();
-            return "#pragma warning disable\n".ConstructHighlight() + string.Join("\n", usings.Select(u => GenerateUsingStatement(u))) + "\n";
+            return "#pragma warning disable\n".ConstructHighlight() + string.Join("\n", usings.Select(u => GenerateUsingStatement(u))) + "\n" + (Data.graph.units.Any(u => u is GraphInput or GraphOutput) ? CodeUtility.ToolTip("This graph contains a GraphInput or GraphOutput. Generating subgraphs directly is not supported and may cause generation issues.", "This graph appears to be a subgraph", "") : "");
         }
 
-        private Dictionary<Type, int> generatorCount = new Dictionary<Type, int>();
         private List<Unit> units = new List<Unit>();
 
         private List<(string, Unit)> GetRequiredNamespaces()
@@ -112,32 +131,32 @@ namespace Unity.VisualScripting.Community
 
                 if (unit is Timer timer)
                 {
-                    if (!generatorCount.ContainsKey(typeof(TimerGenerator)))
+                    if (!_generatorCount.ContainsKey(typeof(TimerGenerator)))
                     {
-                        generatorCount[typeof(TimerGenerator)] = 0;
+                        _generatorCount[typeof(TimerGenerator)] = 0;
                     }
                     _specialUnits.Add(timer);
-                    (generator as TimerGenerator).count = generatorCount[typeof(TimerGenerator)];
-                    generatorCount[typeof(TimerGenerator)]++;
+                    (generator as TimerGenerator).count = _generatorCount[typeof(TimerGenerator)];
+                    _generatorCount[typeof(TimerGenerator)]++;
                 }
                 else if (unit is Cooldown cooldown)
                 {
-                    if (!generatorCount.ContainsKey(typeof(CooldownGenerator)))
+                    if (!_generatorCount.ContainsKey(typeof(CooldownGenerator)))
                     {
-                        generatorCount[typeof(CooldownGenerator)] = 0;
+                        _generatorCount[typeof(CooldownGenerator)] = 0;
                     }
                     _specialUnits.Add(cooldown);
-                    (generator as CooldownGenerator).count = generatorCount[typeof(CooldownGenerator)];
-                    generatorCount[typeof(CooldownGenerator)]++;
+                    (generator as CooldownGenerator).count = _generatorCount[typeof(CooldownGenerator)];
+                    _generatorCount[typeof(CooldownGenerator)]++;
                 }
                 else if (generator is MethodNodeGenerator methodNodeGenerator)
                 {
-                    if (!generatorCount.ContainsKey(methodNodeGenerator.GetType()))
+                    if (!_generatorCount.ContainsKey(methodNodeGenerator.GetType()))
                     {
-                        generatorCount[methodNodeGenerator.GetType()] = 0;
+                        _generatorCount[methodNodeGenerator.GetType()] = 0;
                     }
-                    methodNodeGenerator.count = generatorCount[methodNodeGenerator.GetType()];
-                    generatorCount[methodNodeGenerator.GetType()]++;
+                    methodNodeGenerator.count = _generatorCount[methodNodeGenerator.GetType()];
+                    _generatorCount[methodNodeGenerator.GetType()]++;
                 }
 
                 if (!string.IsNullOrEmpty(generator.NameSpaces))
@@ -185,16 +204,19 @@ namespace Unity.VisualScripting.Community
                     script += (index == 0 ? "\n" + CodeBuilder.Indent(1) + $"[{typeof(FoldoutAttribute).As().CSharpName(false, true, true)}({"ObjectReferences".Quotes().StringHighlight()})]\n" + (values.Count == 1 ? CodeBuilder.Indent(1) + $"[{"FoldoutEnd".TypeHighlight()}]\n" : "") : index == values.Count - 1 ? CodeBuilder.Indent(1) + $"[{"FoldoutEnd".TypeHighlight()}]\n" + CodeBuilder.Indent(1) + $"[{"UnityEngine".NamespaceHighlight()}.{"HideInInspector".TypeHighlight()}]\n" : CodeBuilder.Indent(1) + $"[{"UnityEngine".NamespaceHighlight()}.{"HideInInspector".TypeHighlight()}]\n") + CodeBuilder.Indent(1) + "public ".ConstructHighlight() + typeof(UnityEngine.Object).As().CSharpName(false, true, true) + " " + variable.Key.LegalMemberName().VariableHighlight() + ";\n";
                 index++;
             }
+
             foreach (VariableDeclaration variable in Data.graph.variables)
             {
+                var type = Type.GetType(variable.typeHandle.Identification);
+                type = typeof(IDelegate).IsAssignableFrom(type) ? (variable.value as IDelegate)?.GetDelegateType() ?? (Activator.CreateInstance(type) as IDelegate)?.GetDelegateType() : type;
+                var typeCode = type.As().CSharpName(false, true);
                 script +=
                     "\n" + CodeBuilder.Indent(1) + "public ".ConstructHighlight()
-                    + Type.GetType(variable.typeHandle.Identification).As().CSharpName(false, true)
+                    + typeCode
                     + " "
                     + variable.name.LegalMemberName().VariableHighlight()
-                    + (variable.value != null ? $" = " + "" + $"{variable.value.As().Code(true, true, true, "", true, true, false)};\n" : string.Empty + ";\n");
+                    + (variable.value != null && !typeof(IDelegate).IsAssignableFrom(Type.GetType(variable.typeHandle.Identification)) ? $" = " + $"{variable.value.As().Code(true, true, true, "", true, true, false)};\n" : string.Empty + ";\n");
             }
-            ;
 
             foreach (Unit unit in units)
             {
@@ -310,9 +332,10 @@ namespace Unity.VisualScripting.Community
             bool addedSpecialFixedUpdateCode = false;
             foreach (IEventUnit unit in units.Where(unit => unit is IEventUnit).Cast<IEventUnit>())
             {
-                if (unit is CustomEvent && unit.graph != Data.graph) continue;
+                if ((unit is CustomEvent && unit.graph != Data.graph) || unit is ReturnEvent or TriggerReturnEvent) continue;
                 var specialUnitCode = "";
                 string methodName = CodeUtility.CleanCode(GetMethodName(unit));
+
                 if (unit.coroutine)
                 {
                     if (!_methods.ContainsKey(methodName))

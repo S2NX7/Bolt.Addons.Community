@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -26,7 +27,13 @@ namespace Unity.VisualScripting.Community
                 }
 
                 yield return new GraphContextMenuItem(OpenCSharpPreview, "Open Utility Window");
+                yield return new GraphContextMenuItem(OpenKeyboardControlsWindow, "Open Keyboard Controls Window");
             }
+        }
+
+        private void OpenKeyboardControlsWindow(Vector2 vector)
+        {
+            GraphKeyboardControlsWindow.ShowWindow();
         }
 
         private void ConvertToEmbed(Vector2 pos)

@@ -5,10 +5,11 @@ using System.Collections.Generic;
 namespace Unity.VisualScripting.Community
 {
     [RenamedFrom("Bolt.Addons.Community.Fundamentals.TriggerXTimes")]
+    [RenamedFrom("Unity.VisualScripting.Community.TriggerXTimes")]
     [UnitTitle("LimitedTrigger")]
     [UnitCategory("Community\\Control")]
     [TypeIcon(typeof(Once))]
-    public class TriggerXTimes : Unit
+    public class LimitedTrigger : Unit
     {
         [DoNotSerialize]
         [PortLabelHidden]

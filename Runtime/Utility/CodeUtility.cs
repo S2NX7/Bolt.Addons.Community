@@ -12,44 +12,8 @@ namespace Unity.VisualScripting.Community
 {
     public static class CodeUtility
     {
-        private static readonly Regex RemoveAllTagsRegex = new(@"\[CommunityAddonsCodeSelectable(?:[^\]]*)\](.*?)\[CommunityAddonsCodeSelectableEnd\([^\]]*\)\]", RegexOptions.Compiled | RegexOptions.Singleline);
-        private static readonly Regex RemoveStartTagsRegex = new(@"\[CommunityAddonsCodeSelectable(?:[^\]]*)\]", RegexOptions.Compiled | RegexOptions.Singleline);
         private static readonly Regex RemoveHighlightsRegex = new(@"<b class='highlight'>(.*?)<\/b>", RegexOptions.Compiled | RegexOptions.Singleline);
         private static readonly ConcurrentDictionary<string, string> RemoveAllCache = new();
-
-        private static readonly Dictionary<string, Regex> HighlightCodeRegexCache = new();
-
-        public static string HighlightCode(string code, string unitId)
-        {
-            var regex = GetOrAddRegex(HighlightCodeRegexCache, unitId, id =>
-            {
-                var pattern = $@"\[CommunityAddonsCodeSelectable\({Regex.Escape(id)}\)\](.*?)(\[CommunityAddonsCodeSelectableEnd\({Regex.Escape(id)}\)\])";
-                return new Regex(pattern, RegexOptions.Compiled | RegexOptions.Singleline);
-            });
-
-            var lines = code.Split(new[] { '\n' }, StringSplitOptions.None);
-            var highlightedLines = new List<string>(lines.Length);
-
-            foreach (var line in lines)
-            {
-                if (line.Contains($"[CommunityAddonsCodeSelectable({unitId})]"))
-                {
-                    var result = regex.Replace(line, match =>
-                    {
-                        var content = match.Groups[1].Value;
-                        var highlightedContent = $"<b class='highlight'>{content}</b>";
-                        return $"{match.Groups[0].Value.Replace(content, highlightedContent)}";
-                    });
-                    highlightedLines.Add(result);
-                }
-                else
-                {
-                    highlightedLines.Add(line);
-                }
-            }
-
-            return string.Join("\n", highlightedLines);
-        }
 
         private static TValue GetOrAddRegex<TKey, TValue>(Dictionary<TKey, TValue> dictionary, TKey key, Func<TKey, TValue> valueFactory)
         {
@@ -61,17 +25,18 @@ namespace Unity.VisualScripting.Community
             return value;
         }
 
+        private static readonly Regex RemoveSelectableTagWrapperRegex = new(@"⟦([^\⟧]+)⟧(.*?)⟧⟧", RegexOptions.Compiled | RegexOptions.Singleline);
+
         public static string RemoveAllSelectableTags(string code)
         {
             if (RemoveAllCache.TryGetValue(code, out string result))
-            {
                 return result;
-            }
 
-            result = RemoveStartTagsRegex.Replace(RemoveAllTagsRegex.Replace(code, "$1"), string.Empty);
+            result = RemoveSelectableTagWrapperRegex.Replace(code, "$2");
             RemoveAllCache[code] = result;
             return result;
         }
+
 
         public static string RemovePattern(string input, string startPattern, string endPattern)
         {
@@ -111,13 +76,13 @@ namespace Unity.VisualScripting.Community
         }
         public static string MakeSelectable(Unit unit, string code)
         {
-            return $"[CommunityAddonsCodeSelectable({unit})]{code}[CommunityAddonsCodeSelectableEnd({unit})]";
+            return $"⟦{unit}⟧{code}⟧⟧";
         }
 
         /// <summary>
         /// Used for the csharp preview to generate a tooltip
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The string with the ToolTip tags</returns>
         public static string ToolTip(string ToolTip, string notifyString, string code, bool highlight = true)
         {
             return CSharpPreviewSettings.ShouldGenerateTooltips ? $"[CommunityAddonsCodeToolTip({ToolTip})]{(highlight ? $"/* {notifyString} (Hover for more info) */".WarningHighlight() : $"/* {notifyString} (Hover for more info) */")}[CommunityAddonsCodeToolTipEnd] {code}" : code;
@@ -177,77 +142,80 @@ namespace Unity.VisualScripting.Community
 
         public static string CleanCode(string code)
         {
-            string result = code;
-            result = RemoveAllSelectableTags(result);
-            result = RemoveAllToolTipTags(result);
-            result = RemoveRecommendations(result);
-            result = RemoveCustomHighlights(result);
-            return result;
+            return RemoveAllSelectableTags(RemoveAllToolTipTagsEntirely(RemoveRecommendations(RemoveCustomHighlights(code))));
         }
-
-
-        private static readonly Regex SelectableRegex = new(@"\[CommunityAddonsCodeSelectable\((.*?)\)\]|\[CommunityAddonsCodeSelectableEnd\((.*?)\)\]", RegexOptions.Compiled);
 
         private static readonly Dictionary<string, List<ClickableRegion>> clickableRegionsCache = new();
 
         public static List<ClickableRegion> ExtractAndPopulateClickableRegions(string input)
         {
             if (clickableRegionsCache.TryGetValue(input, out var cachedRegions))
-            {
                 return cachedRegions;
-            }
 
-            var clickableRegions = new List<ClickableRegion>();
-            var lineBreaks = PrecomputeLineBreaks(input.AsSpan(0, input.Length));
+            const string openTag = "⟦";
+            const string midTag = "⟧";
+            const string closeTag = "⟧⟧";
+
+            var regions = new List<ClickableRegion>();
+            ReadOnlySpan<char> span = input;
+            var lineBreaks = PrecomputeLineBreaks(span);
+
             int index = 0;
-
-            while (index < input.Length)
+            while (index < span.Length)
             {
-                int startSelectable = input.IndexOf("[CommunityAddonsCodeSelectable(", index);
-                if (startSelectable == -1) break;
-                int endSelectable = input.IndexOf(")]", startSelectable);
-                if (endSelectable == -1) break;
-                string unitId = input.Substring(startSelectable + "[CommunityAddonsCodeSelectable(".Length, endSelectable - (startSelectable + "[CommunityAddonsCodeSelectable(".Length));
-                int startSelectableEnd = input.IndexOf($"[CommunityAddonsCodeSelectableEnd({unitId})]", endSelectable);
-                if (startSelectableEnd == -1) break;
-                int innerContentStart = endSelectable + 2;
-                string code = input[innerContentStart..startSelectableEnd];
+                int openIdx = span.Slice(index).IndexOf(openTag);
+                if (openIdx == -1) break;
+                openIdx += index;
 
-                int startLine = GetLineNumber(lineBreaks, startSelectable);
-                int endLine = GetLineNumber(lineBreaks, startSelectableEnd);
+                int midIdx = span.Slice(openIdx + openTag.Length).IndexOf(midTag);
+                if (midIdx == -1) break;
+                midIdx += openIdx + openTag.Length;
 
-                var clickableRegion = new ClickableRegion(unitId, code, startLine, endLine);
+                var unitIdSpan = span.Slice(openIdx + openTag.Length, midIdx - (openIdx + openTag.Length));
+                string unitId = unitIdSpan.ToString();
 
-                // If there's a previous region with the same unitId and it's adjacent, merge them
-                if (clickableRegions.Count > 0)
+                int closeIdx = span.Slice(midIdx + midTag.Length).IndexOf(closeTag);
+                if (closeIdx == -1) break;
+                closeIdx += midIdx + midTag.Length;
+
+                int codeStart = midIdx + midTag.Length;
+                int codeLength = closeIdx - codeStart;
+
+                ReadOnlySpan<char> codeSpan = span.Slice(codeStart, codeLength);
+                string code = codeSpan.ToString();
+
+                int startLine = GetLineNumber(lineBreaks, openIdx);
+                int endLine = GetLineNumber(lineBreaks, closeIdx);
+
+                var newRegion = new ClickableRegion(unitId, code, startLine, endLine);
+
+                if (regions.Count > 0)
                 {
-                    var lastRegion = clickableRegions[clickableRegions.Count - 1];
-                    if (lastRegion.unitId == unitId && lastRegion.endLine == startLine)
+                    var last = regions[^1];
+                    if (last.unitId == unitId && last.endLine == startLine)
                     {
-                        // Merge regions
-                        lastRegion.code += code;
-                        lastRegion.endLine = endLine;
-                        clickableRegions[clickableRegions.Count - 1] = lastRegion;
+                        last.code += code;
+                        last.endLine = endLine;
+                        regions[^1] = last;
                     }
                     else
                     {
-                        clickableRegions.Add(clickableRegion);
+                        regions.Add(newRegion);
                     }
                 }
                 else
                 {
-                    clickableRegions.Add(clickableRegion);
+                    regions.Add(newRegion);
                 }
 
-                // Move index forward
-                index = startSelectableEnd + $"[CommunityAddonsCodeSelectableEnd({unitId})]".Length;
+                index = closeIdx + closeTag.Length;
             }
 
-            clickableRegionsCache[input] = clickableRegions;
-            return clickableRegions;
+            clickableRegionsCache[input] = regions;
+            return regions;
         }
 
-        private static List<int> PrecomputeLineBreaks(ReadOnlySpan<char> span)
+        public static List<int> PrecomputeLineBreaks(ReadOnlySpan<char> span)
         {
             var lineBreaks = new List<int> { 0 };
             int start = 0;

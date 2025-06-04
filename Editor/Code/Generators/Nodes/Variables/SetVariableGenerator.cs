@@ -167,12 +167,14 @@ namespace Unity.VisualScripting.Community
                         return CodeBuilder.Indent(indent) + MakeSelectableForThisUnit($"{variables}{"." + "Saved".VariableHighlight() + ".Set("}") + $"{GenerateValue(Unit.name, data)}{MakeSelectableForThisUnit(", ")}{(Unit.input.hasValidConnection ? GenerateValue(Unit.input, data) : MakeSelectableForThisUnit("null".ConstructHighlight()))}" + MakeSelectableForThisUnit(");") + "\n" + GetNextUnit(Unit.assigned, data, indent);
                 }
                 var _name = data.GetVariableName(name);
+                CodeBuilder.Indent(indent); // Ensure indentation is correct
                 if (data.ContainsNameInAnyScope(_name))
                 {
+                    var inputCode = GenerateValue(Unit.input, data);
                     variableName = _name;
                     variableType = data.GetVariableType(_name);
                     data.SetExpectedType(variableType);
-                    var code = MakeSelectableForThisUnit($"{_name.VariableHighlight()} = ") + GenerateValue(Unit.input, data) + MakeSelectableForThisUnit(";");
+                    var code = MakeSelectableForThisUnit($"{_name.VariableHighlight()} = ") + inputCode + MakeSelectableForThisUnit(";");
                     data.RemoveExpectedType();
                     data.CreateSymbol(Unit, variableType, code);
                     output += CodeBuilder.Indent(indent) + code + "\n";
@@ -181,14 +183,15 @@ namespace Unity.VisualScripting.Community
                 }
                 else
                 {
+                    var inputCode = GenerateValue(Unit.input, data);
                     var type = GetSourceType(Unit.input, data) ?? data.GetExpectedType() ?? typeof(object);
                     var inputType = type.As().CSharpName(false, true);
                     variableType = Unit.input.hasValidConnection ? Unit.input.connection.source.type : typeof(object);
                     var newName = data.AddLocalNameInScope(_name, variableType);
                     data.SetExpectedType(variableType);
-                    data.CreateSymbol(Unit, variableType, $"{inputType} {newName.VariableHighlight()} = {(Unit.input.hasValidConnection ? GenerateValue(Unit.input, data) : "null".ConstructHighlight())};");
+                    data.CreateSymbol(Unit, variableType, $"{inputType} {newName.VariableHighlight()} = {(Unit.input.hasValidConnection ? inputCode : "null".ConstructHighlight())};");
                     variableName = newName;
-                    output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit($"{inputType} {newName.VariableHighlight()} = ") + (Unit.input.hasValidConnection ? GenerateValue(Unit.input, data) : MakeSelectableForThisUnit("null".ConstructHighlight())) + MakeSelectableForThisUnit(";") + "\n";
+                    output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit($"{inputType} {newName.VariableHighlight()} = ") + (Unit.input.hasValidConnection ? inputCode : MakeSelectableForThisUnit("null".ConstructHighlight())) + MakeSelectableForThisUnit(";") + "\n";
                     data.RemoveExpectedType();
                     output += GetNextUnit(Unit.assigned, data, indent);
                     return output;

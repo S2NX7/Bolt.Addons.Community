@@ -78,85 +78,72 @@ namespace Unity.VisualScripting.Community
 
         private object ParseLiteral(string input, Type type)
         {
-            // Try parsing a `bool`
             if (type == typeof(bool) && bool.TryParse(input, out bool boolResult))
             {
                 return boolResult;
             }
 
-            // Try parsing a `char` (must be a single character)
             if (type == typeof(char))
             {
                 return input[0];
             }
 
-            // Try parsing a `byte`
             if (type == typeof(byte) && byte.TryParse(input, out byte byteResult))
             {
                 return byteResult;
             }
 
-            // Try parsing a `sbyte`
             if (type == typeof(sbyte) && sbyte.TryParse(input, out sbyte sbyteResult))
             {
                 return sbyteResult;
             }
 
-            // Try parsing a `short`
             if (type == typeof(short) && short.TryParse(input, out short shortResult))
             {
                 return shortResult;
             }
 
-            // Try parsing a `ushort`
             if (type == typeof(ushort) && ushort.TryParse(input, out ushort ushortResult))
             {
                 return ushortResult;
             }
 
-            // Try parsing an `int`
             if (type == typeof(int) && int.TryParse(input, out int intResult))
             {
                 return intResult;
             }
 
-            // Try parsing a `uint`
             if (type == typeof(uint) && uint.TryParse(input, out uint uintResult))
             {
                 return uintResult;
             }
 
-            // Try parsing a `long`
             if (type == typeof(long) && long.TryParse(input, out long longResult))
             {
                 return longResult;
             }
 
-            // Try parsing a `ulong`
             if (type == typeof(ulong) && ulong.TryParse(input, out ulong ulongResult))
             {
                 return ulongResult;
             }
 
-            // Try parsing a `float`
             if (type == typeof(float) && float.TryParse(input, NumberStyles.Float, CultureInfo.InvariantCulture, out float floatResult))
             {
                 return floatResult;
             }
 
-            // Try parsing a `double`
             if (type == typeof(double) && double.TryParse(input, NumberStyles.Float, CultureInfo.InvariantCulture, out double doubleResult))
             {
                 return doubleResult;
             }
 
-            // Try parsing a `decimal`
             if (type == typeof(decimal) && decimal.TryParse(input, NumberStyles.Float, CultureInfo.InvariantCulture, out decimal decimalResult))
             {
                 return decimalResult;
             }
 
-            return input;
+            return input.TrimStart(" ");
         }
 
         // Process control outputs and connect them to preserved units

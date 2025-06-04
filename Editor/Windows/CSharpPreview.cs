@@ -282,14 +282,6 @@ namespace Unity.VisualScripting.Community
                 regionCache.Clear();
             }
 
-            if (GraphWindow.active?.context?.graph is FlowGraph flowGraph)
-            {
-                foreach (var item in GraphWindow.active.context.canvas.selection)
-                {
-                    output = CodeUtility.HighlightCode(output, item.ToString());
-                }
-            }
-
             var clickableRegions = CodeUtility.ExtractAndPopulateClickableRegions(output);
             var plainOutput = CodeUtility.RemoveAllSelectableTags(output);
             var lines = plainOutput.Split(new[] { '\n' }, StringSplitOptions.None);
