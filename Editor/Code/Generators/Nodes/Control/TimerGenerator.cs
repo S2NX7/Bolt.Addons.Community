@@ -75,12 +75,13 @@ namespace Unity.VisualScripting.Community
             if (!controlOutput.hasValidConnection)
                 return "";
             var output = "";
-            var _data = new ControlGenerationData(data);
+            data.NewScope();
+            data.SetReturns(typeof(void));
             output += MakeSelectableForThisUnit("() =>") + "\n";
             output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit("{") + "\n";
-            _data.returns = typeof(void);
-            output += GetNextUnit(controlOutput, _data, indent + 1);
+            output += GetNextUnit(controlOutput, data, indent + 1);
             output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit("}");
+            data.ExitScope();
             return output;
         }
     

@@ -10,7 +10,7 @@ namespace Unity.VisualScripting.Community
         public override string GenerateValue(ValueOutput output, ControlGenerationData data)
         {
             var code = MakeSelectableForThisUnit($"[") + GenerateValue(Unit.key, data) + MakeSelectableForThisUnit("]");
-            data.CreateSymbol(Unit, typeof(object), code);
+            data.CreateSymbol(Unit, typeof(object));
             data.SetExpectedType(Unit.dictionary.type);
             var dictionaryCode = GenerateValue(Unit.dictionary, data);
             var (type, isMet) = data.RemoveExpectedType();

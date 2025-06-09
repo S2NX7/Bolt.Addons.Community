@@ -27,7 +27,7 @@ namespace Unity.VisualScripting.Community
             {
                 var callCode = "args".VariableHighlight() + "." + nameof(CSharpUtility.GetArgument) + "(" + Unit.argumentPorts.IndexOf(output).As().Code(false) + ", " + ((object)(data.GetExpectedType() ?? typeof(object))).As().Code(false, false, true, "", false, true) + ")";
                 var code = new ValueCode(callCode, data.GetExpectedType(), data.GetExpectedType() != null && !data.IsCurrentExpectedTypeMet() && data.GetExpectedType() != typeof(object));
-                data.CreateSymbol(Unit, typeof(object), code);
+                data.CreateSymbol(Unit, typeof(object));
                 return MakeSelectableForThisUnit(code);
             }
             return base.GenerateValue(output, data);

@@ -51,7 +51,7 @@ namespace Unity.VisualScripting.Community
             var typeString = variableType != null ? $"<{variableType.As().CSharpName(false, true)}>" : string.Empty;
             var kind = GetKind(data, typeString);
 
-            data.CreateSymbol(Unit, variableType ?? typeof(object), $"{kind}.Get{typeString}({GenerateValue(Unit.name, data)})");
+            data.CreateSymbol(Unit, variableType ?? typeof(object));
             return kind + $"{GenerateValue(Unit.name, data)}{MakeSelectableForThisUnit(")")}";
         }
 
@@ -84,7 +84,7 @@ namespace Unity.VisualScripting.Community
             }
             else
             {
-                data.CreateSymbol(Unit, variableType, name);
+                data.CreateSymbol(Unit, variableType);
                 var expectedType = data.GetExpectedType();
                 var hasExpectedType = expectedType != null;
                 var isExpectedType = (hasExpectedType && variableType != null && expectedType.IsAssignableFrom(variableType)) || (hasExpectedType && IsVariableDefined(data, name) && !string.IsNullOrEmpty(GetVariableDeclaration(data, name).typeHandle.Identification) && expectedType.IsAssignableFrom(Type.GetType(GetVariableDeclaration(data, name).typeHandle.Identification))) || (hasExpectedType && data.TryGetVariableType(data.GetVariableName(name), out Type targetType) && expectedType.IsAssignableFrom(targetType));

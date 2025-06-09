@@ -81,11 +81,12 @@ namespace Unity.VisualScripting.Community
                 return "";
 
             var output = "";
-            var _data = new ControlGenerationData(data);
             output += MakeSelectableForThisUnit("() =>") + "\n";
             output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit("{") + "\n";
-            _data.returns = typeof(void);
-            output += GetNextUnit(controlOutput, _data, indent + 1);
+            data.NewScope();
+            data.SetReturns(typeof(void));
+            output += GetNextUnit(controlOutput, data, indent + 1);
+            data.ExitScope();
             output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit("}");
             return output;
         }

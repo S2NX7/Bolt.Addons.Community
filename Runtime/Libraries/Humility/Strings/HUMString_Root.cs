@@ -18,40 +18,37 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
         public static string RemoveBetween(this string sourceString, string startTag, string endTag)
         {
             var cacheKey = (sourceString, startTag, endTag);
-
             if (RemoveBetweenCache.TryGetValue(cacheKey, out var cachedResult))
-            {
                 return cachedResult;
-            }
 
-            var resultBuilder = new StringBuilder();
+            var resultBuilder = new StringBuilder(sourceString.Length);
+            ReadOnlySpan<char> span = sourceString;
             int currentIndex = 0;
 
-            while (currentIndex < sourceString.Length)
+            while (currentIndex < span.Length)
             {
-                int startIndex = sourceString.IndexOf(startTag, currentIndex, StringComparison.Ordinal);
+                int startIndex = span.Slice(currentIndex).IndexOf(startTag);
                 if (startIndex == -1)
                 {
-                    resultBuilder.Append(sourceString.Substring(currentIndex));
+                    resultBuilder.Append(span.Slice(currentIndex));
                     break;
                 }
 
-                resultBuilder.Append(sourceString.Substring(currentIndex, startIndex - currentIndex));
+                resultBuilder.Append(span.Slice(currentIndex, startIndex));
+                currentIndex += startIndex + startTag.Length;
 
-                int endIndex = sourceString.IndexOf(endTag, startIndex + startTag.Length, StringComparison.Ordinal);
+                int endIndex = span.Slice(currentIndex).IndexOf(endTag);
                 if (endIndex == -1)
                 {
-                    resultBuilder.Append(sourceString.Substring(startIndex));
+                    resultBuilder.Append(span.Slice(currentIndex));
                     break;
                 }
 
-                currentIndex = endIndex + endTag.Length;
+                currentIndex += endIndex + endTag.Length;
             }
 
-            string result = resultBuilder.ToString();
-
+            var result = resultBuilder.ToString();
             RemoveBetweenCache[cacheKey] = result;
-
             return result;
         }
 

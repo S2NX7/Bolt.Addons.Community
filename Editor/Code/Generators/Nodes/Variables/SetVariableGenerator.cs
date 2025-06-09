@@ -176,7 +176,7 @@ namespace Unity.VisualScripting.Community
                     data.SetExpectedType(variableType);
                     var code = MakeSelectableForThisUnit($"{_name.VariableHighlight()} = ") + inputCode + MakeSelectableForThisUnit(";");
                     data.RemoveExpectedType();
-                    data.CreateSymbol(Unit, variableType, code);
+                    data.CreateSymbol(Unit, variableType);
                     output += CodeBuilder.Indent(indent) + code + "\n";
                     output += GetNextUnit(Unit.assigned, data, indent);
                     return output;
@@ -189,7 +189,7 @@ namespace Unity.VisualScripting.Community
                     variableType = Unit.input.hasValidConnection ? Unit.input.connection.source.type : typeof(object);
                     var newName = data.AddLocalNameInScope(_name, variableType);
                     data.SetExpectedType(variableType);
-                    data.CreateSymbol(Unit, variableType, $"{inputType} {newName.VariableHighlight()} = {(Unit.input.hasValidConnection ? inputCode : "null".ConstructHighlight())};");
+                    data.CreateSymbol(Unit, variableType);
                     variableName = newName;
                     output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit($"{inputType} {newName.VariableHighlight()} = ") + (Unit.input.hasValidConnection ? inputCode : MakeSelectableForThisUnit("null".ConstructHighlight())) + MakeSelectableForThisUnit(";") + "\n";
                     data.RemoveExpectedType();

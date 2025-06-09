@@ -76,6 +76,8 @@ namespace Unity.VisualScripting.Community
         public ScriptMachine[] components = new ScriptMachine[0];
         public ScriptMachine current;
 
+        private ControlGenerationData data;
+
         public override string Generate(int indent)
         {
             components = Data?.GetComponents<ScriptMachine>();
@@ -85,8 +87,11 @@ namespace Unity.VisualScripting.Community
             {
                 current = components[0];
             }
-
-            InitializeCollections();
+            data = new ControlGenerationData(typeof(MonoBehaviour), current.GetReference())
+            {
+                gameObject = Data
+            };
+            Initialize();
             var script = new System.Text.StringBuilder();
             script.Append(GenerateScriptHeader());
             script.Append(GenerateClassDefinition());
@@ -101,7 +106,7 @@ namespace Unity.VisualScripting.Community
         }
 
         #region Private Methods
-        private void InitializeCollections()
+        private void Initialize()
         {
             _methods = new Dictionary<string, GraphMethodDecleration>(32);
             _customEventIds = new Dictionary<CustomEvent, int>(16);
@@ -109,19 +114,16 @@ namespace Unity.VisualScripting.Community
             _processedMethodNames.Clear();
             _delegateTypeCache.Clear();
             _generatorCount.Clear();
-            
-            // Cache all units once
+
             _allUnits = current.nest.graph.GetUnitsRecursive(Recursion.New(Recursion.defaultMaxDepth)).Cast<Unit>().ToList();
-            
-            // Pre-filter event units for better performance
+
             _eventUnits = _allUnits.OfType<IEventUnit>()
-                .Where(unit => !(unit is CustomEvent evt && evt.graph != current.nest.graph) && 
-                              !(unit is ReturnEvent) && 
+                .Where(unit => !(unit is CustomEvent evt && evt.graph != current.nest.graph) &&
+                              !(unit is ReturnEvent) &&
                               !(unit is TriggerReturnEvent))
                 .ToList()
                 .AsReadOnly();
-                
-            // Pre-filter special units
+
             _specialUnits.UnionWith(_allUnits.Where(u => u is Timer || u is Cooldown));
         }
 
@@ -281,18 +283,14 @@ namespace Unity.VisualScripting.Community
                 int id = 0;
                 foreach (CustomEvent eventUnit in customEvents)
                 {
-                    var data = new ControlGenerationData(current.GetReference())
-                    {
-                        ScriptType = typeof(MonoBehaviour),
-                        returns = eventUnit.coroutine ? typeof(IEnumerator) : typeof(void),
-                        gameObject = Data
-                    };
+                    data.NewScope();
+                    data.SetReturns(eventUnit.coroutine ? typeof(IEnumerator) : typeof(void));
                     data.AddLocalNameInScope("args", typeof(CustomEventArgs));
                     foreach (VariableDeclaration variable in current.nest.graph.variables)
                     {
                         data.AddLocalNameInScope(variable.name, !string.IsNullOrEmpty(variable.typeHandle.Identification) ? Type.GetType(variable.typeHandle.Identification) : typeof(object));
                     }
-                    ;
+                    
                     _customEventIds.Add(eventUnit, id);
                     id++;
                     script += CodeUtility.MakeSelectable(eventUnit, $"{CodeBuilder.Indent(2)}{"CSharpUtility".TypeHighlight()}.RegisterCustomEvent(") + eventUnit.GenerateValue(eventUnit.target) + CodeUtility.MakeSelectable(eventUnit, $", ") + GetMethodName(eventUnit) + CodeUtility.MakeSelectable(eventUnit, "Runner);");
@@ -302,31 +300,28 @@ namespace Unity.VisualScripting.Community
                     var eventName = GetMethodName(eventUnit) + CodeUtility.MakeSelectable(eventUnit, "Runner");
                     string runnerCode = GetCustomEventRunnerCode(eventUnit, data);
                     AddNewMethod(eventUnit, eventName, GetMethodSignature(eventUnit, false, eventName, AccessModifier.Private), runnerCode, "CustomEventArgs ".TypeHighlight() + "args".VariableHighlight(), data);
+                    data.ExitScope();
                 }
                 var nodeIDs = new Dictionary<Type, int>();
                 foreach (var generator in awakeRequiredGenerators)
                 {
-                    if (generator.unit.controlOutputs.Count > 0 && generator.unit.controlOutputs[0].hasValidConnection)
+                    var unit = generator.unit;
+                    if (unit.controlOutputs.Count > 0 && unit.controlOutputs[0].hasValidConnection)
                     {
-                        var data = new ControlGenerationData(current.GetReference())
+                        data.NewScope();
+                        if (nodeIDs.ContainsKey(unit.GetType()))
                         {
-                            ScriptType = typeof(MonoBehaviour),
-                            returns = generator.ReturnType,
-                            gameObject = Data
-                        };
-
-                        if (nodeIDs.ContainsKey(generator.unit.GetType()))
-                        {
-                            nodeIDs[generator.unit.GetType()]++;
-                            generator.count = nodeIDs[generator.unit.GetType()];
+                            nodeIDs[unit.GetType()]++;
+                            generator.count = nodeIDs[unit.GetType()];
                         }
                         else
                         {
-                            nodeIDs.Add(generator.unit.GetType(), 0);
-                            generator.count = nodeIDs[generator.unit.GetType()];
+                            nodeIDs.Add(unit.GetType(), 0);
+                            generator.count = nodeIDs[unit.GetType()];
                         }
-
+                        data.SetReturns(unit is IEventUnit eventUnit && eventUnit.coroutine ? typeof(IEnumerator) : typeof(void));
                         script += generator.GenerateAwakeCode(data, 2) + "\n";
+                        data.ExitScope();
                     }
                 }
                 script += $"\n{CodeBuilder.Indent(1)}}}\n";
@@ -343,16 +338,12 @@ namespace Unity.VisualScripting.Community
             {
                 var specialUnitCode = "";
                 string methodName = CodeUtility.CleanCode(GetMethodName(unit));
+                data.NewScope();
                 if (unit.coroutine)
                 {
+                    data.SetReturns(typeof(IEnumerator));
                     if (!_methods.ContainsKey(methodName))
                     {
-                        var data = new ControlGenerationData(current.GetReference())
-                        {
-                            ScriptType = typeof(MonoBehaviour),
-                            returns = typeof(void),
-                            gameObject = Data
-                        };
                         foreach (VariableDeclaration variable in current.nest.graph.variables)
                         {
                             data.AddLocalNameInScope(variable.name, !string.IsNullOrEmpty(variable.typeHandle.Identification) ? Type.GetType(variable.typeHandle.Identification) : typeof(object));
@@ -369,7 +360,7 @@ namespace Unity.VisualScripting.Community
                             if (unit is Update update && !addedSpecialUpdateCode)
                             {
                                 addedSpecialUpdateCode = true;
-                                specialUnitCode = string.Join("\n", _specialUnits.Select(t => CodeBuilder.Indent(2) + CodeUtility.MakeSelectable(t, (NodeGenerator.GetSingleDecorator(t, t) as VariableNodeGenerator).Name.VariableHighlight() + ".Update();")));
+                                specialUnitCode = string.Join("\n", _specialUnits.Select(t => CodeBuilder.Indent(2) + CodeUtility.MakeSelectable(t, t.GetVariableGenerator().Name.VariableHighlight() + ".Update();")));
                                 specialUnitCode += "\n";
 #if PACKAGE_INPUT_SYSTEM_EXISTS
                                 if (UnityEngine.InputSystem.InputSystem.settings.updateMode == InputSettings.UpdateMode.ProcessEventsInDynamicUpdate)
@@ -377,7 +368,7 @@ namespace Unity.VisualScripting.Community
                                     foreach (var inputsystemUnit in _allUnits.Where(unit => unit is OnInputSystemEvent).Cast<OnInputSystemEvent>())
                                     {
                                         if (!inputsystemUnit.trigger.hasValidConnection) continue;
-                                        specialUnitCode += CodeBuilder.Indent(2) + CodeUtility.MakeSelectable(inputsystemUnit, MethodNodeGenerator.GetSingleDecorator<MethodNodeGenerator>(inputsystemUnit, inputsystemUnit).Name + "();") + "\n";
+                                        specialUnitCode += CodeBuilder.Indent(2) + CodeUtility.MakeSelectable(inputsystemUnit, inputsystemUnit.GetMethodGenerator().Name + "();") + "\n";
                                     }
                                 }
 #endif
@@ -389,7 +380,7 @@ namespace Unity.VisualScripting.Community
                                 foreach (var inputsystemUnit in _allUnits.Where(unit => unit is OnInputSystemEvent).Cast<OnInputSystemEvent>())
                                 {
                                     if (!inputsystemUnit.trigger.hasValidConnection) continue;
-                                    specialUnitCode += CodeBuilder.Indent(2) + CodeUtility.MakeSelectable(inputsystemUnit, MethodNodeGenerator.GetSingleDecorator<MethodNodeGenerator>(inputsystemUnit, inputsystemUnit).Name + "();") + "\n";
+                                    specialUnitCode += CodeBuilder.Indent(2) + CodeUtility.MakeSelectable(inputsystemUnit, inputsystemUnit.GetMethodGenerator().Name + "();") + "\n";
                                 }
                             }
 #endif
@@ -414,14 +405,9 @@ namespace Unity.VisualScripting.Community
                 }
                 else
                 {
+                    data.SetReturns(typeof(void));
                     if (!_methods.ContainsKey(methodName))
                     {
-                        var data = new ControlGenerationData(current.GetReference())
-                        {
-                            ScriptType = typeof(MonoBehaviour),
-                            returns = typeof(void),
-                            gameObject = Data
-                        };
                         foreach (VariableDeclaration variable in current.nest.graph.variables)
                         {
                             data.AddLocalNameInScope(variable.name, !string.IsNullOrEmpty(variable.typeHandle.Identification) ? Type.GetType(variable.typeHandle.Identification) : typeof(object));
@@ -473,6 +459,7 @@ namespace Unity.VisualScripting.Community
                         method.methodBody += GetMethodBody(unit, method.generationData) + "\n";
                     }
                 }
+                data.ExitScope();
             }
             return script;
         }
@@ -480,14 +467,10 @@ namespace Unity.VisualScripting.Community
         private string GenerateSpecialUnits()
         {
             var script = string.Empty;
+            data.NewScope();
             if (_specialUnits.Count > 0 && !_allUnits.Any(e => e is Update))
             {
                 var update = new Update();
-                var data = new ControlGenerationData(current.GetReference())
-                {
-                    ScriptType = typeof(MonoBehaviour),
-                    gameObject = Data
-                };
                 var specialCode = string.Join("\n", _specialUnits.Select(t => CodeBuilder.Indent(2) + CodeUtility.MakeSelectable(t, (NodeGenerator.GetSingleDecorator(t, t) as VariableNodeGenerator).Name.VariableHighlight() + ".Update();")));
 #if PACKAGE_INPUT_SYSTEM_EXISTS
                 if (UnityEngine.InputSystem.InputSystem.settings.updateMode == InputSettings.UpdateMode.ProcessEventsInDynamicUpdate)
@@ -505,11 +488,6 @@ namespace Unity.VisualScripting.Community
             else if (UnityEngine.InputSystem.InputSystem.settings.updateMode == InputSettings.UpdateMode.ProcessEventsInDynamicUpdate && !_allUnits.Any(e => e is Update) && _allUnits.Any(unit => unit is OnInputSystemEvent onInputSystemEvent && onInputSystemEvent.trigger.hasValidConnection))
             {
                 var update = new Update();
-                var data = new ControlGenerationData(current.GetReference())
-                {
-                    ScriptType = typeof(MonoBehaviour),
-                    gameObject = Data
-                };
                 var specialCode = "";
                 foreach (var unit in _allUnits.Where(unit => unit is OnInputSystemEvent).Cast<OnInputSystemEvent>())
                 {
@@ -521,11 +499,6 @@ namespace Unity.VisualScripting.Community
             else if (UnityEngine.InputSystem.InputSystem.settings.updateMode != InputSettings.UpdateMode.ProcessEventsInDynamicUpdate && !_allUnits.Any(e => e is FixedUpdate) && _allUnits.Any(unit => unit is OnInputSystemEvent onInputSystemEvent && onInputSystemEvent.trigger.hasValidConnection))
             {
                 var update = new FixedUpdate();
-                var data = new ControlGenerationData(current.GetReference())
-                {
-                    ScriptType = typeof(MonoBehaviour),
-                    gameObject = Data
-                };
                 var specialCode = "";
                 foreach (var unit in _allUnits.Where(unit => unit is OnInputSystemEvent).Cast<OnInputSystemEvent>())
                 {
@@ -535,6 +508,7 @@ namespace Unity.VisualScripting.Community
                 AddNewMethod(update, CodeUtility.CleanCode(GetMethodName(update)), GetMethodSignature(update), specialCode, "", data);
             }
 #endif
+            data.ExitScope();
             return script;
         }
 

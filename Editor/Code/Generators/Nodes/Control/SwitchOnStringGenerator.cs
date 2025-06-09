@@ -38,42 +38,34 @@ namespace Unity.VisualScripting.Community
 
                     output += CodeBuilder.Indent(indent + 1) + MakeSelectableForThisUnit("case ".ConstructHighlight() + $@" ""{values[i].Key}""".StringHighlight() + ":");
                     output += "\n";
+                    output += "\n";
 
-                    var _controlData = new ControlGenerationData(data);
-                    _controlData.mustBreak = _controlData.returns == typeof(Void);
-                    _controlData.mustReturn = !_controlData.mustBreak;
-
-                    if (((ControlOutput)outputs[i]).hasValidConnection)
+                    if (values[i].Value.hasValidConnection)
                     {
-                        _controlData.NewScope();
-                        output += ((Unit)_connection.destination.unit).GenerateControl(_connection.destination as ControlInput, _controlData, indent + 2);
+                        data.NewScope();
+                        data.SetMustBreak(data.Returns == typeof(Void));
+                        data.SetMustReturn(!data.MustBreak);
+                        output += GetNextUnit(values[i].Value, data, indent + 2);
                         output += "\n";
-                        _controlData.ExitScope();
+                        data.ExitScope();
                     }
 
-                    if (_controlData.mustBreak && !_controlData.hasBroke) output += CodeBuilder.Indent(indent + 2) + MakeSelectableForThisUnit("break".ControlHighlight() + ";\n");
-                    if (_controlData.mustReturn && !_controlData.hasReturned) output += CodeBuilder.Indent(indent + 2) + MakeSelectableForThisUnit("break".ControlHighlight() + ";\n");
+                    if ((data.MustBreak && !data.HasBroke) || (data.MustReturn && !data.HasReturned)) output += CodeBuilder.Indent(indent + 2) + MakeSelectableForThisUnit("break".ControlHighlight() + ";") + "\n";
                 }
-
-                var connection = Unit.@default.connection;
-
-                output += CodeBuilder.Indent(indent + 1) + MakeSelectableForThisUnit("default ".ConstructHighlight() + ":");
+                output += CodeBuilder.Indent(indent + 1) + MakeSelectableForThisUnit("default".ConstructHighlight() + ":");
                 output += "\n";
-
-                var controlData = new ControlGenerationData(data);
-                controlData.mustBreak = controlData.returns == typeof(Void);
-                controlData.mustReturn = !controlData.mustBreak;
 
                 if (Unit.@default.hasValidConnection)
                 {
-                    controlData.NewScope();
-                    output += ((Unit)connection.destination.unit).GenerateControl(connection.destination as ControlInput, controlData, indent + 2);
+                    data.NewScope();
+                    data.SetMustBreak(data.Returns == typeof(Void));
+                    data.SetMustReturn(!data.MustBreak);
+                    output += GetNextUnit(Unit.@default, data, indent + 2);
                     output += "\n";
-                    controlData.ExitScope();
+                    data.ExitScope();
                 }
 
-                if (controlData.mustBreak && !controlData.hasBroke) output += CodeBuilder.Indent(indent + 2) + MakeSelectableForThisUnit("break".ControlHighlight() + ";\n");
-                if (controlData.mustReturn && !controlData.hasReturned) output += CodeBuilder.Indent(indent + 2) + MakeSelectableForThisUnit("break".ControlHighlight() + ";\n");
+                if ((data.MustBreak && !data.HasBroke) || (data.MustReturn && !data.HasReturned)) output += CodeBuilder.Indent(indent + 2) + MakeSelectableForThisUnit("break".ControlHighlight() + ";") + "\n";
 
                 output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit("}");
                 output += "\n";

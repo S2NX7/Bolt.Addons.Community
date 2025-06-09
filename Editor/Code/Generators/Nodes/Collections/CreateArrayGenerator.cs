@@ -20,7 +20,7 @@ namespace Unity.VisualScripting.Community
             }
             string typeName = Unit.type.As().CSharpName(false, true);
             string dimensionString = GenerateDimensions(Unit.dimensions, data);
-            data.CreateSymbol(Unit, Unit.type, "new " + $"{Unit.type.As().CSharpName(false, true, false)}" + dimensionString);
+            data.CreateSymbol(Unit, Unit.type);
 
             return MakeSelectableForThisUnit("new ".ConstructHighlight() + $"{typeName}") + dimensionString;
         }

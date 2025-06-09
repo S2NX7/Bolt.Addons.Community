@@ -181,7 +181,7 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
         /// </summary>
         public static bool Void(this HUMType.Data.Is isData)
         {
-            return isData.type == typeof(void);
+            return isData.type == typeof(void) || isData.type == typeof(CSharp.Void);
         }
 
         public static bool NullOrVoid(this HUMType.Data.Is isData)

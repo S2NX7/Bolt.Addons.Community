@@ -29,7 +29,7 @@ namespace Unity.VisualScripting.Community.Libraries.CSharp
         public List<EnumGenerator> enums = new List<EnumGenerator>(2);
         public List<InterfaceGenerator> subInterfaces = new List<InterfaceGenerator>(2);
         public List<Type> interfaces = new List<Type>(4);
-        private readonly System.Text.StringBuilder _codeBuilder = new System.Text.StringBuilder(4096);
+        private readonly System.Text.StringBuilder _codeBuilder = new(4096);
         private readonly HashSet<string> _usingsSet = new HashSet<string>();
         public Type inherits;
         public bool generateUsings;

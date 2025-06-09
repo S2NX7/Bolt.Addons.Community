@@ -72,13 +72,6 @@ namespace Unity.VisualScripting.Community
         {
             if (input.hasValidConnection)
             {
-                if(unit is InvokeMember)
-                {
-                    if (input.unit is GetVariable getVariable)
-                    {
-                        Debug.Log(data.IsCurrentExpectedTypeMet() + getVariable.defaultValues[getVariable.name.key].ToString());
-                    }
-                }
                 Type sourceType = GetSourceType(input, data);
                 Type targetType = input.type;
 
@@ -105,11 +98,16 @@ namespace Unity.VisualScripting.Community
 
         public Type GetSourceType(ValueInput valueInput, ControlGenerationData data)
         {
+            if (valueInput == null)
+            {
+                return null;
+            }
+            
             if (data == null)
             {
                 return valueInput.type;
             }
-            if (valueInput.hasValidConnection && data.TryGetSymbol(valueInput.GetPesudoSource().unit as Unit, out var symbol))
+            if (valueInput.hasValidConnection && data.TryGetSymbol(valueInput.GetPesudoSource()?.unit as Unit, out var symbol))
             {
                 return symbol.Type;
             }

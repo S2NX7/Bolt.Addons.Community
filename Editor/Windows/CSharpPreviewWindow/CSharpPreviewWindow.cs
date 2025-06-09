@@ -264,27 +264,6 @@ namespace Unity.VisualScripting.Community
             };
         }
 
-        private class ExternalEventManipulator : Manipulator
-        {
-            private readonly List<VisualElement> externalElements;
-            private EventCallback<ClickEvent> action;
-            public ExternalEventManipulator(List<VisualElement> externalElements, EventCallback<ClickEvent> action)
-            {
-                this.externalElements = externalElements;
-                this.action = action;
-            }
-
-            protected override void RegisterCallbacksOnTarget()
-            {
-                externalElements.ForEach(e => e.RegisterCallback(action));
-            }
-
-            protected override void UnregisterCallbacksFromTarget()
-            {
-                externalElements.ForEach(e => e.UnregisterCallback(action));
-            }
-        }
-
         private void CreateSettingsUI(ScrollView settingsContainer)
         {
             settingsManager.InitializeSettings();
@@ -303,7 +282,6 @@ namespace Unity.VisualScripting.Community
                     }
                 };
                 settingsContainer.Add(settingsLabel);
-
 
                 var generationSettingsSection = new VisualElement
                 {
@@ -1166,7 +1144,7 @@ namespace Unity.VisualScripting.Community
             label.RegisterCallback<ClickEvent>(evt => SelectLabel(label, evt, "", currentLine));
             return label;
         }
-
+        ExternalEventManipulator selectManipulator;
         private Label CreateCodeLabel(ClickableRegion region, int currentLine)
         {
             var codeWithoutTooltip = CodeUtility.ExtractTooltip(region.code, out string tooltip);
@@ -1174,6 +1152,7 @@ namespace Unity.VisualScripting.Community
             {
                 tooltip = tooltip
             };
+
             label.style.unityFontStyleAndWeight = FontStyle.Normal;
             label.style.color = Color.white;
             label.enableRichText = true;
@@ -1202,6 +1181,7 @@ namespace Unity.VisualScripting.Community
                 SelectLabel(label, evt, region.unitId, currentLine);
                 OnCodeRegionClicked(region, currentLine);
             });
+
             return label;
         }
 
@@ -1351,7 +1331,6 @@ namespace Unity.VisualScripting.Community
 
             scrollBarMarkerManipulator = new ExternalEventManipulator(labels.Select(val => val.label as VisualElement).ToList(), (evt) => UpdateScrollBarMarkers(scrollView, selectedLabels));
 
-            // Add markers to the scroller instead of a separate container
             foreach (var (label, line) in selectedLabels)
             {
                 var marker = CreateScrollbarMarker(scroller, line, true);
@@ -1677,6 +1656,46 @@ namespace Unity.VisualScripting.Community
             float lineHeight = 15 * zoomFactor;
             float targetPosition = (lineNumber - 1) * lineHeight;
             scrollView.scrollOffset = new Vector2(scrollView.scrollOffset.x, targetPosition);
+        }
+
+
+        private class ExternalEventManipulator : Manipulator
+        {
+            private readonly HashSet<VisualElement> externalElements;
+            private readonly EventCallback<ClickEvent> action;
+
+            public ExternalEventManipulator(IReadOnlyCollection<VisualElement> externalElements, EventCallback<ClickEvent> action)
+            {
+                this.externalElements = new HashSet<VisualElement>(externalElements.Count);
+                foreach (var element in externalElements)
+                {
+                    if (element != null)
+                    {
+                        this.externalElements.Add(element);
+                    }
+                }
+                this.action = action;
+            }
+
+            protected override void RegisterCallbacksOnTarget()
+            {
+                if (action == null) return;
+
+                foreach (var element in externalElements)
+                {
+                    element?.RegisterCallback(action);
+                }
+            }
+
+            protected override void UnregisterCallbacksFromTarget()
+            {
+                if (action == null) return;
+
+                foreach (var element in externalElements)
+                {
+                    element?.UnregisterCallback(action);
+                }
+            }
         }
     }
 }

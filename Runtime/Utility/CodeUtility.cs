@@ -51,24 +51,18 @@ namespace Unity.VisualScripting.Community
                 int startIndex = input.IndexOf(startPattern, index);
                 if (startIndex == -1)
                 {
-                    // No more patterns, append the rest of the string
                     result.Append(input[index..]);
                     break;
                 }
 
-                // Append text before the pattern
                 result.Append(input[index..startIndex]);
 
-                // Find the end of the pattern
                 int endIndex = input.IndexOf(endPattern, startIndex + startPattern.Length);
                 if (endIndex == -1)
                 {
-                    // If end pattern not found, treat it as invalid and append the rest of the string
                     result.Append(input[startIndex..]);
                     break;
                 }
-
-                // Skip the pattern
                 index = endIndex + endPattern.Length;
             }
 

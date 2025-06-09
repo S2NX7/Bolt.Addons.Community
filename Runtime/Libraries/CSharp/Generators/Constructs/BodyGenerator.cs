@@ -15,7 +15,7 @@
             var before = GenerateBefore(indent);
             var body = GenerateBody(indent + (hideBrackets ? 0 : 1));
             var after = GenerateAfter(indent);
-            var output = ((string.IsNullOrEmpty(before) || string.IsNullOrWhiteSpace(before))) ? string.Empty : before + "\n";
+            var output = (string.IsNullOrEmpty(before) || string.IsNullOrWhiteSpace(before)) ? string.Empty : before + "\n";
             if (!hideBrackets) output += CodeBuilder.OpenBody(indent) + "\n";
             var spaceIsLast = body.LastIndexOf(@"\") == body.Length - 2 && body.LastIndexOf("n") == body.Length - 1;
             output += (string.IsNullOrEmpty(body) || string.IsNullOrWhiteSpace(body)) ? string.Empty : (spaceIsLast ? body.Remove(body.Length - 2, 1) : string.Empty) + body + "\n";

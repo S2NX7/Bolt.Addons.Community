@@ -22,13 +22,10 @@ namespace Unity.VisualScripting.Community
             var output = new StringBuilder();
             string cachedIndent = CodeBuilder.Indent(indent);
 
-            var trueData = new ControlGenerationData(data);
-            var falseData = new ControlGenerationData(data);
             string trueCode;
 
             if (input == Unit.enter)
             {
-                // Construct "if" statement
                 output.Append(cachedIndent)
                       .Append(MakeSelectableForThisUnit("if".ConstructHighlight() + " ("))
                       .Append(GenerateArguments(data))
@@ -37,15 +34,14 @@ namespace Unity.VisualScripting.Community
                       .Append(cachedIndent + MakeSelectableForThisUnit("{"))
                       .AppendLine();
 
-                trueData.NewScope();
+                data.NewScope();
                 trueCode = GetNextUnit(Unit.exitTrue, data, indent + 1);
-                trueData.ExitScope();
+                data.ExitScope();
 
                 output.Append(trueCode).AppendLine();
 
                 output.Append(cachedIndent + MakeSelectableForThisUnit("}"));
 
-                // Handle the "else" branch if present
                 if (Unit.exitFalse.hasAnyConnection)
                 {
                     output.AppendLine().Append(cachedIndent).Append(MakeSelectableForThisUnit("else".ConstructHighlight()));
@@ -60,22 +56,18 @@ namespace Unity.VisualScripting.Community
                           .Append(cachedIndent + MakeSelectableForThisUnit("{"))
                           .AppendLine();
 
-                    falseData.NewScope();
+                    data.NewScope();
                     output.Append(GetNextUnit(Unit.exitFalse, data, indent + 1)).AppendLine();
-                    falseData.ExitScope();
+                    data.ExitScope();
 
                     output.Append(cachedIndent + MakeSelectableForThisUnit("}"));
                 }
 
-                // Handle the "finished" branch if present
                 if (Unit.exitNext != null && Unit.exitNext.hasAnyConnection)
                 {
                     output.AppendLine().Append(GetNextUnit(Unit.exitNext, data, indent));
                 }
             }
-
-            // Update break status in data
-            data.hasBroke = trueData.hasBroke && falseData.hasBroke;
 
             return output.ToString();
         }

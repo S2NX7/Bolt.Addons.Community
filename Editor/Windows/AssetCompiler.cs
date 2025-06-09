@@ -78,7 +78,15 @@ namespace Unity.VisualScripting.Community
         public static void CompileAsset(UnityEngine.Object asset)
         {
             paths.EnsureDirectories();
-
+            if (asset is GameObject @object)
+            {
+                Debug.Log($"Compiling GameObject: {@object.name}");
+                var gen = CodeGenerator.GetSingleDecorator(@object) as GameObjectGenerator;
+                var scriptMachine = gen?.current ?? @object.GetComponent<ScriptMachine>();
+                if (scriptMachine != null)
+                    CompileGameObjects(new List<ScriptMachine>() { scriptMachine });
+                return;
+            }
             var type = asset.GetType();
             if (compilers.TryGetValue(type, out var compiler))
             {

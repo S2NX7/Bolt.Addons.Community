@@ -13,7 +13,7 @@ namespace Unity.VisualScripting.Community
         public override string GenerateValue(ValueOutput output, ControlGenerationData data)
         {
             var code = MakeSelectableForThisUnit($"[") + GenerateValue(Unit.index, data) + MakeSelectableForThisUnit("]");
-            data.CreateSymbol(Unit, typeof(object), code);
+            data.CreateSymbol(Unit, typeof(object));
             data.SetExpectedType(Unit.list.type);
             var listCode = GenerateValue(Unit.list, data);
             var (type, isMet) = data.RemoveExpectedType();

@@ -19,22 +19,22 @@ namespace Unity.VisualScripting.Community
         /// <summary>
         /// Units that require the Update method in a monobehaviour to function
         /// </summary>
-        private static readonly HashSet<Type> _specialUnitTypes = new HashSet<Type> { 
-            typeof(Timer), 
+        private static readonly HashSet<Type> _specialUnitTypes = new HashSet<Type> {
+            typeof(Timer),
             typeof(Cooldown),
 #if PACKAGE_INPUT_SYSTEM_EXISTS
-            typeof(OnInputSystemEventButton), 
-            typeof(OnInputSystemEventVector2), 
+            typeof(OnInputSystemEventButton),
+            typeof(OnInputSystemEventVector2),
             typeof(OnInputSystemEventFloat)
 #endif
         };
-        
+
         private readonly HashSet<Unit> _specialUnits = new HashSet<Unit>();
         private readonly Dictionary<Type, NodeGenerator> _generatorCache = new Dictionary<Type, NodeGenerator>(32);
         private readonly HashSet<string> _processedFields = new HashSet<string>();
         private readonly HashSet<string> _processedMethods = new HashSet<string>();
         private readonly List<string> _usingsCache = new List<string>(100);
-
+        private ControlGenerationData data;
         protected override TypeGenerator OnGenerateType(ref string output, NamespaceGenerator @namespace)
         {
             _specialUnits.Clear();
@@ -43,7 +43,7 @@ namespace Unity.VisualScripting.Community
 
             if (Data == null)
                 return ClassGenerator.Class(RootAccessModifier.Public, ClassModifier.None, "", null);
-
+            CreateGenerationData();
             string className = Data.title.LegalMemberName();
             Type baseType = Data.scriptableObject
                 ? typeof(ScriptableObject)
@@ -123,23 +123,23 @@ namespace Unity.VisualScripting.Community
 
                 var constructor = ConstructorGenerator.Constructor(constructorData.scope, constructorData.modifier, constructorData.initializerType, className);
 
-                if (constructorData.graph.units.Count > 0)
+                if (constructorData.graph.units.Count == 0) continue;
+                @class.AddUsings(ProcessGraphUnits(constructorData.graph, @class, constructorData.GetReference()));
+                data.NewScope();
+                data.SetExpectedType(typeof(void));
+                data.SetGraphPointer(constructorData.GetReference().AsReference());
+                constructor.Body((constructorData.graph.units[0] as Unit).GenerateControl(null, data, 0));
+                data.ExitScope();
+                foreach (var param in parameters)
                 {
-                    @class.AddUsings(ProcessGraphUnits(constructorData.graph, @class, constructorData.GetReference()));
-                    var generationData = CreateGenerationData(constructorData.GetReference(), typeof(void));
-                    constructor.Body((constructorData.graph.units[0] as Unit).GenerateControl(null, generationData, 0));
-
-                    foreach (var param in parameters)
+                    param.showInitalizer = true;
+                    if (!string.IsNullOrEmpty(param.name))
                     {
-                        param.showInitalizer = true;
-                        if (!string.IsNullOrEmpty(param.name))
-                        {
-                            constructor.AddParameter(param.useInInitializer, CreateParameter(param));
-                        }
+                        constructor.AddParameter(param.useInInitializer, CreateParameter(param));
                     }
-
-                    @class.AddConstructor(constructor);
                 }
+
+                @class.AddConstructor(constructor);
             }
 
             foreach (var variableData in Data.variables)
@@ -170,32 +170,33 @@ namespace Unity.VisualScripting.Community
                     {
                         continue;
                     }
-
+                    if (methodData.graph.units.Count == 0) continue;
                     var method = MethodGenerator.Method(methodData.scope, methodData.modifier, methodData.returnType, methodData.name);
                     method.AddGenerics(methodData.genericParameters.ToArray());
                     AddMethodAttributes(method, methodData);
 
-                    if (methodData.graph.units.Count > 0)
+                    data.NewScope();
+                    data.SetExpectedType(methodData.returnType);
+                    data.SetGraphPointer(methodData.GetReference().AsReference());
+                    @class.AddUsings(ProcessGraphUnits(methodData.graph, @class, methodData.GetReference()));
+                    var unit = methodData.graph.units[0] as FunctionNode;
+                    method.Body(unit.GenerateControl(null, data, 0));
+                    data.ExitScope();
+                    foreach (var param in methodData.parameters)
                     {
-                        var generationData = CreateGenerationData(methodData.GetReference(), methodData.returnType);
-                        @class.AddUsings(ProcessGraphUnits(methodData.graph, @class, methodData.GetReference()));
-                        var unit = methodData.graph.units[0] as FunctionNode;
-                        method.Body(unit.GenerateControl(null, generationData, 0));
-
-                        foreach (var param in methodData.parameters)
+                        if (!string.IsNullOrEmpty(param.name))
                         {
-                            if (!string.IsNullOrEmpty(param.name))
-                            {
-                                method.AddParameter(CreateParameter(param));
-                            }
+                            method.AddParameter(CreateParameter(param));
                         }
                     }
+
                     @class.AddMethod(method);
                 }
             }
 
             if (_specialUnits.Count > 0)
             {
+                data.NewScope();
                 bool addedSpecialUpdatedCode = false;
 #if PACKAGE_INPUT_SYSTEM_EXISTS
                 bool addedSpecialFixedUpdatedCode = false;
@@ -209,7 +210,7 @@ namespace Unity.VisualScripting.Community
                     {
                         if (!string.IsNullOrEmpty(method.body))
                             method.beforeBody += string.Join("\n", _specialUnits.Select(unit => CodeUtility.MakeSelectable(unit, (unit.GetGenerator() as VariableNodeGenerator)?.Name.VariableHighlight() + ".Update();")).ToArray());
-                            else
+                        else
                             method.AddToBody(string.Join("\n", _specialUnits.Select(unit => CodeUtility.MakeSelectable(unit, (unit.GetGenerator() as VariableNodeGenerator)?.Name.VariableHighlight() + ".Update();")).ToArray()));
                     }
 #if PACKAGE_INPUT_SYSTEM_EXISTS
@@ -269,6 +270,7 @@ namespace Unity.VisualScripting.Community
                         @class.AddMethod(method);
                     }
                 }
+                data.ExitScope();
             }
 #endif
             var values = CodeGeneratorValueUtility.GetAllValues(Data);
@@ -297,25 +299,25 @@ namespace Unity.VisualScripting.Community
             @namespace.AddClass(@class);
             return @class;
         }
-
-        private List<string> ProcessGraphUnits(FlowGraph graph, ClassGenerator @class, GraphPointer graphPointer) 
+        
+        private List<string> ProcessGraphUnits(FlowGraph graph, ClassGenerator @class, GraphPointer graphPointer)
         {
             _usingsCache.Clear();
-            var units = graph.GetUnitsRecursive(Recursion.New(Recursion.defaultMaxDepth)).Cast<Unit>().ToList();
-            
-            foreach (var unit in units)
+            var units = graph.GetUnitsRecursive(Recursion.New(Recursion.defaultMaxDepth));
+
+            foreach (Unit unit in units)
             {
-                var generator = _generatorCache.TryGetValue(unit.GetType(), out var cachedGenerator) 
-                    ? cachedGenerator 
+                var generator = _generatorCache.TryGetValue(unit.GetType(), out var cachedGenerator)
+                    ? cachedGenerator
                     : NodeGenerator.GetSingleDecorator(unit, unit);
-                
+
                 if (!_generatorCache.ContainsKey(unit.GetType()))
                 {
                     _generatorCache[unit.GetType()] = generator;
                 }
-                
-                HandleOtherGenerators(@class, generator, graphPointer);
-                
+
+                HandleOtherGenerators(@class, generator);
+
                 if (_specialUnitTypes.Contains(unit.GetType()))
                 {
                     _specialUnits.Add(unit);
@@ -345,17 +347,23 @@ namespace Unity.VisualScripting.Community
             // Handle getter
             if (variableData.get)
             {
-                var generationData = CreateGenerationData(variableData.getter.GetReference(), variableData.type);
+                data.NewScope();
+                data.SetExpectedType(variableData.type);
+                data.SetGraphPointer(variableData.getter.GetReference().AsReference());
                 @class.AddUsings(ProcessGraphUnits(variableData.getter.graph, @class, variableData.getter.GetReference()));
-                property.MultiStatementGetter(variableData.getterScope, (variableData.getter.graph.units[0] as Unit).GenerateControl(null, generationData, 0));
+                property.MultiStatementGetter(variableData.getterScope, (variableData.getter.graph.units[0] as Unit).GenerateControl(null, data, 0));
+                data.ExitScope();
             }
 
             // Handle setter
             if (variableData.set)
             {
+                data.NewScope();
+                data.SetExpectedType(variableData.type);
+                data.SetGraphPointer(variableData.setter.GetReference().AsReference());
                 @class.AddUsings(ProcessGraphUnits(variableData.setter.graph, @class, variableData.setter.GetReference()));
-                var generationData = CreateGenerationData(variableData.setter.GetReference(), typeof(void));
-                property.MultiStatementSetter(variableData.setterScope, (variableData.setter.graph.units[0] as Unit).GenerateControl(null, generationData, 0));
+                property.MultiStatementSetter(variableData.setterScope, (variableData.setter.graph.units[0] as Unit).GenerateControl(null, data, 0));
+                data.ExitScope();
             }
 
             @class.AddProperty(property);
@@ -435,20 +443,14 @@ namespace Unity.VisualScripting.Community
             );
         }
 
-        private ControlGenerationData CreateGenerationData(GraphPointer graphPointer, Type returnType)
+        private void CreateGenerationData()
         {
-            var generationData = new ControlGenerationData(graphPointer);
-            if (Data.inheritsType)
-            {
-                generationData.ScriptType = Data.GetInheritedType();
-            }
-            generationData.returns = returnType;
+            data = new ControlGenerationData(Data.inheritsType ? Data.GetInheritedType() : typeof(object), null);
             foreach (var variable in Data.variables)
             {
                 if (!string.IsNullOrEmpty(variable.FieldName))
-                    generationData.AddLocalNameInScope(variable.FieldName, variable.type);
+                    data.AddLocalNameInScope(variable.FieldName, variable.type);
             }
-            return generationData;
         }
 
         private void AddNamespacesToUsings(NodeGenerator generator, List<string> usings)
@@ -473,7 +475,7 @@ namespace Unity.VisualScripting.Community
             }
         }
 
-        private void HandleOtherGenerators(ClassGenerator @class, NodeGenerator generator, GraphPointer graphPointer)
+        private void HandleOtherGenerators(ClassGenerator @class, NodeGenerator generator)
         {
             if (generator is VariableNodeGenerator variableGenerator)
             {
@@ -496,7 +498,7 @@ namespace Unity.VisualScripting.Community
                 {
                     methodGenerator.count++;
                 }
-                var data = new ControlGenerationData(graphPointer) { ScriptType = Data.GetInheritedType() };
+                data.NewScope();
                 foreach (var item in @class.fields)
                 {
                     data.AddLocalNameInScope(item.name, item.type);
@@ -521,6 +523,7 @@ namespace Unity.VisualScripting.Community
                 }
                 methodGenerator.Data = data;
                 method.Body(string.IsNullOrEmpty(methodGenerator.MethodBody) ? methodGenerator.GenerateControl(methodGenerator.unit.controlInputs.Count == 0 ? null : methodGenerator.unit.controlInputs[0], data, 0) : methodGenerator.MethodBody); @class.AddMethod(method);
+                data.ExitScope();
             }
         }
     }

@@ -20,8 +20,7 @@ namespace Unity.VisualScripting.Community
 
         protected override void Definition()
         {
-            type = ValueOutput<object>(nameof(type), (flow) => asset.title);
+            type = ValueOutput<object>(nameof(type), (flow) => asset != null ? asset.GetInheritedType() : typeof(object));
         }
     }
-
 }

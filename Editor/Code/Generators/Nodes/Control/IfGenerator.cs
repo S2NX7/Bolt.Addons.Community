@@ -15,11 +15,8 @@ namespace Unity.VisualScripting.Community
             var output = new StringBuilder();
             string cachedIndent = CodeBuilder.Indent(indent);
 
-            var trueData = new ControlGenerationData(data);
-            var falseData = new ControlGenerationData(data);
             if (input == Unit.enter)
             {
-                // Constructing the "if" statement
                 output.Append(cachedIndent)
                       .Append(MakeSelectableForThisUnit("if".ConstructHighlight() + " ("))
                       .Append(GenerateValue(Unit.condition, data))
@@ -29,20 +26,19 @@ namespace Unity.VisualScripting.Community
                       .AppendLine(MakeSelectableForThisUnit("{"));
 
                 string trueCode;
-                // Handling the true branch
                 if (!TrueIsUnreachable())
                 {
-                    trueData.NewScope();
-                    trueCode = GetNextUnit(Unit.ifTrue, trueData, indent + 1);
-                    trueData.ExitScope();
+                    data.NewScope();
+                    trueCode = GetNextUnit(Unit.ifTrue, data, indent + 1);
+                    data.ExitScope();
                     output.Append(trueCode);
                 }
                 else
                 {
-                    trueData.NewScope();
+                    data.NewScope();
                     output.AppendLine(CodeBuilder.Indent(indent + 1) + MakeSelectableForThisUnit(CodeUtility.ToolTip($"The code in the 'True' branch is unreachable due to the output of the condition value: ({CodeUtility.CleanCode(GenerateValue(Unit.condition, data))}). Don't worry this does not break your code.", $"Unreachable Code in 'True' Branch: {Unit.ifTrue.key}", "")));
-                    trueCode = GetNextUnit(Unit.ifTrue, trueData, indent + 1);
-                    trueData.ExitScope();
+                    trueCode = GetNextUnit(Unit.ifTrue, data, indent + 1);
+                    data.ExitScope();
                     output.Append(trueCode);
                 }
 
@@ -72,16 +68,16 @@ namespace Unity.VisualScripting.Community
 
                     if (!FalseIsUnreachable())
                     {
-                        falseData.NewScope();
-                        output.Append(GetNextUnit(Unit.ifFalse, falseData, indent + 1));
-                        falseData.ExitScope();
+                        data.NewScope();
+                        output.Append(GetNextUnit(Unit.ifFalse, data, indent + 1));
+                        data.ExitScope();
                     }
                     else
                     {
-                        falseData.NewScope();
+                        data.NewScope();
                         output.AppendLine(CodeBuilder.Indent(indent + 1) + MakeSelectableForThisUnit(CodeUtility.ToolTip($"The code in the 'False' branch is unreachable due to the output of the condition value: ({CodeUtility.CleanCode(GenerateValue(Unit.condition, data))}). Don't worry this does not break your code.", $"Unreachable Code in 'False' Branch: {Unit.ifFalse.key}", "")));
-                        output.Append(GetNextUnit(Unit.ifFalse, falseData, indent + 1));
-                        falseData.ExitScope();
+                        output.Append(GetNextUnit(Unit.ifFalse, data, indent + 1));
+                        data.ExitScope();
                     }
 
                     output.AppendLine()
@@ -89,9 +85,6 @@ namespace Unity.VisualScripting.Community
                           .AppendLine(MakeSelectableForThisUnit("}") + "\n");
                 }
             }
-
-            // Updating the must-break status
-            data.hasBroke = trueData.hasBroke && falseData.hasBroke;
 
             return output.ToString();
         }

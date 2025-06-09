@@ -41,7 +41,13 @@ namespace Unity.VisualScripting.Community
 
                 if (Unit.member.isConstructor)
                 {
-                    _output += new ValueCode(MakeSelectableForThisUnit($"{"new".ConstructHighlight()} {Unit.member.pseudoDeclaringType.As().CSharpName(false, true)}(") + $"{GenerateArguments(data)}{MakeSelectableForThisUnit(")")}");
+                    string parameters = string.Empty;
+                    string typeName = MakeSelectableForThisUnit(Unit.member.pseudoDeclaringType.As().CSharpName(false, true));
+                    if (Unit.member.pseudoDeclaringType.IsArray)
+                        typeName = typeName.Replace("[]", "") + MakeSelectableForThisUnit("[") + GenerateArguments(data) + MakeSelectableForThisUnit("]");
+                    else
+                        parameters = MakeSelectableForThisUnit("(") + GenerateArguments(data) + MakeSelectableForThisUnit(")");
+                    _output += new ValueCode(MakeSelectableForThisUnit($"{"new".ConstructHighlight()} ") + typeName + parameters);
                 }
                 else
                 {
@@ -72,6 +78,11 @@ namespace Unity.VisualScripting.Community
                 if (!Unit.enter.hasValidConnection && Unit.outputParameters.Count > 0)
                 {
                     return $"/* Control Port Enter of {Unit.member.ToDeclarer()} requires a connection */".WarningHighlight();
+                }
+
+                if (Unit.member.GetParameterInfos().ToArray()[Unit.outputParameters.FirstOrDefault(parameter => parameter.Value == output).Key].ParameterType.IsByRef)
+                {
+                    return GenerateValue(Unit.inputParameters[Unit.outputParameters.FirstOrDefault(parameter => parameter.Value == output).Key], data);
                 }
 
                 var transformedKey = outputNames[output].Replace("&", "").Replace("%", "");
@@ -113,7 +124,13 @@ namespace Unity.VisualScripting.Community
             {
                 if (Unit.member.isConstructor)
                 {
-                    output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit($"{"new".ConstructHighlight()} {Unit.member.pseudoDeclaringType.As().CSharpName(false, true)}(") + $"{GenerateArguments(data)}{MakeSelectableForThisUnit(");")}" + "\n";
+                    string parameters;
+                    if (Unit.member.pseudoDeclaringType.IsArray)
+                        parameters = MakeSelectableForThisUnit("[") + GenerateArguments(data) + MakeSelectableForThisUnit("];");
+                    else
+                        parameters = MakeSelectableForThisUnit("(") + GenerateArguments(data) + MakeSelectableForThisUnit(");");
+
+                    output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit($"{"new".ConstructHighlight()} {Unit.member.pseudoDeclaringType.As().CSharpName(false, true)}") + parameters + "\n";
                 }
                 else
                 {
@@ -123,7 +140,6 @@ namespace Unity.VisualScripting.Community
                     }
                     else
                     {
-
                         var target = GenerateValue(Unit.target, data);
                         if (Unit.member.pseudoDeclaringType == typeof(GameObject) && Unit.target.hasValidConnection && typeof(Component).IsAssignableFrom(GetSourceType(Unit.target, data) ?? Unit.target.connection.source.type))
                         {
@@ -153,11 +169,11 @@ namespace Unity.VisualScripting.Community
         {
             if (input.hasValidConnection)
             {
+                var shouldCast = ShouldCast(input, data, false);
+                if (input.type.IsSubclassOf(typeof(Component))) return new ValueCode(GetNextValueUnit(input, data), typeof(GameObject), shouldCast);
                 data.SetExpectedType(input.type);
                 var connectedCode = GetNextValueUnit(input, data);
-                var shouldCast = ShouldCast(input, data, false);
                 data.RemoveExpectedType();
-                if (input.type.IsSubclassOf(typeof(Component))) return new ValueCode(GetNextValueUnit(input, data), typeof(GameObject), shouldCast);
                 return new ValueCode(connectedCode, input.type, shouldCast);
             }
             else if (input.hasDefaultValue)
@@ -207,7 +223,7 @@ namespace Unity.VisualScripting.Community
                     if (parameter.HasOutModifier())
                     {
                         var name = controlGenerationData.AddLocalNameInScope(parameter.Name, parameter.ParameterType).VariableHighlight();
-                        output.Add("out var ".ConstructHighlight() + name);
+                        output.Add(MakeSelectableForThisUnit("out var ".ConstructHighlight() + name));
                         if (Unit.outputParameters.Values.Any(output => output.key == "&" + parameter.Name && !outputNames.ContainsKey(Unit.outputParameters[index])))
                             outputNames.Add(Unit.outputParameters[index], "&" + name);
                     }
@@ -220,14 +236,14 @@ namespace Unity.VisualScripting.Community
                             output.Add($"/* {input.key.Replace("%", "")} needs to be connected to a variable unit or a get member unit */".WarningHighlight());
                             continue;
                         }
-                        output.Add("ref ".ConstructHighlight() + GenerateValue(Unit.inputParameters[index], data));
+                        output.Add(MakeSelectableForThisUnit("ref ".ConstructHighlight()) + GenerateValue(Unit.inputParameters[index], data));
                         outputNames.Add(Unit.outputParameters[index], "&" + name);
                     }
                     else if (parameter.IsDefined(typeof(ParamArrayAttribute), false) && !Unit.inputParameters[index].hasValidConnection)
                     {
                         continue;
                     }
-                    else if (parameter.IsOptional && !Unit.inputParameters[index].hasValidConnection)
+                    else if (parameter.IsOptional && !Unit.inputParameters[index].hasValidConnection && !Unit.inputParameters[index].hasDefaultValue)
                     {
                         continue;
                     }

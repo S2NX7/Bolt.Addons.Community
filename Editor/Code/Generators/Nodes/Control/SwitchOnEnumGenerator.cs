@@ -34,21 +34,18 @@ namespace Unity.VisualScripting.Community
                 for (int i = 0; i < values.Length; i++)
                 {
                     output += CodeBuilder.Indent(indent + 1) + MakeSelectableForThisUnit("case ".ConstructHighlight() + Unit.enumType.Name.EnumHighlight() + "." + values.GetValue(i).ToString() + ":\n");
-                    var controlData = new ControlGenerationData(data);
-                    controlData.mustBreak = controlData.returns == typeof(Void);
-                    controlData.mustReturn = !controlData.mustBreak;
 
-                    var connection = ((ControlOutput)outputs[i])?.connection;
-                    if (connection != null && connection.destination != null)
+                    if (outputs[i].hasValidConnection)
                     {
-                        controlData.NewScope();
-                        output += ((Unit)connection.destination.unit).GenerateControl(connection.destination as ControlInput, controlData, indent + 2);
+                        data.NewScope();
+                        data.SetMustBreak(data.Returns == typeof(Void));
+                        data.SetMustReturn(!data.MustBreak);
+                        output += GetNextUnit((ControlOutput)outputs[i], data, indent + 2);
                         output += "\n";
-                        controlData.ExitScope();
+                        data.ExitScope();
                     }
 
-                    if (controlData.mustBreak && !controlData.hasBroke) output += CodeBuilder.Indent(indent + 2) + MakeSelectableForThisUnit("break;".ControlHighlight() + "\n");
-                    if (controlData.mustReturn && !controlData.hasReturned) output += CodeBuilder.Indent(indent + 2) + MakeSelectableForThisUnit("break".ControlHighlight() + ";\n");
+                    if ((data.MustBreak && !data.HasBroke) || (data.MustReturn && !data.HasReturned)) output += CodeBuilder.Indent(indent + 2) + MakeSelectableForThisUnit("break".ControlHighlight() + ";") + "\n";
                 }
 
                 output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit("}");

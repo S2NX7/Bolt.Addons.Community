@@ -12,9 +12,11 @@ namespace Unity.VisualScripting.Community
     [CodeGenerator(typeof(StructAsset))]
     public sealed class StructAssetGenerator : MemberTypeAssetGenerator<StructAsset, StructFieldDeclaration, StructMethodDeclaration, StructConstructorDeclaration>
     {
+        private ControlGenerationData data;
         protected override TypeGenerator OnGenerateType(ref string output, NamespaceGenerator @namespace)
         {
             var @struct = StructGenerator.Struct(RootAccessModifier.Public, StructModifier.None, Data.title.LegalMemberName());
+            CreateGenerationData();
             @struct.beforeUsings = "#pragma warning disable\n".ConstructHighlight();
             if (Data.definedEvent) @struct.ImplementInterface(typeof(IDefinedEvent));
             if (Data.inspectable) @struct.AddAttribute(AttributeGenerator.Attribute<InspectableAttribute>());
@@ -62,6 +64,9 @@ namespace Unity.VisualScripting.Community
                 var constructor = ConstructorGenerator.Constructor(Data.constructors[i].scope, Data.constructors[i].modifier, Data.constructors[i].initializerType, Data.title.LegalMemberName());
                 if (Data.constructors[i].graph.units.Count > 0)
                 {
+                    data.NewScope();
+                    data.SetReturns(typeof(void));
+                    data.SetGraphPointer(Data.constructors[i].GetReference().AsReference());
                     var usings = new List<string>();
                     foreach (var _unit in Data.constructors[i].graph.GetUnitsRecursive(Recursion.New(Recursion.defaultMaxDepth)).Cast<Unit>())
                     {
@@ -73,7 +78,6 @@ namespace Unity.VisualScripting.Community
 
                     @struct.AddUsings(usings);
                     var unit = Data.constructors[i].graph.units[0] as FunctionNode;
-                    var data = new ControlGenerationData(Data.constructors[i].GetReference());
                     data.NewScope();
                     for (int item = 0; item < Data.variables.Count; item++)
                     {
@@ -85,6 +89,7 @@ namespace Unity.VisualScripting.Community
                     {
                         if (!string.IsNullOrEmpty(Data.constructors[i].parameters[pIndex].name)) constructor.AddParameter(false, ParameterGenerator.Parameter(Data.constructors[i].parameters[pIndex].name, Data.constructors[i].parameters[pIndex].type, Libraries.CSharp.ParameterModifier.None));
                     }
+                    data.ExitScope();
                 }
 
                 @struct.AddConstructor(constructor);
@@ -142,11 +147,9 @@ namespace Unity.VisualScripting.Community
                             }
 
                             @struct.AddUsings(usings);
-                            var data = new ControlGenerationData(Data.variables[i].getter.GetReference())
-                            {
-                                returns = Data.variables[i].type
-                            };
                             data.NewScope();
+                            data.SetReturns(Data.variables[i].type);
+                            data.SetGraphPointer(Data.variables[i].getter.GetReference().AsReference());
                             foreach (var variable in Data.variables.Where(variable => variable.FieldName != Data.variables[i].FieldName))
                             {
                                 data.AddLocalNameInScope(variable.FieldName, variable.type);
@@ -168,8 +171,9 @@ namespace Unity.VisualScripting.Community
                             }
 
                             @struct.AddUsings(usings);
-                            var data = new ControlGenerationData(Data.variables[i].setter.GetReference()) { returns = typeof(void) };
                             data.NewScope();
+                            data.SetReturns(typeof(void));
+                            data.SetGraphPointer(Data.variables[i].setter.GetReference().AsReference());
                             foreach (var variable in Data.variables.Where(variable => variable.FieldName != Data.variables[i].FieldName))
                             {
                                 data.AddLocalNameInScope(variable.FieldName, variable.type);
@@ -274,8 +278,9 @@ namespace Unity.VisualScripting.Community
 
                         @struct.AddUsings(usings);
                         var unit = Data.methods[i].graph.units[0] as FunctionNode;
-                        var data = new ControlGenerationData(Data.methods[i].GetReference()) { returns = Data.methods[i].returnType, mustReturn = Data.methods[i].returnType != typeof(void) || Data.methods[i].returnType != typeof(Libraries.CSharp.Void) };
                         data.NewScope();
+                        data.SetReturns(Data.methods[i].returnType);
+                        data.SetGraphPointer(Data.constructors[i].GetReference().AsReference());
                         for (int item = 0; item < Data.variables.Count; item++)
                         {
                             data.AddLocalNameInScope(Data.variables[item].name, Data.variables[item].type);
@@ -342,7 +347,8 @@ namespace Unity.VisualScripting.Community
                 {
                     methodGenerator.count++;
                 }
-                var data = new ControlGenerationData(graphPointer) { ScriptType = typeof(ValueType) };
+                data.NewScope();
+                data.SetReturns(methodGenerator.ReturnType);
                 foreach (var item in @struct.GetFields())
                 {
                     data.AddLocalNameInScope(item.name, item.type);
@@ -366,7 +372,19 @@ namespace Unity.VisualScripting.Community
                     methodGenerator.Data.AddLocalNameInScope(variable.FieldName, variable.type);
                 }
                 methodGenerator.Data = data;
-                method.Body(string.IsNullOrEmpty(methodGenerator.MethodBody) ? methodGenerator.GenerateControl(methodGenerator.unit.controlInputs.Count == 0 ? null : methodGenerator.unit.controlInputs[0], data, 0) : methodGenerator.MethodBody); @struct.AddMethod(method);
+                method.Body(string.IsNullOrEmpty(methodGenerator.MethodBody) ? methodGenerator.GenerateControl(methodGenerator.unit.controlInputs.Count == 0 ? null : methodGenerator.unit.controlInputs[0], data, 0) : methodGenerator.MethodBody);
+                @struct.AddMethod(method);
+                data.ExitScope();
+            }
+        }
+
+        private void CreateGenerationData()
+        {
+            data = new ControlGenerationData(typeof(ValueType), null);
+            foreach (var variable in Data.variables)
+            {
+                if (!string.IsNullOrEmpty(variable.FieldName))
+                    data.AddLocalNameInScope(variable.FieldName, variable.type);
             }
         }
     }
