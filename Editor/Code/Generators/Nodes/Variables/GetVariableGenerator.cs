@@ -52,7 +52,7 @@ namespace Unity.VisualScripting.Community
             var kind = GetKind(data, typeString);
 
             data.CreateSymbol(Unit, variableType ?? typeof(object));
-            return kind + $"{GenerateValue(Unit.name, data)}{MakeSelectableForThisUnit(")")}";
+            return kind + $"{GenerateValue(Unit.name, data)}{MakeClickableForThisUnit(")")}";
         }
 
         private string GetKind(ControlGenerationData data, string typeString)
@@ -60,10 +60,10 @@ namespace Unity.VisualScripting.Community
             var variables = typeof(VisualScripting.Variables).As().CSharpName(true, true);
             return Unit.kind switch
             {
-                VariableKind.Object => MakeSelectableForThisUnit(variables + $".Object(") + $"{GenerateValue(Unit.@object, data)}{MakeSelectableForThisUnit($").Get{typeString}(")}",
-                VariableKind.Scene => MakeSelectableForThisUnit(variables + $"." + "ActiveScene".VariableHighlight() + $".Get{typeString}("),
-                VariableKind.Application => MakeSelectableForThisUnit(variables + "." + "Application".VariableHighlight() + $".Get{typeString}("),
-                VariableKind.Saved => MakeSelectableForThisUnit(variables + "." + "Saved".VariableHighlight()) + $".Get{typeString}(",
+                VariableKind.Object => MakeClickableForThisUnit(variables + $".Object(") + $"{GenerateValue(Unit.@object, data)}{MakeClickableForThisUnit($").Get{typeString}(")}",
+                VariableKind.Scene => MakeClickableForThisUnit(variables + $"." + "ActiveScene".VariableHighlight() + $".Get{typeString}("),
+                VariableKind.Application => MakeClickableForThisUnit(variables + "." + "Application".VariableHighlight() + $".Get{typeString}("),
+                VariableKind.Saved => MakeClickableForThisUnit(variables + "." + "Saved".VariableHighlight()) + $".Get{typeString}(",
                 _ => string.Empty,
             };
         }
@@ -79,7 +79,7 @@ namespace Unity.VisualScripting.Community
                 var hasExpectedType = expectedType != null;
                 var isExpectedType = (hasExpectedType && variableType != null && expectedType.IsAssignableFrom(variableType)) || (hasExpectedType && IsVariableDefined(data, name) && !string.IsNullOrEmpty(GetVariableDeclaration(data, name).typeHandle.Identification) && expectedType.IsAssignableFrom(Type.GetType(GetVariableDeclaration(data, name).typeHandle.Identification))) || (hasExpectedType && data.TryGetVariableType(data.GetVariableName(name), out Type targetType) && expectedType.IsAssignableFrom(targetType));
                 data.SetCurrentExpectedTypeMet(isExpectedType, variableType);
-                var code = GetKind(data, typeString) + $"{GenerateValue(Unit.name, data)}{MakeSelectableForThisUnit(")")}";
+                var code = GetKind(data, typeString) + $"{GenerateValue(Unit.name, data)}{MakeClickableForThisUnit(")")}";
                 return code;
             }
             else
@@ -89,7 +89,7 @@ namespace Unity.VisualScripting.Community
                 var hasExpectedType = expectedType != null;
                 var isExpectedType = (hasExpectedType && variableType != null && expectedType.IsAssignableFrom(variableType)) || (hasExpectedType && IsVariableDefined(data, name) && !string.IsNullOrEmpty(GetVariableDeclaration(data, name).typeHandle.Identification) && expectedType.IsAssignableFrom(Type.GetType(GetVariableDeclaration(data, name).typeHandle.Identification))) || (hasExpectedType && data.TryGetVariableType(data.GetVariableName(name), out Type targetType) && expectedType.IsAssignableFrom(targetType));
                 data.SetCurrentExpectedTypeMet(isExpectedType, variableType);
-                return MakeSelectableForThisUnit(data.GetVariableName(name).VariableHighlight());
+                return MakeClickableForThisUnit(data.GetVariableName(name).VariableHighlight());
             }
         }
 
@@ -171,7 +171,7 @@ namespace Unity.VisualScripting.Community
         {
             if (input == Unit.@object && !input.hasValidConnection && Unit.defaultValues[input.key] == null)
             {
-                return MakeSelectableForThisUnit("gameObject".VariableHighlight());
+                return MakeClickableForThisUnit("gameObject".VariableHighlight());
             }
 
             if (input == Unit.@object)

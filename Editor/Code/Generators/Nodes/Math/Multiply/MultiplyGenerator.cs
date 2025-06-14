@@ -14,7 +14,7 @@ namespace Unity.VisualScripting.Community
 
             var a = GenerateValue(Unit.a, data);
             var b = GenerateValue(Unit.b, data);
-            return a + MakeSelectableForThisUnit(" * ") + b;
+            return a + MakeClickableForThisUnit(" * ") + b;
         }
 
         public override string GenerateValue(ValueInput input, ControlGenerationData data)

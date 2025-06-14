@@ -18,12 +18,12 @@ namespace Unity.VisualScripting.Community
             if (input == Unit.enter)
             {
                 output.Append(cachedIndent)
-                      .Append(MakeSelectableForThisUnit("if".ConstructHighlight() + " ("))
+                      .Append(MakeClickableForThisUnit("if".ConstructHighlight() + " ("))
                       .Append(GenerateValue(Unit.condition, data))
-                      .Append(MakeSelectableForThisUnit(")"))
+                      .Append(MakeClickableForThisUnit(")"))
                       .AppendLine()
                       .Append(cachedIndent)
-                      .AppendLine(MakeSelectableForThisUnit("{"));
+                      .AppendLine(MakeClickableForThisUnit("{"));
 
                 string trueCode;
                 if (!TrueIsUnreachable())
@@ -36,7 +36,7 @@ namespace Unity.VisualScripting.Community
                 else
                 {
                     data.NewScope();
-                    output.AppendLine(CodeBuilder.Indent(indent + 1) + MakeSelectableForThisUnit(CodeUtility.ToolTip($"The code in the 'True' branch is unreachable due to the output of the condition value: ({CodeUtility.CleanCode(GenerateValue(Unit.condition, data))}). Don't worry this does not break your code.", $"Unreachable Code in 'True' Branch: {Unit.ifTrue.key}", "")));
+                    output.AppendLine(CodeBuilder.Indent(indent + 1) + MakeClickableForThisUnit(CodeUtility.ToolTip($"The code in the 'True' branch is unreachable due to the output of the condition value: ({CodeUtility.CleanCode(GenerateValue(Unit.condition, data))}). Don't worry this does not break your code.", $"Unreachable Code in 'True' Branch: {Unit.ifTrue.key}", "")));
                     trueCode = GetNextUnit(Unit.ifTrue, data, indent + 1);
                     data.ExitScope();
                     output.Append(trueCode);
@@ -44,7 +44,7 @@ namespace Unity.VisualScripting.Community
 
                 output.AppendLine()
                       .Append(cachedIndent)
-                      .AppendLine(MakeSelectableForThisUnit("}"));
+                      .AppendLine(MakeClickableForThisUnit("}"));
 
                 if (!Unit.ifFalse.hasAnyConnection)
                 {
@@ -54,17 +54,17 @@ namespace Unity.VisualScripting.Community
                 if (Unit.ifFalse.hasAnyConnection)
                 {
                     output.Append(cachedIndent)
-                          .Append(MakeSelectableForThisUnit("else".ConstructHighlight()));
+                          .Append(MakeClickableForThisUnit("else".ConstructHighlight()));
 
                     if (!Unit.ifTrue.hasValidConnection || string.IsNullOrEmpty(trueCode))
                     {
-                        output.Append(MakeSelectableForThisUnit(CodeBuilder.MakeRecommendation(
+                        output.Append(MakeClickableForThisUnit(CodeBuilder.MakeRecommendation(
                             "You should use the negate node and connect the true input instead")));
                     }
 
                     output.AppendLine()
                           .Append(cachedIndent)
-                          .AppendLine(MakeSelectableForThisUnit("{"));
+                          .AppendLine(MakeClickableForThisUnit("{"));
 
                     if (!FalseIsUnreachable())
                     {
@@ -75,14 +75,14 @@ namespace Unity.VisualScripting.Community
                     else
                     {
                         data.NewScope();
-                        output.AppendLine(CodeBuilder.Indent(indent + 1) + MakeSelectableForThisUnit(CodeUtility.ToolTip($"The code in the 'False' branch is unreachable due to the output of the condition value: ({CodeUtility.CleanCode(GenerateValue(Unit.condition, data))}). Don't worry this does not break your code.", $"Unreachable Code in 'False' Branch: {Unit.ifFalse.key}", "")));
+                        output.AppendLine(CodeBuilder.Indent(indent + 1) + MakeClickableForThisUnit(CodeUtility.ToolTip($"The code in the 'False' branch is unreachable due to the output of the condition value: ({CodeUtility.CleanCode(GenerateValue(Unit.condition, data))}). Don't worry this does not break your code.", $"Unreachable Code in 'False' Branch: {Unit.ifFalse.key}", "")));
                         output.Append(GetNextUnit(Unit.ifFalse, data, indent + 1));
                         data.ExitScope();
                     }
 
                     output.AppendLine()
                           .Append(cachedIndent)
-                          .AppendLine(MakeSelectableForThisUnit("}") + "\n");
+                          .AppendLine(MakeClickableForThisUnit("}") + "\n");
                 }
             }
 

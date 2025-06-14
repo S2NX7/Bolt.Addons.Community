@@ -27,7 +27,7 @@ namespace Unity.VisualScripting.Community
             {
                 values.Add(GenerateValue(item, data));
             }
-            return string.Join(MakeSelectableForThisUnit(" + "), values);
+            return string.Join(MakeClickableForThisUnit(" + "), values);
         }
 
         public override string GenerateValue(ValueInput input, ControlGenerationData data)

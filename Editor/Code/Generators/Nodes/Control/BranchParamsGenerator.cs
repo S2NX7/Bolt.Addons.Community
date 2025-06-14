@@ -27,11 +27,11 @@ namespace Unity.VisualScripting.Community
             if (input == Unit.enter)
             {
                 output.Append(cachedIndent)
-                      .Append(MakeSelectableForThisUnit("if".ConstructHighlight() + " ("))
+                      .Append(MakeClickableForThisUnit("if".ConstructHighlight() + " ("))
                       .Append(GenerateArguments(data))
-                      .Append(MakeSelectableForThisUnit(")"))
+                      .Append(MakeClickableForThisUnit(")"))
                       .AppendLine()
-                      .Append(cachedIndent + MakeSelectableForThisUnit("{"))
+                      .Append(cachedIndent + MakeClickableForThisUnit("{"))
                       .AppendLine();
 
                 data.NewScope();
@@ -40,11 +40,11 @@ namespace Unity.VisualScripting.Community
 
                 output.Append(trueCode).AppendLine();
 
-                output.Append(cachedIndent + MakeSelectableForThisUnit("}"));
+                output.Append(cachedIndent + MakeClickableForThisUnit("}"));
 
                 if (Unit.exitFalse.hasAnyConnection)
                 {
-                    output.AppendLine().Append(cachedIndent).Append(MakeSelectableForThisUnit("else".ConstructHighlight()));
+                    output.AppendLine().Append(cachedIndent).Append(MakeClickableForThisUnit("else".ConstructHighlight()));
 
                     if (!Unit.exitTrue.hasValidConnection || string.IsNullOrEmpty(trueCode))
                     {
@@ -53,14 +53,14 @@ namespace Unity.VisualScripting.Community
                     }
 
                     output.AppendLine()
-                          .Append(cachedIndent + MakeSelectableForThisUnit("{"))
+                          .Append(cachedIndent + MakeClickableForThisUnit("{"))
                           .AppendLine();
 
                     data.NewScope();
                     output.Append(GetNextUnit(Unit.exitFalse, data, indent + 1)).AppendLine();
                     data.ExitScope();
 
-                    output.Append(cachedIndent + MakeSelectableForThisUnit("}"));
+                    output.Append(cachedIndent + MakeClickableForThisUnit("}"));
                 }
 
                 if (Unit.exitNext != null && Unit.exitNext.hasAnyConnection)
@@ -126,7 +126,7 @@ namespace Unity.VisualScripting.Community
                         data.RemoveExpectedType();
                     break;
             }
-            return string.Join(MakeSelectableForThisUnit(op), values);
+            return string.Join(MakeClickableForThisUnit(op), values);
         }
     }
 }

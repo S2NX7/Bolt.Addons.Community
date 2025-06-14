@@ -209,9 +209,9 @@ namespace Unity.VisualScripting.Community
                     if (Data.inheritsType && typeof(MonoBehaviour).IsAssignableFrom(Data.GetInheritedType()))
                     {
                         if (!string.IsNullOrEmpty(method.body))
-                            method.beforeBody += string.Join("\n", _specialUnits.Select(unit => CodeUtility.MakeSelectable(unit, (unit.GetGenerator() as VariableNodeGenerator)?.Name.VariableHighlight() + ".Update();")).ToArray());
+                            method.beforeBody += string.Join("\n", _specialUnits.Select(unit => CodeUtility.MakeClickable(unit, (unit.GetGenerator() as VariableNodeGenerator)?.Name.VariableHighlight() + ".Update();")).ToArray());
                         else
-                            method.AddToBody(string.Join("\n", _specialUnits.Select(unit => CodeUtility.MakeSelectable(unit, (unit.GetGenerator() as VariableNodeGenerator)?.Name.VariableHighlight() + ".Update();")).ToArray()));
+                            method.AddToBody(string.Join("\n", _specialUnits.Select(unit => CodeUtility.MakeClickable(unit, (unit.GetGenerator() as VariableNodeGenerator)?.Name.VariableHighlight() + ".Update();")).ToArray()));
                     }
 #if PACKAGE_INPUT_SYSTEM_EXISTS
                     if (UnityEngine.InputSystem.InputSystem.settings.updateMode == InputSettings.UpdateMode.ProcessEventsInDynamicUpdate && Data.inheritsType && typeof(MonoBehaviour).IsAssignableFrom(Data.GetInheritedType()))
@@ -219,7 +219,7 @@ namespace Unity.VisualScripting.Community
                         foreach (var unit in _specialUnits.Where(unit => unit is OnInputSystemEvent).Cast<OnInputSystemEvent>())
                         {
                             if (!unit.trigger.hasValidConnection) continue;
-                            method.beforeBody += CodeBuilder.Indent(2) + CodeUtility.MakeSelectable(unit, MethodNodeGenerator.GetSingleDecorator<MethodNodeGenerator>(unit, unit).Name + "();") + "\n";
+                            method.beforeBody += CodeBuilder.Indent(2) + CodeUtility.MakeClickable(unit, MethodNodeGenerator.GetSingleDecorator<MethodNodeGenerator>(unit, unit).Name + "();") + "\n";
                         }
                     }
 #endif
@@ -230,7 +230,7 @@ namespace Unity.VisualScripting.Community
                     var method = MethodGenerator.Method(AccessModifier.None, MethodModifier.None, typeof(void), "Update");
                     if (Data.inheritsType && typeof(MonoBehaviour).IsAssignableFrom(Data.GetInheritedType()))
                     {
-                        method.AddToBody(string.Join("\n", _specialUnits.Select(unit => CodeUtility.MakeSelectable(unit, (unit.GetGenerator() as VariableNodeGenerator)?.Name.VariableHighlight() + ".Update();")).ToArray()));
+                        method.AddToBody(string.Join("\n", _specialUnits.Select(unit => CodeUtility.MakeClickable(unit, (unit.GetGenerator() as VariableNodeGenerator)?.Name.VariableHighlight() + ".Update();")).ToArray()));
                     }
 
 #if PACKAGE_INPUT_SYSTEM_EXISTS
@@ -239,7 +239,7 @@ namespace Unity.VisualScripting.Community
                         foreach (var unit in _specialUnits.Where(unit => unit is OnInputSystemEvent).Cast<OnInputSystemEvent>())
                         {
                             if (!unit.trigger.hasValidConnection) continue;
-                            method.AddToBody(CodeBuilder.Indent(2) + CodeUtility.MakeSelectable(unit, MethodNodeGenerator.GetSingleDecorator<MethodNodeGenerator>(unit, unit).Name + "();") + "\n");
+                            method.AddToBody(CodeBuilder.Indent(2) + CodeUtility.MakeClickable(unit, MethodNodeGenerator.GetSingleDecorator<MethodNodeGenerator>(unit, unit).Name + "();") + "\n");
                         }
                     }
 #endif
@@ -255,7 +255,7 @@ namespace Unity.VisualScripting.Community
                         foreach (var unit in _specialUnits.Where(unit => unit is OnInputSystemEvent).Cast<OnInputSystemEvent>())
                         {
                             if (!unit.trigger.hasValidConnection) continue;
-                            method.beforeBody += CodeBuilder.Indent(2) + CodeUtility.MakeSelectable(unit, unit.GetMethodGenerator()?.Name + "();") + "\n";
+                            method.beforeBody += CodeBuilder.Indent(2) + CodeUtility.MakeClickable(unit, unit.GetMethodGenerator()?.Name + "();") + "\n";
                         }
                     }
                     else if (!addedSpecialFixedUpdatedCode)
@@ -265,7 +265,7 @@ namespace Unity.VisualScripting.Community
                         foreach (var unit in _specialUnits.Where(unit => unit is OnInputSystemEvent).Cast<OnInputSystemEvent>())
                         {
                             if (!unit.trigger.hasValidConnection) continue;
-                            method.beforeBody += CodeBuilder.Indent(2) + CodeUtility.MakeSelectable(unit, MethodNodeGenerator.GetSingleDecorator<MethodNodeGenerator>(unit, unit)?.Name + "();") + "\n";
+                            method.beforeBody += CodeBuilder.Indent(2) + CodeUtility.MakeClickable(unit, MethodNodeGenerator.GetSingleDecorator<MethodNodeGenerator>(unit, unit)?.Name + "();") + "\n";
                         }
                         @class.AddMethod(method);
                     }

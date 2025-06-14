@@ -20,7 +20,7 @@ namespace Unity.VisualScripting.Community
             {
                 data.SetHasReturned(true);
                 var yield = SupportsYieldReturn(data.Returns) ? "yield ".ControlHighlight() : "";
-                output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit(yield + "return".ControlHighlight()) + (!data.Returns.Is().Void() ? MakeSelectableForThisUnit(" ") + GenerateValue(Unit.value, data) : "") + MakeSelectableForThisUnit(";");
+                output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit(yield + "return".ControlHighlight()) + (!data.Returns.Is().Void() ? MakeClickableForThisUnit(" ") + GenerateValue(Unit.value, data) : "") + MakeClickableForThisUnit(";");
                 return output;
             }
             return base.GenerateControl(input, data, indent);

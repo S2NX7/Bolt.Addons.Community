@@ -42,15 +42,15 @@ namespace Unity.VisualScripting.Community
                 if (usesIndex)
                 {
                     currentIndex = data.AddLocalNameInScope("currentIndex", typeof(int));
-                    output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit(typeof(int).As().CSharpName() + " " + currentIndex.VariableHighlight() + " = -1;") + "\n";
+                    output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit(typeof(int).As().CSharpName() + " " + currentIndex.VariableHighlight() + " = -1;") + "\n";
                 }
-                output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit($"foreach".ControlHighlight() + " (" + (fallback && type == typeof(object) ? "var".ConstructHighlight() : $"{type.As().CSharpName()}") + $" {variableName}".VariableHighlight() + " in".ConstructHighlight()) + $" {collection}" + MakeSelectableForThisUnit(")");
+                output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit($"foreach".ControlHighlight() + " (" + (fallback && type == typeof(object) ? "var".ConstructHighlight() : $"{type.As().CSharpName()}") + $" {variableName}".VariableHighlight() + " in".ConstructHighlight()) + $" {collection}" + MakeClickableForThisUnit(")");
                 output += "\n";
-                output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit("{");
+                output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit("{");
                 output += "\n";
                 if (usesIndex)
                 {
-                    output += CodeBuilder.Indent(indent + 1) + MakeSelectableForThisUnit(currentIndex.VariableHighlight() + "++;") + "\n";
+                    output += CodeBuilder.Indent(indent + 1) + MakeClickableForThisUnit(currentIndex.VariableHighlight() + "++;") + "\n";
                 }
                 if (Unit.body.hasAnyConnection)
                 {
@@ -60,7 +60,7 @@ namespace Unity.VisualScripting.Community
                     output += "\n";
                 }
     
-                output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit("}");
+                output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit("}");
                 output += "\n";
             }
     
@@ -104,17 +104,17 @@ namespace Unity.VisualScripting.Community
             {
                 if (Unit.dictionary)
                 {
-                    return MakeSelectableForThisUnit(variableName.VariableHighlight() + "." + "Value".VariableHighlight());
+                    return MakeClickableForThisUnit(variableName.VariableHighlight() + "." + "Value".VariableHighlight());
                 }
-                return MakeSelectableForThisUnit(variableName.VariableHighlight());
+                return MakeClickableForThisUnit(variableName.VariableHighlight());
             }
             else if (output == Unit.currentKey)
             {
-                return MakeSelectableForThisUnit(variableName.VariableHighlight() + "." + "Key".VariableHighlight());
+                return MakeClickableForThisUnit(variableName.VariableHighlight() + "." + "Key".VariableHighlight());
             }
             else
             {
-                return MakeSelectableForThisUnit(currentIndex.VariableHighlight());
+                return MakeClickableForThisUnit(currentIndex.VariableHighlight());
             }
         }
     

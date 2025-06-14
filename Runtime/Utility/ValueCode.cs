@@ -44,7 +44,7 @@ public class ValueCode
     public string GetCode()
     {
         var cast = isCasted ? convertType ? $"(({castType.As().CSharpName(false, true)})" : $"({castType.As().CSharpName(false, true)})" : string.Empty;
-        var _code = unit != null ? CodeUtility.MakeSelectable(unit, cast) + code + (isCasted && convertType ? CodeUtility.MakeSelectable(unit, ")") : string.Empty) : cast + code + (isCasted && convertType ? ")" : string.Empty);
+        var _code = unit != null ? CodeUtility.MakeClickable(unit, cast) + code + (isCasted && convertType ? CodeUtility.MakeClickable(unit, ")") : string.Empty) : cast + code + (isCasted && convertType ? ")" : string.Empty);
         return _code;
     }
 

@@ -29,11 +29,11 @@ namespace Unity.VisualScripting.Community
 
             if (input == Unit.Input)
             {
-                output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit(Name.VariableHighlight() + ".Initialize(") + GenerateValue(Unit.Times, data).End(Unit);
+                output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit(Name.VariableHighlight() + ".Initialize(") + GenerateValue(Unit.Times, data).End(Unit);
                 output += "\n";
-                output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit($"if".ControlHighlight() + $"({Name.VariableHighlight() + ".Trigger()"})");
+                output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit($"if".ControlHighlight() + $"({Name.VariableHighlight() + ".Trigger()"})");
                 output += "\n";
-                output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit("{");
+                output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit("{");
                 output += "\n";
 
                 if (Unit.Exit.hasAnyConnection)
@@ -41,7 +41,7 @@ namespace Unity.VisualScripting.Community
                     output += GetNextUnit(Unit.Exit, data, indent + 1);
                     output += "\n";
                 }
-                output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit("}");
+                output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit("}");
                 output += "\n";
                 if (Unit.After.hasValidConnection)
                 {
@@ -50,7 +50,7 @@ namespace Unity.VisualScripting.Community
             }
             else if (input == Unit.Reset)
             {
-                output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit($"{Name.VariableHighlight()} = " + "false".ConstructHighlight() + ";") + "\n";
+                output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit($"{Name.VariableHighlight()} = " + "false".ConstructHighlight() + ";") + "\n";
             }
 
             return output;

@@ -546,14 +546,14 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
         {
             if (highlight) return HighlightedCode(@as, isNew, unit, isLiteral, parameters, newLineLiteral, fullName, variableForObject);
             Type type = @as.value?.GetType();
-            if (@as.value is Type) return CodeUtility.MakeSelectable(unit, "typeof(" + ((Type)@as.value).As().CSharpName(false, fullName, false) + ")");
-            if (type == null) return CodeUtility.MakeSelectable(unit, "null");
-            if (type == typeof(void)) return CodeUtility.MakeSelectable(unit, "void");
-            if (type == typeof(bool)) return CodeUtility.MakeSelectable(unit, @as.value.ToString().ToLower());
-            if (type == typeof(float)) return CodeUtility.MakeSelectable(unit, @as.value.ToString().Replace(",", ".") + "f");
-            if (type == typeof(double) || type == typeof(decimal)) return CodeUtility.MakeSelectable(unit, @as.value.ToString().Replace(",", "."));
-            if (type == typeof(string)) return CodeUtility.MakeSelectable(unit, @"""" + @as.value.ToString() + @"""");
-            if (type == typeof(char)) return CodeUtility.MakeSelectable(unit, string.IsNullOrEmpty(@as.value.ToString()) ? "new Char()" : $"'{@as.value}'");
+            if (@as.value is Type) return CodeUtility.MakeClickable(unit, "typeof(" + ((Type)@as.value).As().CSharpName(false, fullName, false) + ")");
+            if (type == null) return CodeUtility.MakeClickable(unit, "null");
+            if (type == typeof(void)) return CodeUtility.MakeClickable(unit, "void");
+            if (type == typeof(bool)) return CodeUtility.MakeClickable(unit, @as.value.ToString().ToLower());
+            if (type == typeof(float)) return CodeUtility.MakeClickable(unit, @as.value.ToString().Replace(",", ".") + "f");
+            if (type == typeof(double) || type == typeof(decimal)) return CodeUtility.MakeClickable(unit, @as.value.ToString().Replace(",", "."));
+            if (type == typeof(string)) return CodeUtility.MakeClickable(unit, @"""" + @as.value.ToString() + @"""");
+            if (type == typeof(char)) return CodeUtility.MakeClickable(unit, string.IsNullOrEmpty(@as.value.ToString()) ? "new Char()" : $"'{@as.value}'");
             if (typeof(UnityEngine.Object).IsAssignableFrom(type))
             {
                 if (variableForObject)
@@ -565,11 +565,11 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                         CodeGeneratorValueUtility.AddValue(variable, (UnityEngine.Object)@as.value);
                     else
                         CodeGeneratorValueUtility.SetIsUsed(current);
-                    return CodeUtility.MakeSelectable(unit, variable);
+                    return CodeUtility.MakeClickable(unit, variable);
                 }
                 else
                 {
-                    return CodeUtility.MakeSelectable(unit, "null");
+                    return CodeUtility.MakeClickable(unit, "null");
                 }
             }
 
@@ -577,41 +577,41 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
             if (type == typeof(Vector2))
             {
                 var value = (Vector2)@as.value;
-                return CodeUtility.MakeSelectable(unit, Create("Vector2", value.x.As().Code(false, false, false), value.y.As().Code(false, false, false)));
+                return CodeUtility.MakeClickable(unit, Create("Vector2", value.x.As().Code(false, false, false), value.y.As().Code(false, false, false)));
             }
             if (type == typeof(Vector3))
             {
                 var value = (Vector3)@as.value;
-                return CodeUtility.MakeSelectable(unit, Create("Vector3", value.x.As().Code(false, false, false), value.y.As().Code(false, false, false), value.z.As().Code(false, false, false)));
+                return CodeUtility.MakeClickable(unit, Create("Vector3", value.x.As().Code(false, false, false), value.y.As().Code(false, false, false), value.z.As().Code(false, false, false)));
             }
             if (type == typeof(Vector4))
             {
                 var value = (Vector4)@as.value;
-                return CodeUtility.MakeSelectable(unit, Create("Vector4", value.x.As().Code(false, false, false), value.y.As().Code(false, false, false), value.z.As().Code(false, false, false), value.w.As().Code(false, false, false)));
+                return CodeUtility.MakeClickable(unit, Create("Vector4", value.x.As().Code(false, false, false), value.y.As().Code(false, false, false), value.z.As().Code(false, false, false), value.w.As().Code(false, false, false)));
             }
             if (type == typeof(AnimationCurve))
             {
                 var value = @as.value as AnimationCurve;
-                return CodeUtility.MakeSelectable(unit, Create("AnimationCurve", value.keys.Select(k => Create("Keyframe", k.time.As().Code(false, false, false), k.value.As().Code(false, false, false), k.inTangent.As().Code(false, false, false), k.outTangent.As().Code(false, false, false), k.inWeight.As().Code(false, false, false), k.outWeight.As().Code(false, false, false))).ToArray()));
+                return CodeUtility.MakeClickable(unit, Create("AnimationCurve", value.keys.Select(k => Create("Keyframe", k.time.As().Code(false, false, false), k.value.As().Code(false, false, false), k.inTangent.As().Code(false, false, false), k.outTangent.As().Code(false, false, false), k.inWeight.As().Code(false, false, false), k.outWeight.As().Code(false, false, false))).ToArray()));
             }
-            if (type.IsNumeric()) return CodeUtility.MakeSelectable(unit, @as.value.ToString());
-            if (type.IsEnum) return CodeUtility.MakeSelectable(unit, (@as.value as Enum).ToMultipleEnumString(false));
+            if (type.IsNumeric()) return CodeUtility.MakeClickable(unit, @as.value.ToString());
+            if (type.IsEnum) return CodeUtility.MakeClickable(unit, (@as.value as Enum).ToMultipleEnumString(false));
 
             if (isNew)
             {
                 if (type.IsClass || (!type.IsClass && !type.IsInterface && !type.IsEnum))
                 {
-                    if (type.IsGenericType) return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, false, variableForObject) : CodeUtility.MakeSelectable(unit, "new ".ConstructHighlight() + GenericDeclaration(type, fullName, false) + "()");
-                    if (type.IsConstructedGenericType) return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, false, variableForObject) : CodeUtility.MakeSelectable(unit, "new " + GenericDeclaration(type, fullName, false) + "(" + parameters + ")");
-                    return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, false, variableForObject) : CodeUtility.MakeSelectable(unit, "new " + type.As().CSharpName(false, fullName, false) + "(" + parameters + ")");
+                    if (type.IsGenericType) return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, false, variableForObject) : CodeUtility.MakeClickable(unit, "new ".ConstructHighlight() + GenericDeclaration(type, fullName, false) + "()");
+                    if (type.IsConstructedGenericType) return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, false, variableForObject) : CodeUtility.MakeClickable(unit, "new " + GenericDeclaration(type, fullName, false) + "(" + parameters + ")");
+                    return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, false, variableForObject) : CodeUtility.MakeClickable(unit, "new " + type.As().CSharpName(false, fullName, false) + "(" + parameters + ")");
                 }
                 else
                 {
-                    if (type.IsValueType && !type.IsEnum && !type.IsPrimitive) return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, false, variableForObject) : CodeUtility.MakeSelectable(unit, "new " + (fullName ? type.FullName : type.Name) + "(" + parameters + ")");
+                    if (type.IsValueType && !type.IsEnum && !type.IsPrimitive) return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, false, variableForObject) : CodeUtility.MakeClickable(unit, "new " + (fullName ? type.FullName : type.Name) + "(" + parameters + ")");
                 }
             }
 
-            return CodeUtility.MakeSelectable(unit, @as.value.ToString());
+            return CodeUtility.MakeClickable(unit, @as.value.ToString());
         }
 
         private static string HighlightedCode(this HUMValue.Data.As @as, bool isNew, bool isLiteral = false, string parameters = "", bool newLineLiteral = false, bool fullName = false, bool variableForObject = true)
@@ -687,14 +687,14 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
         private static string HighlightedCode(this HUMValue.Data.As @as, bool isNew, Unit unit, bool isLiteral = false, string parameters = "", bool newLineLiteral = false, bool fullName = false, bool variableForObject = true)
         {
             Type type = @as.value?.GetType();
-            if (@as.value is Type) return CodeUtility.MakeSelectable(unit, "typeof".ConstructHighlight() + "(" + ((Type)@as.value).As().CSharpName(false, true) + ")");
-            if (type == null) return CodeUtility.MakeSelectable(unit, "null".ConstructHighlight());
-            if (type == typeof(void)) return CodeUtility.MakeSelectable(unit, "void".ConstructHighlight());
-            if (type == typeof(bool)) return CodeUtility.MakeSelectable(unit, @as.value.ToString().ToLower().ConstructHighlight());
-            if (type == typeof(float)) return CodeUtility.MakeSelectable(unit, (@as.value.ToString().Replace(",", ".") + "f").NumericHighlight());
-            if (type == typeof(double) || type == typeof(decimal)) return CodeUtility.MakeSelectable(unit, @as.value.ToString().Replace(",", ".").NumericHighlight());
-            if (type == typeof(string)) return CodeUtility.MakeSelectable(unit, (@"""" + @as.value.ToString() + @"""").StringHighlight());
-            if (type == typeof(char)) return (char)@as.value == char.MinValue ? CodeUtility.MakeSelectable(unit, "/* Cannot have an empty character */".WarningHighlight()) : CodeUtility.MakeSelectable(unit, $"'{@as.value}'".StringHighlight());
+            if (@as.value is Type) return CodeUtility.MakeClickable(unit, "typeof".ConstructHighlight() + "(" + ((Type)@as.value).As().CSharpName(false, true) + ")");
+            if (type == null) return CodeUtility.MakeClickable(unit, "null".ConstructHighlight());
+            if (type == typeof(void)) return CodeUtility.MakeClickable(unit, "void".ConstructHighlight());
+            if (type == typeof(bool)) return CodeUtility.MakeClickable(unit, @as.value.ToString().ToLower().ConstructHighlight());
+            if (type == typeof(float)) return CodeUtility.MakeClickable(unit, (@as.value.ToString().Replace(",", ".") + "f").NumericHighlight());
+            if (type == typeof(double) || type == typeof(decimal)) return CodeUtility.MakeClickable(unit, @as.value.ToString().Replace(",", ".").NumericHighlight());
+            if (type == typeof(string)) return CodeUtility.MakeClickable(unit, (@"""" + @as.value.ToString() + @"""").StringHighlight());
+            if (type == typeof(char)) return (char)@as.value == char.MinValue ? CodeUtility.MakeClickable(unit, "/* Cannot have an empty character */".WarningHighlight()) : CodeUtility.MakeClickable(unit, $"'{@as.value}'".StringHighlight());
             if (typeof(UnityEngine.Object).IsAssignableFrom(type))
             {
                 if (variableForObject)
@@ -707,11 +707,11 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                     else
                         CodeGeneratorValueUtility.SetIsUsed(current);
 
-                    return CodeUtility.MakeSelectable(unit, variable.VariableHighlight());
+                    return CodeUtility.MakeClickable(unit, variable.VariableHighlight());
                 }
                 else
                 {
-                    return CodeUtility.MakeSelectable(unit, "null".ConstructHighlight());
+                    return CodeUtility.MakeClickable(unit, "null".ConstructHighlight());
                 }
             }
 
@@ -719,40 +719,40 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
             if (type == typeof(Vector2))
             {
                 var value = (Vector2)@as.value;
-                return CodeUtility.MakeSelectable(unit, CreateHighlighted("Vector2", value.x.As().Code(false, false, true), value.y.As().Code(false, false, true)));
+                return CodeUtility.MakeClickable(unit, CreateHighlighted("Vector2", value.x.As().Code(false, false, true), value.y.As().Code(false, false, true)));
             }
             if (type == typeof(Vector3))
             {
                 var value = (Vector3)@as.value;
-                return CodeUtility.MakeSelectable(unit, CreateHighlighted("Vector3", value.x.As().Code(false, false, true), value.y.As().Code(false, false, true), value.z.As().Code(false, false, true)));
+                return CodeUtility.MakeClickable(unit, CreateHighlighted("Vector3", value.x.As().Code(false, false, true), value.y.As().Code(false, false, true), value.z.As().Code(false, false, true)));
             }
             if (type == typeof(Vector4))
             {
                 var value = (Vector4)@as.value;
-                return CodeUtility.MakeSelectable(unit, CreateHighlighted("Vector4", value.x.As().Code(false, false, true), value.y.As().Code(false, false, true), value.z.As().Code(false, false, true), value.w.As().Code(false, false, true)));
+                return CodeUtility.MakeClickable(unit, CreateHighlighted("Vector4", value.x.As().Code(false, false, true), value.y.As().Code(false, false, true), value.z.As().Code(false, false, true), value.w.As().Code(false, false, true)));
             }
             if (type == typeof(AnimationCurve))
             {
                 var value = @as.value as AnimationCurve;
-                return CodeUtility.MakeSelectable(unit, CreateHighlighted("AnimationCurve", value.keys.Select(k => CreateHighlighted("Keyframe", k.time.As().Code(false), k.value.As().Code(false), k.inTangent.As().Code(false), k.outTangent.As().Code(false), k.inWeight.As().Code(false), k.outWeight.As().Code(false))).ToArray()));
+                return CodeUtility.MakeClickable(unit, CreateHighlighted("AnimationCurve", value.keys.Select(k => CreateHighlighted("Keyframe", k.time.As().Code(false), k.value.As().Code(false), k.inTangent.As().Code(false), k.outTangent.As().Code(false), k.inWeight.As().Code(false), k.outWeight.As().Code(false))).ToArray()));
             }
-            if (type.IsNumeric()) return CodeUtility.MakeSelectable(unit, @as.value.ToString().NumericHighlight());
-            if (type.IsEnum) return CodeUtility.MakeSelectable(unit, (@as.value as Enum).ToMultipleEnumString(true));
+            if (type.IsNumeric()) return CodeUtility.MakeClickable(unit, @as.value.ToString().NumericHighlight());
+            if (type.IsEnum) return CodeUtility.MakeClickable(unit, (@as.value as Enum).ToMultipleEnumString(true));
             if (isNew)
             {
                 if (type.IsClass || !type.IsClass && !type.IsInterface && !type.IsEnum)
                 {
-                    if (type.IsGenericType) return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, true, variableForObject) : CodeUtility.MakeSelectable(unit, "new ".ConstructHighlight() + GenericDeclaration(type, fullName) + "()");
-                    if (type.IsConstructedGenericType) return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, true, variableForObject) : CodeUtility.MakeSelectable(unit, "new ".ConstructHighlight() + GenericDeclaration(type, fullName) + "(" + parameters + ")");
-                    return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, true, variableForObject) : CodeUtility.MakeSelectable(unit, "new ".ConstructHighlight() + type.As().CSharpName(false, fullName, true) + "(" + parameters + ")");
+                    if (type.IsGenericType) return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, true, variableForObject) : CodeUtility.MakeClickable(unit, "new ".ConstructHighlight() + GenericDeclaration(type, fullName) + "()");
+                    if (type.IsConstructedGenericType) return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, true, variableForObject) : CodeUtility.MakeClickable(unit, "new ".ConstructHighlight() + GenericDeclaration(type, fullName) + "(" + parameters + ")");
+                    return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, true, variableForObject) : CodeUtility.MakeClickable(unit, "new ".ConstructHighlight() + type.As().CSharpName(false, fullName, true) + "(" + parameters + ")");
                 }
                 else
                 {
-                    if (type.IsValueType && !type.IsEnum && !type.IsPrimitive) return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, true, variableForObject) : CodeUtility.MakeSelectable(unit, "new ".ConstructHighlight() + type.As().CSharpName(false, fullName, true) + "(" + parameters + ")");
+                    if (type.IsValueType && !type.IsEnum && !type.IsPrimitive) return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, true, variableForObject) : CodeUtility.MakeClickable(unit, "new ".ConstructHighlight() + type.As().CSharpName(false, fullName, true) + "(" + parameters + ")");
                 }
             }
 
-            return CodeUtility.MakeSelectable(unit, @as.value.ToString());
+            return CodeUtility.MakeClickable(unit, @as.value.ToString());
         }
 
         private static string New(bool highlight = true)
@@ -1041,15 +1041,15 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                 }
             }
 
-            output += (newLine ? "\n" + CodeBuilder.GetCurrentIndent() : string.Empty) + CodeUtility.MakeSelectable(unit, "new " + (!value.GetType().IsGenericType ? value.GetType().As().CSharpName(false, fullName, false) : GenericDeclaration(value.GetType(), fullName), false) + (value.GetType().IsArray ? "" : "()"));
+            output += (newLine ? "\n" + CodeBuilder.GetCurrentIndent() : string.Empty) + CodeUtility.MakeClickable(unit, "new " + (!value.GetType().IsGenericType ? value.GetType().As().CSharpName(false, fullName, false) : GenericDeclaration(value.GetType(), fullName), false) + (value.GetType().IsArray ? "" : "()"));
 
             if (isMultiLine)
             {
-                output += "\n" + CodeBuilder.GetCurrentIndent() + CodeUtility.MakeSelectable(unit, (value is ICollection collection && collection.Count > 0) || usableFields.Count > 0 ? "{" : string.Empty) + "\n";
+                output += "\n" + CodeBuilder.GetCurrentIndent() + CodeUtility.MakeClickable(unit, (value is ICollection collection && collection.Count > 0) || usableFields.Count > 0 ? "{" : string.Empty) + "\n";
             }
             else
             {
-                output += (value is ICollection collection && collection.Count > 0) || usableFields.Count > 0 ? $"\n{CodeBuilder.GetCurrentIndent()}{CodeUtility.MakeSelectable(unit, "{")}" : string.Empty;
+                output += (value is ICollection collection && collection.Count > 0) || usableFields.Count > 0 ? $"\n{CodeBuilder.GetCurrentIndent()}{CodeUtility.MakeClickable(unit, "{")}" : string.Empty;
             }
 
             if (value is IDictionary or IList)
@@ -1065,16 +1065,16 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                     if (list.Count > 2)
                     {
                         output += "\n";
-                        output += indent + CodeUtility.MakeSelectable(unit, item.As().Code(true, true, false, "", false, fullName, variableForObject));
+                        output += indent + CodeUtility.MakeClickable(unit, item.As().Code(true, true, false, "", false, fullName, variableForObject));
                     }
                     else
                     {
-                        output += (index == 0 ? " " : "") + CodeUtility.MakeSelectable(unit, item.As().Code(true, true, false, "", false, fullName, variableForObject));
+                        output += (index == 0 ? " " : "") + CodeUtility.MakeClickable(unit, item.As().Code(true, true, false, "", false, fullName, variableForObject));
                     }
 
                     if (++index != list.Count)
                     {
-                        output += CodeUtility.MakeSelectable(unit, ", ");
+                        output += CodeUtility.MakeClickable(unit, ", ");
                     }
                 }
             }
@@ -1084,14 +1084,14 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                 foreach (DictionaryEntry entry in _dictionary)
                 {
                     string newLinestr = _dictionary.Count > 2 ? "\n" : "";
-                    output += indent + CodeUtility.MakeSelectable(unit, "{ ");
-                    output += CodeUtility.MakeSelectable(unit, entry.Key.As().Code(true, true, false, "", false, fullName, variableForObject));
-                    output += CodeUtility.MakeSelectable(unit, ", ");
-                    output += CodeUtility.MakeSelectable(unit, entry.Value.As().Code(true, true, false, "", false, fullName, variableForObject));
-                    output += CodeUtility.MakeSelectable(unit, " }");
+                    output += indent + CodeUtility.MakeClickable(unit, "{ ");
+                    output += CodeUtility.MakeClickable(unit, entry.Key.As().Code(true, true, false, "", false, fullName, variableForObject));
+                    output += CodeUtility.MakeClickable(unit, ", ");
+                    output += CodeUtility.MakeClickable(unit, entry.Value.As().Code(true, true, false, "", false, fullName, variableForObject));
+                    output += CodeUtility.MakeClickable(unit, " }");
                     if (++index != _dictionary.Count)
                     {
-                        output += CodeUtility.MakeSelectable(unit, ",") + $" {newLinestr}";
+                        output += CodeUtility.MakeClickable(unit, ",") + $" {newLinestr}";
                     }
                 }
             }
@@ -1103,16 +1103,16 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                     if (array.Length > 2)
                     {
                         output += "\n";
-                        output += indent + CodeUtility.MakeSelectable(unit, item.As().Code(true, true, false, "", false, fullName, variableForObject));
+                        output += indent + CodeUtility.MakeClickable(unit, item.As().Code(true, true, false, "", false, fullName, variableForObject));
                     }
                     else
                     {
-                        output += (index == 0 ? " " : "") + CodeUtility.MakeSelectable(unit, item.As().Code(true, true, false, "", false, fullName, variableForObject));
+                        output += (index == 0 ? " " : "") + CodeUtility.MakeClickable(unit, item.As().Code(true, true, false, "", false, fullName, variableForObject));
                     }
 
                     if (++index != array.Length)
                     {
-                        output += CodeUtility.MakeSelectable(unit, ", ");
+                        output += CodeUtility.MakeClickable(unit, ", ");
                     }
                 }
             }
@@ -1121,13 +1121,13 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                 CodeBuilder.Indent(CodeBuilder.currentIndent + 1);
             for (int i = 0; i < usableFields.Count; i++)
             {
-                output += (isMultiLine ? CodeBuilder.GetCurrentIndent() : string.Empty) + CodeUtility.MakeSelectable(unit, usableFields[i].Name + " = " + usableFields[i].GetValue(value).As().Code(true, true, false, "", false, fullName, variableForObject));
-                output += i < usableFields.Count - 1 ? CodeUtility.MakeSelectable(unit, ", ") + (isMultiLine ? "\n" : string.Empty) : string.Empty;
+                output += (isMultiLine ? CodeBuilder.GetCurrentIndent() : string.Empty) + CodeUtility.MakeClickable(unit, usableFields[i].Name + " = " + usableFields[i].GetValue(value).As().Code(true, true, false, "", false, fullName, variableForObject));
+                output += i < usableFields.Count - 1 ? CodeUtility.MakeClickable(unit, ", ") + (isMultiLine ? "\n" : string.Empty) : string.Empty;
             }
             if (isMultiLine)
                 CodeBuilder.Indent(CodeBuilder.currentIndent - 1);
 
-            output += isMultiLine ? "\n" + (value is ICollection ? CodeBuilder.Indent(CodeBuilder.currentIndent - 1) : CodeBuilder.Indent(CodeBuilder.currentIndent)) + CodeUtility.MakeSelectable(unit, "}") : (value is ICollection collectionWithItems && collectionWithItems.Count > 0) || usableFields.Count > 0 ? $"\n{CodeBuilder.Indent(CodeBuilder.currentIndent - 1)}" + CodeUtility.MakeSelectable(unit, "}") : string.Empty;
+            output += isMultiLine ? "\n" + (value is ICollection ? CodeBuilder.Indent(CodeBuilder.currentIndent - 1) : CodeBuilder.Indent(CodeBuilder.currentIndent)) + CodeUtility.MakeClickable(unit, "}") : (value is ICollection collectionWithItems && collectionWithItems.Count > 0) || usableFields.Count > 0 ? $"\n{CodeBuilder.Indent(CodeBuilder.currentIndent - 1)}" + CodeUtility.MakeClickable(unit, "}") : string.Empty;
 
             return output;
         }
@@ -1153,15 +1153,15 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                 }
             }
 
-            output += (newLine ? "\n" + CodeBuilder.GetCurrentIndent() : string.Empty) + CodeUtility.MakeSelectable(unit, "new ".ConstructHighlight() + (!value.GetType().IsGenericType ? value.GetType().As().CSharpName(false, fullName) : GenericDeclaration(value.GetType(), fullName)) + (value.GetType().IsArray ? "" : "()"));
+            output += (newLine ? "\n" + CodeBuilder.GetCurrentIndent() : string.Empty) + CodeUtility.MakeClickable(unit, "new ".ConstructHighlight() + (!value.GetType().IsGenericType ? value.GetType().As().CSharpName(false, fullName) : GenericDeclaration(value.GetType(), fullName)) + (value.GetType().IsArray ? "" : "()"));
 
             if (isMultiLine)
             {
-                output += "\n" + CodeBuilder.GetCurrentIndent() + CodeUtility.MakeSelectable(unit, (value is ICollection collection && collection.Count > 0) || usableFields.Count > 0 ? "{" : string.Empty) + "\n";
+                output += "\n" + CodeBuilder.GetCurrentIndent() + CodeUtility.MakeClickable(unit, (value is ICollection collection && collection.Count > 0) || usableFields.Count > 0 ? "{" : string.Empty) + "\n";
             }
             else
             {
-                output += (value is ICollection collection && collection.Count > 0) || usableFields.Count > 0 ? $"\n{CodeBuilder.GetCurrentIndent()}{CodeUtility.MakeSelectable(unit, "{")}" : string.Empty;
+                output += (value is ICollection collection && collection.Count > 0) || usableFields.Count > 0 ? $"\n{CodeBuilder.GetCurrentIndent()}{CodeUtility.MakeClickable(unit, "{")}" : string.Empty;
             }
 
             if (value is IDictionary or IList)
@@ -1177,16 +1177,16 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                     if (list.Count > 2)
                     {
                         output += "\n";
-                        output += indent + CodeUtility.MakeSelectable(unit, item.As().Code(true, true, true, "", false, fullName, variableForObject));
+                        output += indent + CodeUtility.MakeClickable(unit, item.As().Code(true, true, true, "", false, fullName, variableForObject));
                     }
                     else
                     {
-                        output += (index == 0 ? " " : "") + CodeUtility.MakeSelectable(unit, item.As().Code(true, true, true, "", false, fullName, variableForObject));
+                        output += (index == 0 ? " " : "") + CodeUtility.MakeClickable(unit, item.As().Code(true, true, true, "", false, fullName, variableForObject));
                     }
 
                     if (++index != list.Count)
                     {
-                        output += CodeUtility.MakeSelectable(unit, ", ");
+                        output += CodeUtility.MakeClickable(unit, ", ");
                     }
                 }
             }
@@ -1196,14 +1196,14 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                 foreach (DictionaryEntry entry in _dictionary)
                 {
                     string newLinestr = _dictionary.Count > 2 ? "\n" : "";
-                    output += indent + CodeUtility.MakeSelectable(unit, "{ ");
-                    output += CodeUtility.MakeSelectable(unit, entry.Key.As().Code(true, true, true, "", false, fullName, variableForObject));
-                    output += CodeUtility.MakeSelectable(unit, ", ");
-                    output += CodeUtility.MakeSelectable(unit, entry.Value.As().Code(true, true, true, "", false, fullName, variableForObject));
-                    output += CodeUtility.MakeSelectable(unit, " }");
+                    output += indent + CodeUtility.MakeClickable(unit, "{ ");
+                    output += CodeUtility.MakeClickable(unit, entry.Key.As().Code(true, true, true, "", false, fullName, variableForObject));
+                    output += CodeUtility.MakeClickable(unit, ", ");
+                    output += CodeUtility.MakeClickable(unit, entry.Value.As().Code(true, true, true, "", false, fullName, variableForObject));
+                    output += CodeUtility.MakeClickable(unit, " }");
                     if (++index != _dictionary.Count)
                     {
-                        output += CodeUtility.MakeSelectable(unit, ",") + $" {newLinestr}";
+                        output += CodeUtility.MakeClickable(unit, ",") + $" {newLinestr}";
                     }
                 }
             }
@@ -1215,16 +1215,16 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                     if (array.Length > 2)
                     {
                         output += "\n";
-                        output += indent + CodeUtility.MakeSelectable(unit, item.As().Code(true, true, true, "", false, fullName, variableForObject));
+                        output += indent + CodeUtility.MakeClickable(unit, item.As().Code(true, true, true, "", false, fullName, variableForObject));
                     }
                     else
                     {
-                        output += (index == 0 ? " " : "") + CodeUtility.MakeSelectable(unit, item.As().Code(true, true, true, "", false, fullName, variableForObject));
+                        output += (index == 0 ? " " : "") + CodeUtility.MakeClickable(unit, item.As().Code(true, true, true, "", false, fullName, variableForObject));
                     }
 
                     if (++index != array.Length)
                     {
-                        output += CodeUtility.MakeSelectable(unit, ", ");
+                        output += CodeUtility.MakeClickable(unit, ", ");
                     }
                 }
             }
@@ -1233,13 +1233,13 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                 CodeBuilder.Indent(CodeBuilder.currentIndent + 1);
             for (int i = 0; i < usableFields.Count; i++)
             {
-                output += (isMultiLine ? CodeBuilder.GetCurrentIndent() : string.Empty) + CodeUtility.MakeSelectable(unit, usableFields[i].Name + " = " + usableFields[i].GetValue(value).As().Code(true, true, true, "", false, fullName, variableForObject));
-                output += i < usableFields.Count - 1 ? CodeUtility.MakeSelectable(unit, ", ") + (isMultiLine ? "\n" : string.Empty) : string.Empty;
+                output += (isMultiLine ? CodeBuilder.GetCurrentIndent() : string.Empty) + CodeUtility.MakeClickable(unit, usableFields[i].Name + " = " + usableFields[i].GetValue(value).As().Code(true, true, true, "", false, fullName, variableForObject));
+                output += i < usableFields.Count - 1 ? CodeUtility.MakeClickable(unit, ", ") + (isMultiLine ? "\n" : string.Empty) : string.Empty;
             }
             if (isMultiLine)
                 CodeBuilder.Indent(CodeBuilder.currentIndent - 1);
 
-            output += isMultiLine ? "\n" + (value is ICollection ? CodeBuilder.Indent(CodeBuilder.currentIndent - 1) : CodeBuilder.Indent(CodeBuilder.currentIndent)) + CodeUtility.MakeSelectable(unit, "}") : (value is ICollection collectionWithItems && collectionWithItems.Count > 0) || usableFields.Count > 0 ? $"\n{CodeBuilder.Indent(CodeBuilder.currentIndent - 1)}" + CodeUtility.MakeSelectable(unit, "}") : string.Empty;
+            output += isMultiLine ? "\n" + (value is ICollection ? CodeBuilder.Indent(CodeBuilder.currentIndent - 1) : CodeBuilder.Indent(CodeBuilder.currentIndent)) + CodeUtility.MakeClickable(unit, "}") : (value is ICollection collectionWithItems && collectionWithItems.Count > 0) || usableFields.Count > 0 ? $"\n{CodeBuilder.Indent(CodeBuilder.currentIndent - 1)}" + CodeUtility.MakeClickable(unit, "}") : string.Empty;
 
             return output;
         }

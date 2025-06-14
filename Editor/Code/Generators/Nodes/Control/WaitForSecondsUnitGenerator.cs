@@ -13,7 +13,7 @@ public class WaitForSecondsUnitGenerator : NodeGenerator<WaitForSecondsUnit>
     {
         var output = string.Empty;
         data.SetHasReturned(true);
-        output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit("yield return".ControlHighlight() + " " + "CSharpUtility".TypeHighlight() + ".CreateWaitForSeconds(") + GenerateValue(Unit.seconds, data) + MakeSelectableForThisUnit(", ") + GenerateValue(Unit.unscaledTime, data) + MakeSelectableForThisUnit(");") + "\n";
+        output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit("yield return".ControlHighlight() + " " + "CSharpUtility".TypeHighlight() + ".CreateWaitForSeconds(") + GenerateValue(Unit.seconds, data) + MakeClickableForThisUnit(", ") + GenerateValue(Unit.unscaledTime, data) + MakeClickableForThisUnit(");") + "\n";
         output += GetNextUnit(Unit.exit, data, indent);
         return output;
     }

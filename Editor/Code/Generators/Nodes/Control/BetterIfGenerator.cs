@@ -20,51 +20,51 @@ namespace Unity.VisualScripting.Community
             if (input == Unit.In)
             {
                 output.Append(CodeBuilder.Indent(indent))
-                      .Append(MakeSelectableForThisUnit("if".ConstructHighlight() + " ("))
+                      .Append(MakeClickableForThisUnit("if".ConstructHighlight() + " ("))
                       .Append(GenerateValue(Unit.Condition, data))
-                      .Append(MakeSelectableForThisUnit(")"))
+                      .Append(MakeClickableForThisUnit(")"))
                       .AppendLine()
-                      .Append(MakeSelectableForThisUnit(CodeBuilder.OpenBody(indent)))
+                      .Append(MakeClickableForThisUnit(CodeBuilder.OpenBody(indent)))
                       .AppendLine();
     
                 data.NewScope();
                 if (TrueIsUnreachable())
                 {
-                    output.AppendLine(CodeBuilder.Indent(indent + 1) + MakeSelectableForThisUnit(CodeUtility.ToolTip($"The code in the 'True' branch is unreachable due to the output of the condition value: ({CodeUtility.CleanCode(GenerateValue(Unit.Condition, data))}). Don't worry this does not break your code.", $"Unreachable Code in 'True' Branch: {Unit.True.key}", "")));
+                    output.AppendLine(CodeBuilder.Indent(indent + 1) + MakeClickableForThisUnit(CodeUtility.ToolTip($"The code in the 'True' branch is unreachable due to the output of the condition value: ({CodeUtility.CleanCode(GenerateValue(Unit.Condition, data))}). Don't worry this does not break your code.", $"Unreachable Code in 'True' Branch: {Unit.True.key}", "")));
                 }
                 trueCode = GetNextUnit(Unit.True, data, indent + 1);
                 data.ExitScope();
     
                 output.Append(trueCode).AppendLine();
     
-                output.Append(MakeSelectableForThisUnit(CodeBuilder.CloseBody(indent)));
+                output.Append(MakeClickableForThisUnit(CodeBuilder.CloseBody(indent)));
     
                 if (Unit.False.hasAnyConnection)
                 {
                     output.AppendLine()
                           .Append(CodeBuilder.Indent(indent))
-                          .Append(MakeSelectableForThisUnit("else".ConstructHighlight()));
+                          .Append(MakeClickableForThisUnit("else".ConstructHighlight()));
     
                     if (!Unit.True.hasValidConnection || string.IsNullOrEmpty(trueCode))
                     {
-                        output.Append(MakeSelectableForThisUnit(CodeBuilder.MakeRecommendation(
+                        output.Append(MakeClickableForThisUnit(CodeBuilder.MakeRecommendation(
                             "You should use the negate node and connect the true input instead")));
                     }
     
                     output.AppendLine()
-                          .Append(MakeSelectableForThisUnit(CodeBuilder.OpenBody(indent)))
+                          .Append(MakeClickableForThisUnit(CodeBuilder.OpenBody(indent)))
                           .AppendLine();
     
                     data.NewScope();
                     if (FalseIsUnreachable())
                     {
-                        output.AppendLine(CodeBuilder.Indent(indent + 1) + MakeSelectableForThisUnit(CodeUtility.ToolTip($"The code in the 'False' branch is unreachable due to the output of the condition value: ({CodeUtility.CleanCode(GenerateValue(Unit.Condition, data))}). Don't worry this does not break your code.", $"Unreachable Code in 'False' Branch: {Unit.False.key}", "")));
+                        output.AppendLine(CodeBuilder.Indent(indent + 1) + MakeClickableForThisUnit(CodeUtility.ToolTip($"The code in the 'False' branch is unreachable due to the output of the condition value: ({CodeUtility.CleanCode(GenerateValue(Unit.Condition, data))}). Don't worry this does not break your code.", $"Unreachable Code in 'False' Branch: {Unit.False.key}", "")));
                     }
                     output.Append(GetNextUnit(Unit.False, data, indent + 1))
                           .AppendLine();
                     data.ExitScope();
     
-                    output.Append(MakeSelectableForThisUnit(CodeBuilder.CloseBody(indent)));
+                    output.Append(MakeClickableForThisUnit(CodeBuilder.CloseBody(indent)));
                 }
 
                 if (Unit.Finished.hasAnyConnection)

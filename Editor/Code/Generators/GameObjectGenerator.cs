@@ -186,7 +186,7 @@ namespace Unity.VisualScripting.Community
         {
             return !string.IsNullOrWhiteSpace(@using.Item1)
                 ? @using.Item2 != null
-                    ? CodeUtility.MakeSelectable(@using.Item2, $"using".ConstructHighlight() + $" {@using.Item1};")
+                    ? CodeUtility.MakeClickable(@using.Item2, $"using".ConstructHighlight() + $" {@using.Item1};")
                     : $"using".ConstructHighlight() + $" {@using.Item1};"
                 : string.Empty;
         }
@@ -234,10 +234,10 @@ namespace Unity.VisualScripting.Community
                 if (generator is VariableNodeGenerator variableNodeGenerator)
                 {
                     script +=
-                        "\n" + CodeBuilder.Indent(1) + CodeUtility.MakeSelectable(unit, variableNodeGenerator.AccessModifier.AsString().ConstructHighlight() + " "
+                        "\n" + CodeBuilder.Indent(1) + CodeUtility.MakeClickable(unit, variableNodeGenerator.AccessModifier.AsString().ConstructHighlight() + " "
                         + variableNodeGenerator.Type.As().CSharpName(false, true) + " " + variableNodeGenerator.FieldModifier.AsString().ConstructHighlight()
                         + variableNodeGenerator.Name.VariableHighlight()
-                        + (variableNodeGenerator.HasDefaultValue ? $" = " : "")) + (variableNodeGenerator.HasDefaultValue ? variableNodeGenerator.DefaultValue.As().Code(variableNodeGenerator.IsNew, variableNodeGenerator.unit, variableNodeGenerator.Literal, true, "", variableNodeGenerator.NewLineLiteral, true, false) : "") + CodeUtility.MakeSelectable(unit, ";") + "\n";
+                        + (variableNodeGenerator.HasDefaultValue ? $" = " : "")) + (variableNodeGenerator.HasDefaultValue ? variableNodeGenerator.DefaultValue.As().Code(variableNodeGenerator.IsNew, variableNodeGenerator.unit, variableNodeGenerator.Literal, true, "", variableNodeGenerator.NewLineLiteral, true, false) : "") + CodeUtility.MakeClickable(unit, ";") + "\n";
                 }
 #if PACKAGE_INPUT_SYSTEM_EXISTS && !PACKAGE_INPUT_SYSTEM_1_2_0_OR_NEWER_EXISTS
                 else if (unit is OnInputSystemEvent eventUnit && generator is MethodNodeGenerator methodNodeGenerator)
@@ -293,11 +293,11 @@ namespace Unity.VisualScripting.Community
                     
                     _customEventIds.Add(eventUnit, id);
                     id++;
-                    script += CodeUtility.MakeSelectable(eventUnit, $"{CodeBuilder.Indent(2)}{"CSharpUtility".TypeHighlight()}.RegisterCustomEvent(") + eventUnit.GenerateValue(eventUnit.target) + CodeUtility.MakeSelectable(eventUnit, $", ") + GetMethodName(eventUnit) + CodeUtility.MakeSelectable(eventUnit, "Runner);");
+                    script += CodeUtility.MakeClickable(eventUnit, $"{CodeBuilder.Indent(2)}{"CSharpUtility".TypeHighlight()}.RegisterCustomEvent(") + eventUnit.GenerateValue(eventUnit.target) + CodeUtility.MakeClickable(eventUnit, $", ") + GetMethodName(eventUnit) + CodeUtility.MakeClickable(eventUnit, "Runner);");
 
                     script += "\n";
 
-                    var eventName = GetMethodName(eventUnit) + CodeUtility.MakeSelectable(eventUnit, "Runner");
+                    var eventName = GetMethodName(eventUnit) + CodeUtility.MakeClickable(eventUnit, "Runner");
                     string runnerCode = GetCustomEventRunnerCode(eventUnit, data);
                     AddNewMethod(eventUnit, eventName, GetMethodSignature(eventUnit, false, eventName, AccessModifier.Private), runnerCode, "CustomEventArgs ".TypeHighlight() + "args".VariableHighlight(), data);
                     data.ExitScope();
@@ -360,7 +360,7 @@ namespace Unity.VisualScripting.Community
                             if (unit is Update update && !addedSpecialUpdateCode)
                             {
                                 addedSpecialUpdateCode = true;
-                                specialUnitCode = string.Join("\n", _specialUnits.Select(t => CodeBuilder.Indent(2) + CodeUtility.MakeSelectable(t, t.GetVariableGenerator().Name.VariableHighlight() + ".Update();")));
+                                specialUnitCode = string.Join("\n", _specialUnits.Select(t => CodeBuilder.Indent(2) + CodeUtility.MakeClickable(t, t.GetVariableGenerator().Name.VariableHighlight() + ".Update();")));
                                 specialUnitCode += "\n";
 #if PACKAGE_INPUT_SYSTEM_EXISTS
                                 if (UnityEngine.InputSystem.InputSystem.settings.updateMode == InputSettings.UpdateMode.ProcessEventsInDynamicUpdate)
@@ -368,7 +368,7 @@ namespace Unity.VisualScripting.Community
                                     foreach (var inputsystemUnit in _allUnits.Where(unit => unit is OnInputSystemEvent).Cast<OnInputSystemEvent>())
                                     {
                                         if (!inputsystemUnit.trigger.hasValidConnection) continue;
-                                        specialUnitCode += CodeBuilder.Indent(2) + CodeUtility.MakeSelectable(inputsystemUnit, inputsystemUnit.GetMethodGenerator().Name + "();") + "\n";
+                                        specialUnitCode += CodeBuilder.Indent(2) + CodeUtility.MakeClickable(inputsystemUnit, inputsystemUnit.GetMethodGenerator().Name + "();") + "\n";
                                     }
                                 }
 #endif
@@ -380,7 +380,7 @@ namespace Unity.VisualScripting.Community
                                 foreach (var inputsystemUnit in _allUnits.Where(unit => unit is OnInputSystemEvent).Cast<OnInputSystemEvent>())
                                 {
                                     if (!inputsystemUnit.trigger.hasValidConnection) continue;
-                                    specialUnitCode += CodeBuilder.Indent(2) + CodeUtility.MakeSelectable(inputsystemUnit, inputsystemUnit.GetMethodGenerator().Name + "();") + "\n";
+                                    specialUnitCode += CodeBuilder.Indent(2) + CodeUtility.MakeClickable(inputsystemUnit, inputsystemUnit.GetMethodGenerator().Name + "();") + "\n";
                                 }
                             }
 #endif
@@ -388,8 +388,8 @@ namespace Unity.VisualScripting.Community
                             {
                                 if (unit.controlOutputs["trigger"].hasValidConnection)
                                 {
-                                    AddNewMethod(unit as Unit, CodeUtility.CleanCode(GetMethodName(unit)), GetMethodSignature(unit, false), specialUnitCode + CodeBuilder.Indent(2) + CodeUtility.MakeSelectable(unit as Unit, $"StartCoroutine(") + GetMethodName(unit) + CodeUtility.MakeSelectable(unit as Unit, "_Coroutine());"), parameterInfo.parameterSignature, data);
-                                    AddNewMethod(unit as Unit, CodeUtility.CleanCode(GetMethodName(unit)) + "_Coroutine", GetMethodSignature(unit, GetMethodName(unit) + CodeUtility.MakeSelectable(unit as Unit, "_Coroutine")), GetMethodBody(unit, data), parameterInfo.parameterSignature, data);
+                                    AddNewMethod(unit as Unit, CodeUtility.CleanCode(GetMethodName(unit)), GetMethodSignature(unit, false), specialUnitCode + CodeBuilder.Indent(2) + CodeUtility.MakeClickable(unit as Unit, $"StartCoroutine(") + GetMethodName(unit) + CodeUtility.MakeClickable(unit as Unit, "_Coroutine());"), parameterInfo.parameterSignature, data);
+                                    AddNewMethod(unit as Unit, CodeUtility.CleanCode(GetMethodName(unit)) + "_Coroutine", GetMethodSignature(unit, GetMethodName(unit) + CodeUtility.MakeClickable(unit as Unit, "_Coroutine")), GetMethodBody(unit, data), parameterInfo.parameterSignature, data);
                                 }
                             }
                             else if (unit.controlOutputs.First(output => output.key == "trigger").hasValidConnection)
@@ -421,7 +421,7 @@ namespace Unity.VisualScripting.Community
                         if (unit is Update update && !addedSpecialUpdateCode)
                         {
                             addedSpecialUpdateCode = true;
-                            specialUnitCode = string.Join("\n", _specialUnits.Select(t => CodeBuilder.Indent(2) + CodeUtility.MakeSelectable(t, (NodeGenerator.GetSingleDecorator(t, t) as VariableNodeGenerator).Name.VariableHighlight() + ".Update();")));
+                            specialUnitCode = string.Join("\n", _specialUnits.Select(t => CodeBuilder.Indent(2) + CodeUtility.MakeClickable(t, (NodeGenerator.GetSingleDecorator(t, t) as VariableNodeGenerator).Name.VariableHighlight() + ".Update();")));
                             specialUnitCode += "\n";
 #if PACKAGE_INPUT_SYSTEM_EXISTS
                             if (UnityEngine.InputSystem.InputSystem.settings.updateMode == InputSettings.UpdateMode.ProcessEventsInDynamicUpdate)
@@ -429,7 +429,7 @@ namespace Unity.VisualScripting.Community
                                 foreach (var inputsystemUnit in _allUnits.Where(unit => unit is OnInputSystemEvent).Cast<OnInputSystemEvent>())
                                 {
                                     if (!inputsystemUnit.trigger.hasValidConnection) continue;
-                                    specialUnitCode += CodeBuilder.Indent(2) + CodeUtility.MakeSelectable(inputsystemUnit, MethodNodeGenerator.GetSingleDecorator<MethodNodeGenerator>(inputsystemUnit, inputsystemUnit).Name + "();") + "\n";
+                                    specialUnitCode += CodeBuilder.Indent(2) + CodeUtility.MakeClickable(inputsystemUnit, MethodNodeGenerator.GetSingleDecorator<MethodNodeGenerator>(inputsystemUnit, inputsystemUnit).Name + "();") + "\n";
                                 }
                             }
 #endif
@@ -441,7 +441,7 @@ namespace Unity.VisualScripting.Community
                             foreach (var inputsystemUnit in _allUnits.Where(unit => unit is OnInputSystemEvent).Cast<OnInputSystemEvent>())
                             {
                                 if (!inputsystemUnit.trigger.hasValidConnection) continue;
-                                specialUnitCode += CodeBuilder.Indent(2) + CodeUtility.MakeSelectable(inputsystemUnit, MethodNodeGenerator.GetSingleDecorator<MethodNodeGenerator>(inputsystemUnit, inputsystemUnit).Name + "();") + "\n";
+                                specialUnitCode += CodeBuilder.Indent(2) + CodeUtility.MakeClickable(inputsystemUnit, MethodNodeGenerator.GetSingleDecorator<MethodNodeGenerator>(inputsystemUnit, inputsystemUnit).Name + "();") + "\n";
                             }
                         }
 #endif
@@ -471,14 +471,14 @@ namespace Unity.VisualScripting.Community
             if (_specialUnits.Count > 0 && !_allUnits.Any(e => e is Update))
             {
                 var update = new Update();
-                var specialCode = string.Join("\n", _specialUnits.Select(t => CodeBuilder.Indent(2) + CodeUtility.MakeSelectable(t, (NodeGenerator.GetSingleDecorator(t, t) as VariableNodeGenerator).Name.VariableHighlight() + ".Update();")));
+                var specialCode = string.Join("\n", _specialUnits.Select(t => CodeBuilder.Indent(2) + CodeUtility.MakeClickable(t, (NodeGenerator.GetSingleDecorator(t, t) as VariableNodeGenerator).Name.VariableHighlight() + ".Update();")));
 #if PACKAGE_INPUT_SYSTEM_EXISTS
                 if (UnityEngine.InputSystem.InputSystem.settings.updateMode == InputSettings.UpdateMode.ProcessEventsInDynamicUpdate)
                 {
                     foreach (var unit in _allUnits.Where(unit => unit is OnInputSystemEvent).Cast<OnInputSystemEvent>())
                     {
                         if (!unit.trigger.hasValidConnection) continue;
-                        specialCode += CodeBuilder.Indent(2) + CodeUtility.MakeSelectable(unit, MethodNodeGenerator.GetSingleDecorator<MethodNodeGenerator>(unit, unit).Name + "();") + "\n";
+                        specialCode += CodeBuilder.Indent(2) + CodeUtility.MakeClickable(unit, MethodNodeGenerator.GetSingleDecorator<MethodNodeGenerator>(unit, unit).Name + "();") + "\n";
                     }
                 }
 #endif
@@ -492,7 +492,7 @@ namespace Unity.VisualScripting.Community
                 foreach (var unit in _allUnits.Where(unit => unit is OnInputSystemEvent).Cast<OnInputSystemEvent>())
                 {
                     if (!unit.trigger.hasValidConnection) continue;
-                    specialCode += CodeBuilder.Indent(2) + CodeUtility.MakeSelectable(unit, MethodNodeGenerator.GetSingleDecorator<MethodNodeGenerator>(unit, unit).Name + "();") + "\n";
+                    specialCode += CodeBuilder.Indent(2) + CodeUtility.MakeClickable(unit, MethodNodeGenerator.GetSingleDecorator<MethodNodeGenerator>(unit, unit).Name + "();") + "\n";
                 }
                 AddNewMethod(update, CodeUtility.CleanCode(GetMethodName(update)), GetMethodSignature(update), specialCode, "", data);
             }
@@ -503,7 +503,7 @@ namespace Unity.VisualScripting.Community
                 foreach (var unit in _allUnits.Where(unit => unit is OnInputSystemEvent).Cast<OnInputSystemEvent>())
                 {
                     if (!unit.trigger.hasValidConnection) continue;
-                    specialCode += CodeBuilder.Indent(2) + CodeUtility.MakeSelectable(unit, MethodNodeGenerator.GetSingleDecorator<MethodNodeGenerator>(unit, unit).Name + "();") + "\n";
+                    specialCode += CodeBuilder.Indent(2) + CodeUtility.MakeClickable(unit, MethodNodeGenerator.GetSingleDecorator<MethodNodeGenerator>(unit, unit).Name + "();") + "\n";
                 }
                 AddNewMethod(update, CodeUtility.CleanCode(GetMethodName(update)), GetMethodSignature(update), specialCode, "", data);
             }
@@ -525,10 +525,10 @@ namespace Unity.VisualScripting.Community
         private string GetCustomEventRunnerCode(CustomEvent eventUnit, ControlGenerationData data)
         {
             var output = "";
-            output += CodeBuilder.Indent(2) + CodeUtility.MakeSelectable(eventUnit, "if ".ControlHighlight() + $"({"args".VariableHighlight()}.name == ") + eventUnit.GenerateValue(eventUnit.name, data) + CodeUtility.MakeSelectable(eventUnit, ")") + "\n";
-            output += CodeBuilder.Indent(2) + CodeUtility.MakeSelectable(eventUnit, "{") + "\n";
-            output += CodeBuilder.Indent(3) + (eventUnit.coroutine ? CodeUtility.MakeSelectable(eventUnit, $"StartCoroutine(") + GetMethodName(eventUnit) + CodeUtility.MakeSelectable(eventUnit, $"({"args".VariableHighlight()}));") : GetMethodName(eventUnit) + CodeUtility.MakeSelectable(eventUnit, $"({"args".VariableHighlight()});"));
-            output += "\n" + CodeBuilder.Indent(2) + CodeUtility.MakeSelectable(eventUnit, "}") + "\n";
+            output += CodeBuilder.Indent(2) + CodeUtility.MakeClickable(eventUnit, "if ".ControlHighlight() + $"({"args".VariableHighlight()}.name == ") + eventUnit.GenerateValue(eventUnit.name, data) + CodeUtility.MakeClickable(eventUnit, ")") + "\n";
+            output += CodeBuilder.Indent(2) + CodeUtility.MakeClickable(eventUnit, "{") + "\n";
+            output += CodeBuilder.Indent(3) + (eventUnit.coroutine ? CodeUtility.MakeClickable(eventUnit, $"StartCoroutine(") + GetMethodName(eventUnit) + CodeUtility.MakeClickable(eventUnit, $"({"args".VariableHighlight()}));") : GetMethodName(eventUnit) + CodeUtility.MakeClickable(eventUnit, $"({"args".VariableHighlight()});"));
+            output += "\n" + CodeBuilder.Indent(2) + CodeUtility.MakeClickable(eventUnit, "}") + "\n";
             return output;
         }
 
@@ -547,22 +547,22 @@ namespace Unity.VisualScripting.Community
 
             if (EVENT_NAMES.TryGetValue(UnitTitle, out var title))
             {
-                methodName = CodeUtility.MakeSelectable(eventUnit as Unit, title);
+                methodName = CodeUtility.MakeClickable(eventUnit as Unit, title);
             }
             else
             {
-                methodName = CodeUtility.MakeSelectable(eventUnit as Unit, UnitTitle);
+                methodName = CodeUtility.MakeClickable(eventUnit as Unit, UnitTitle);
             }
 
             if (eventUnit is CustomEvent customEvent)
             {
                 if (!customEvent.name.hasValidConnection)
                 {
-                    methodName = CodeUtility.MakeSelectable(eventUnit as Unit, (string)customEvent.defaultValues[customEvent.name.key]);
+                    methodName = CodeUtility.MakeClickable(eventUnit as Unit, (string)customEvent.defaultValues[customEvent.name.key]);
                 }
                 else
                 {
-                    return CodeUtility.MakeSelectable(eventUnit as Unit, "CustomEvent" + _customEventIds[eventUnit as CustomEvent]);
+                    return CodeUtility.MakeClickable(eventUnit as Unit, "CustomEvent" + _customEventIds[eventUnit as CustomEvent]);
                 }
             }
             else if (eventUnit is BoltNamedAnimationEvent animationEvent)
@@ -571,7 +571,7 @@ namespace Unity.VisualScripting.Community
             }
             else if (NodeGenerator.GetSingleDecorator(eventUnit as Unit, eventUnit as Unit) is MethodNodeGenerator methodNodeGenerator)
             {
-                return CodeUtility.MakeSelectable(eventUnit as Unit, methodNodeGenerator.Name);
+                return CodeUtility.MakeClickable(eventUnit as Unit, methodNodeGenerator.Name);
             }
 
             return methodName;
@@ -584,7 +584,7 @@ namespace Unity.VisualScripting.Community
             {
                 if (!data.ContainsNameInAnyScope(variable.name))
                 {
-                    variablesCode += CodeBuilder.Indent(2) + CodeUtility.MakeSelectable(eventUnit as Unit, Type.GetType(variable.typeHandle.Identification).As().CSharpName(false, true) + " " + variable.name.LegalMemberName().VariableHighlight() + (variable.value != null ? $" = " + "" + $"{variable.value.As().Code(true, true, true)}" : string.Empty) + ";") + "\n";
+                    variablesCode += CodeBuilder.Indent(2) + CodeUtility.MakeClickable(eventUnit as Unit, Type.GetType(variable.typeHandle.Identification).As().CSharpName(false, true) + " " + variable.name.LegalMemberName().VariableHighlight() + (variable.value != null ? $" = " + "" + $"{variable.value.As().Code(true, true, true)}" : string.Empty) + ";") + "\n";
                     data.AddLocalNameInScope(variable.name, Type.GetType(variable.typeHandle.Identification) ?? typeof(object));
                 }
             }
@@ -609,7 +609,7 @@ namespace Unity.VisualScripting.Community
             var returnType = isCoroutine ? "System.Collections".NamespaceHighlight() + "." + "IEnumerator".TypeHighlight() : "void".ConstructHighlight();
             var methodName = _methodName;
 
-            return $"\n" + CodeBuilder.Indent(1) + CodeUtility.MakeSelectable(unit, accessModifier.AsString().ConstructHighlight() + $"{(accessModifier == AccessModifier.None ? "" : " ")}{returnType} ") + $"{methodName.Replace(" ", "")}";
+            return $"\n" + CodeBuilder.Indent(1) + CodeUtility.MakeClickable(unit, accessModifier.AsString().ConstructHighlight() + $"{(accessModifier == AccessModifier.None ? "" : " ")}{returnType} ") + $"{methodName.Replace(" ", "")}";
         }
 
         private (string parameterSignature, List<(Type parameterType, string parameterName)>) GetMethodParameters(IEventUnit eventUnit)
@@ -697,7 +697,7 @@ namespace Unity.VisualScripting.Community
             {
                 var method = string.Empty;
                 method += CodeBuilder.Indent(1) + methodSignature;
-                method += CodeUtility.MakeSelectable(unit, $"({parameters})");
+                method += CodeUtility.MakeClickable(unit, $"({parameters})");
                 method += $"\n{CodeBuilder.Indent(1)}{{\n{methodBody}\n";
                 method += CodeBuilder.Indent(1) + "}";
                 return method;

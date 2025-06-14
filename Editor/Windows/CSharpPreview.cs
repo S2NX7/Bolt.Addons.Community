@@ -154,7 +154,7 @@ namespace Unity.VisualScripting.Community
                         result += region.code;
                     }
                 }
-                var outputToCopy = CodeUtility.RemoveAllSelectableTags(CodeUtility.RemoveCustomHighlights(RemoveColorTags(result)));
+                var outputToCopy = CodeUtility.RemoveAllClickableTags(CodeUtility.RemoveCustomHighlights(RemoveColorTags(result)));
                 EditorGUIUtility.systemCopyBuffer = outputToCopy;
             }
 
@@ -283,7 +283,7 @@ namespace Unity.VisualScripting.Community
             }
 
             var clickableRegions = CodeUtility.ExtractAndPopulateClickableRegions(output);
-            var plainOutput = CodeUtility.RemoveAllSelectableTags(output);
+            var plainOutput = CodeUtility.RemoveAllClickableTags(output);
             var lines = plainOutput.Split(new[] { '\n' }, StringSplitOptions.None);
 
             scrollPosition = GUILayout.BeginScrollView(scrollPosition);
@@ -394,7 +394,7 @@ namespace Unity.VisualScripting.Community
         private bool MatchesSearchQuery(string text)
         {
             return searchQuery.Length == 0 ||
-                   CodeUtility.RemoveAllSelectableTags(text).Contains(searchQuery, StringComparison.OrdinalIgnoreCase);
+                   CodeUtility.RemoveAllClickableTags(text).Contains(searchQuery, StringComparison.OrdinalIgnoreCase);
         }
 
         private void AddRegionToCache(int line, ClickableRegion region)
@@ -407,7 +407,7 @@ namespace Unity.VisualScripting.Community
 
         private void RenderButton(ClickableRegion region, int currentLine)
         {
-            string cleanCode = CodeUtility.RemoveAllSelectableTags(region.code);
+            string cleanCode = CodeUtility.RemoveAllClickableTags(region.code);
             GUIStyle lineStyle = selectedRegions.Contains(region) ? GetSelectedLineStyle() : TextStyle;
 
             if (GUILayout.Button(cleanCode ?? "", lineStyle, GUILayout.Width(lineStyle.CalcSize(new GUIContent(cleanCode)).x)))
@@ -448,7 +448,7 @@ namespace Unity.VisualScripting.Community
             // Part of search logic
             //string cleanCode = SearchUtility.HighlightQuery(CodeUtility.RemoveAllSelectableTags(region.code), query, "<color=yellow>", "</color>");
 
-            string cleanCode = CodeUtility.RemoveAllSelectableTags(region.code);
+            string cleanCode = CodeUtility.RemoveAllClickableTags(region.code);
             GUIStyle lineStyle = selectedRegions.Contains(region) ? GetSelectedLineStyle() : TextStyle;
             try
             {

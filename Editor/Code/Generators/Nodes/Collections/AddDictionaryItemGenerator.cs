@@ -21,7 +21,7 @@ namespace Unity.VisualScripting.Community
             var keyCode = "";
             var valueCode = "";
             data.SetExpectedType(typeof(System.Collections.IDictionary));
-            string output = Unity.VisualScripting.Community.Libraries.CSharp.CodeBuilder.Indent(indent) + base.GenerateValue(this.Unit.dictionaryInput, data) + MakeSelectableForThisUnit(".Add(", true);
+            string output = Unity.VisualScripting.Community.Libraries.CSharp.CodeBuilder.Indent(indent) + base.GenerateValue(this.Unit.dictionaryInput, data) + MakeClickableForThisUnit(".Add(", true);
             var result = data.RemoveExpectedType();
             if (result.isMet && typeof(System.Collections.IDictionary).IsAssignableFrom(result.type))
             {
@@ -39,7 +39,7 @@ namespace Unity.VisualScripting.Community
                 valueCode = base.GenerateValue(this.Unit.value, data);
             }
 
-            output = output + keyCode + MakeSelectableForThisUnit(", ", true) + valueCode + MakeSelectableForThisUnit(");", true) + "\n" + GetNextUnit(this.Unit.exit, data, indent);
+            output = output + keyCode + MakeClickableForThisUnit(", ", true) + valueCode + MakeClickableForThisUnit(");", true) + "\n" + GetNextUnit(this.Unit.exit, data, indent);
             return output;
         }
 

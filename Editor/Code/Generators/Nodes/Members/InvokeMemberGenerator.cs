@@ -10,13 +10,12 @@ using System;
 
 namespace Unity.VisualScripting.Community
 {
-    [NodeGenerator(typeof(Unity.VisualScripting.InvokeMember))]
-    public sealed class InvokeMemberGenerator : NodeGenerator<Unity.VisualScripting.InvokeMember>
+    [NodeGenerator(typeof(InvokeMember))]
+    public sealed class InvokeMemberGenerator : NodeGenerator<InvokeMember>
     {
         private ControlGenerationData controlGenerationData;
 
         private Dictionary<ValueOutput, string> outputNames;
-
         public InvokeMemberGenerator(Unity.VisualScripting.InvokeMember unit) : base(unit)
         {
             if (Unit.member.isExtension)
@@ -42,32 +41,32 @@ namespace Unity.VisualScripting.Community
                 if (Unit.member.isConstructor)
                 {
                     string parameters = string.Empty;
-                    string typeName = MakeSelectableForThisUnit(Unit.member.pseudoDeclaringType.As().CSharpName(false, true));
+                    string typeName = MakeClickableForThisUnit(Unit.member.pseudoDeclaringType.As().CSharpName(false, true));
                     if (Unit.member.pseudoDeclaringType.IsArray)
-                        typeName = typeName.Replace("[]", "") + MakeSelectableForThisUnit("[") + GenerateArguments(data) + MakeSelectableForThisUnit("]");
+                        typeName = typeName.Replace("[]", "") + MakeClickableForThisUnit("[") + GenerateArguments(data) + MakeClickableForThisUnit("]");
                     else
-                        parameters = MakeSelectableForThisUnit("(") + GenerateArguments(data) + MakeSelectableForThisUnit(")");
-                    _output += new ValueCode(MakeSelectableForThisUnit($"{"new".ConstructHighlight()} ") + typeName + parameters);
+                        parameters = MakeClickableForThisUnit("(") + GenerateArguments(data) + MakeClickableForThisUnit(")");
+                    _output += new ValueCode(MakeClickableForThisUnit($"{"new".ConstructHighlight()} ") + typeName + parameters);
                 }
                 else
                 {
                     if (Unit.target == null)
                     {
-                        _output += new ValueCode(MakeSelectableForThisUnit($"{Unit.member.pseudoDeclaringType.As().CSharpName(false, true)}.{Unit.member.name}(") + $"{GenerateArguments(data)}{MakeSelectableForThisUnit(")")}");
+                        _output += new ValueCode(MakeClickableForThisUnit($"{Unit.member.pseudoDeclaringType.As().CSharpName(false, true)}.{Unit.member.name}(") + $"{GenerateArguments(data)}{MakeClickableForThisUnit(")")}");
                     }
                     else
                     {
                         if (Unit.target.hasValidConnection && Unit.target.type != Unit.target.connection.source.type && Unit.member.pseudoDeclaringType.IsSubclassOf(typeof(Component)))
                         {
-                            _output += new ValueCode(GenerateValue(Unit.target, data) + MakeSelectableForThisUnit(GetComponent(Unit.target, data) + "." + Unit.member.name + $"(") + $"{GenerateArguments(data)}{MakeSelectableForThisUnit(")")}");
+                            _output += new ValueCode(GenerateValue(Unit.target, data) + MakeClickableForThisUnit(GetComponent(Unit.target, data) + "." + Unit.member.name + $"(") + $"{GenerateArguments(data)}{MakeClickableForThisUnit(")")}");
                         }
                         else if (Unit.member.pseudoDeclaringType.IsSubclassOf(typeof(Component)))
                         {
-                            _output += new ValueCode(GenerateValue(Unit.target, data) + MakeSelectableForThisUnit(GetComponent(Unit.target, data) + "." + Unit.member.name + $"(") + $"{GenerateArguments(data)}{MakeSelectableForThisUnit(")")}", typeof(GameObject), ShouldCast(Unit.target, data, false));
+                            _output += new ValueCode(GenerateValue(Unit.target, data) + MakeClickableForThisUnit(GetComponent(Unit.target, data) + "." + Unit.member.name + $"(") + $"{GenerateArguments(data)}{MakeClickableForThisUnit(")")}", typeof(GameObject), ShouldCast(Unit.target, data, false));
                         }
                         else
                         {
-                            _output += new ValueCode($"{GenerateValue(Unit.target, data)}" + MakeSelectableForThisUnit($".{Unit.member.name}(") + $"{GenerateArguments(data)}{MakeSelectableForThisUnit(")")}");
+                            _output += new ValueCode($"{GenerateValue(Unit.target, data)}" + MakeClickableForThisUnit($".{Unit.member.name}(") + $"{GenerateArguments(data)}{MakeClickableForThisUnit(")")}");
                         }
                     }
                 }
@@ -87,7 +86,7 @@ namespace Unity.VisualScripting.Community
 
                 var transformedKey = outputNames[output].Replace("&", "").Replace("%", "");
 
-                return MakeSelectableForThisUnit(transformedKey.VariableHighlight());
+                return MakeClickableForThisUnit(transformedKey.VariableHighlight());
             }
             else if (output == Unit.targetOutput)
             {
@@ -126,36 +125,36 @@ namespace Unity.VisualScripting.Community
                 {
                     string parameters;
                     if (Unit.member.pseudoDeclaringType.IsArray)
-                        parameters = MakeSelectableForThisUnit("[") + GenerateArguments(data) + MakeSelectableForThisUnit("];");
+                        parameters = MakeClickableForThisUnit("[") + GenerateArguments(data) + MakeClickableForThisUnit("];");
                     else
-                        parameters = MakeSelectableForThisUnit("(") + GenerateArguments(data) + MakeSelectableForThisUnit(");");
+                        parameters = MakeClickableForThisUnit("(") + GenerateArguments(data) + MakeClickableForThisUnit(");");
 
-                    output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit($"{"new".ConstructHighlight()} {Unit.member.pseudoDeclaringType.As().CSharpName(false, true)}") + parameters + "\n";
+                    output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit($"{"new".ConstructHighlight()} {Unit.member.pseudoDeclaringType.As().CSharpName(false, true)}") + parameters + "\n";
                 }
                 else
                 {
                     if (Unit.target == null)
                     {
-                        output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit($"{Unit.member.pseudoDeclaringType.As().CSharpName(false, true)}.{Unit.member.name}(") + $"{GenerateArguments(data)}{MakeSelectableForThisUnit(");")}" + "\n";
+                        output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit($"{Unit.member.pseudoDeclaringType.As().CSharpName(false, true)}.{Unit.member.name}(") + $"{GenerateArguments(data)}{MakeClickableForThisUnit(");")}" + "\n";
                     }
                     else
                     {
                         var target = GenerateValue(Unit.target, data);
                         if (Unit.member.pseudoDeclaringType == typeof(GameObject) && Unit.target.hasValidConnection && typeof(Component).IsAssignableFrom(GetSourceType(Unit.target, data) ?? Unit.target.connection.source.type))
                         {
-                            output += CodeBuilder.Indent(indent) + target + (typeof(Component).IsAssignableFrom(Unit.target.type) && Unit.target.type != typeof(object) ? MakeSelectableForThisUnit($".{"gameObject".VariableHighlight()}.GetComponent<{(GetSourceType(Unit.target, data) ?? Unit.target.connection.source.type).As().CSharpName(false, true)}>().{Unit.member.name}(") : MakeSelectableForThisUnit($".{"gameObject".VariableHighlight()}.{Unit.member.name}(")) + $"{GenerateArguments(data)}{MakeSelectableForThisUnit(");")}" + "\n";
+                            output += CodeBuilder.Indent(indent) + target + (typeof(Component).IsAssignableFrom(Unit.target.type) && Unit.target.type != typeof(object) ? MakeClickableForThisUnit($".{"gameObject".VariableHighlight()}.GetComponent<{(GetSourceType(Unit.target, data) ?? Unit.target.connection.source.type).As().CSharpName(false, true)}>().{Unit.member.name}(") : MakeClickableForThisUnit($".{"gameObject".VariableHighlight()}.{Unit.member.name}(")) + $"{GenerateArguments(data)}{MakeClickableForThisUnit(");")}" + "\n";
                         }
                         else if (Unit.target.hasValidConnection && Unit.target.type != Unit.target.connection.source.type && typeof(Component).IsAssignableFrom(Unit.member.pseudoDeclaringType))
                         {
-                            output += CodeBuilder.Indent(indent) + target + MakeSelectableForThisUnit($"{GetComponent(Unit.target, data)}.{Unit.member.name}(") + GenerateArguments(data) + MakeSelectableForThisUnit(");") + "\n";
+                            output += CodeBuilder.Indent(indent) + target + MakeClickableForThisUnit($"{GetComponent(Unit.target, data)}.{Unit.member.name}(") + GenerateArguments(data) + MakeClickableForThisUnit(");") + "\n";
                         }
                         else if (typeof(Component).IsAssignableFrom(Unit.member.pseudoDeclaringType))
                         {
-                            output += CodeBuilder.Indent(indent) + target + MakeSelectableForThisUnit($"{GetComponent(Unit.target, data)}.{Unit.member.name}(") + GenerateArguments(data) + MakeSelectableForThisUnit(");") + "\n";
+                            output += CodeBuilder.Indent(indent) + target + MakeClickableForThisUnit($"{GetComponent(Unit.target, data)}.{Unit.member.name}(") + GenerateArguments(data) + MakeClickableForThisUnit(");") + "\n";
                         }
                         else
                         {
-                            output += CodeBuilder.Indent(indent) + target + MakeSelectableForThisUnit($".{Unit.member.name}(") + GenerateArguments(data) + MakeSelectableForThisUnit(");") + "\n";
+                            output += CodeBuilder.Indent(indent) + target + MakeClickableForThisUnit($".{Unit.member.name}(") + GenerateArguments(data) + MakeClickableForThisUnit(");") + "\n";
                         }
                     }
                 }
@@ -180,7 +179,7 @@ namespace Unity.VisualScripting.Community
             {
                 if (input.type == typeof(GameObject) || input.type.IsSubclassOf(typeof(Component)) || input.type == typeof(Component) && input == Unit.target)
                 {
-                    return MakeSelectableForThisUnit("gameObject".VariableHighlight());
+                    return MakeClickableForThisUnit("gameObject".VariableHighlight());
                 }
                 return Unit.defaultValues[input.key].As().Code(true, Unit, true, true, "", false, true);
             }
@@ -208,77 +207,90 @@ namespace Unity.VisualScripting.Community
                         return string.Empty;
                     }
                 }
-                return MakeSelectableForThisUnit($"/* \"{input.key} Requires Input\" */".WarningHighlight());
+                return MakeClickableForThisUnit($"/* \"{input.key} Requires Input\" */".WarningHighlight());
             }
         }
 
         private string GenerateArguments(ControlGenerationData data = null)
         {
+            var method = Unit.member.methodInfo;
+            var parameters = method?.GetParameters();
+
             if (controlGenerationData != null && Unit.member.isMethod)
             {
-                List<string> output = new List<string>();
-                var index = 0;
-                foreach (var parameter in Unit.member.methodInfo.GetParameters())
+                var output = new List<string>();
+                int count = parameters.Length;
+
+                for (int i = 0; i < count; i++)
                 {
+                    var parameter = parameters[i];
+                    var input = Unit.inputParameters.TryGetValue(i, out var p) ? p : null;
                     if (parameter.HasOutModifier())
                     {
                         var name = controlGenerationData.AddLocalNameInScope(parameter.Name, parameter.ParameterType).VariableHighlight();
-                        output.Add(MakeSelectableForThisUnit("out var ".ConstructHighlight() + name));
-                        if (Unit.outputParameters.Values.Any(output => output.key == "&" + parameter.Name && !outputNames.ContainsKey(Unit.outputParameters[index])))
-                            outputNames.Add(Unit.outputParameters[index], "&" + name);
+                        output.Add(MakeClickableForThisUnit("out ".ConstructHighlight() + "var " + name));
+
+                        if (Unit.outputParameters.TryGetValue(i, out var outValue) && !outputNames.ContainsKey(outValue))
+                            outputNames.Add(outValue, "&" + name);
                     }
                     else if (parameter.ParameterType.IsByRef)
                     {
-                        var name = controlGenerationData.AddLocalNameInScope(parameter.Name, parameter.ParameterType).VariableHighlight();
-                        var input = Unit.inputParameters[index];
-                        if (!input.hasValidConnection || (input.hasValidConnection && input.connection.source.unit is not GetVariable or AssetFieldUnit or InheritedFieldUnit or GetMember))
+                        if (input == null)
                         {
-                            output.Add($"/* {input.key.Replace("%", "")} needs to be connected to a variable unit or a get member unit */".WarningHighlight());
+                            output.Add($"/* Missing input for {parameter.Name} */".WarningHighlight());
                             continue;
                         }
-                        output.Add(MakeSelectableForThisUnit("ref ".ConstructHighlight()) + GenerateValue(Unit.inputParameters[index], data));
-                        outputNames.Add(Unit.outputParameters[index], "&" + name);
+
+                        var name = controlGenerationData.AddLocalNameInScope(parameter.Name, parameter.ParameterType).VariableHighlight();
+
+                        if (!input.hasValidConnection || (input.connection?.source.unit is not GetVariable and not AssetFieldUnit and not InheritedFieldUnit and not GetMember))
+                        {
+                            output.Add($"/* {input.key.Replace("%", "")} needs connection to a variable or member unit */".WarningHighlight());
+                            continue;
+                        }
+
+                        output.Add(MakeClickableForThisUnit("ref ".ConstructHighlight()) + GenerateValue(input, data));
+                        if (Unit.outputParameters.TryGetValue(i, out var outRef) && !outputNames.ContainsKey(outRef))
+                            outputNames.Add(outRef, "&" + name);
                     }
-                    else if (parameter.IsDefined(typeof(ParamArrayAttribute), false) && !Unit.inputParameters[index].hasValidConnection)
+                    else if (parameter.IsOptional && (input == null || (!input.hasValidConnection && !input.hasDefaultValue)))
                     {
                         continue;
                     }
-                    else if (parameter.IsOptional && !Unit.inputParameters[index].hasValidConnection && !Unit.inputParameters[index].hasDefaultValue)
+                    else if (parameter.IsDefined(typeof(ParamArrayAttribute), false) && (input == null || !input.hasValidConnection))
                     {
                         continue;
                     }
                     else
                     {
-                        output.Add(GenerateValue(Unit.inputParameters.Values.First(input => input.key == "%" + parameter.Name), data));
+                        output.Add(GenerateValue(input, data));
                     }
-                    index++;
                 }
-                return string.Join(MakeSelectableForThisUnit(", "), output);
+
+                return string.Join(MakeClickableForThisUnit(", "), output);
             }
             else if (Unit.member.isMethod)
             {
-                List<string> output = new List<string>();
-                var index = 0;
-                foreach (var parameter in Unit.member.methodInfo.GetParameters())
+                var output = new List<string>();
+                int count = parameters.Length;
+
+                for (int i = 0; i < count; i++)
                 {
-                    if (parameter.IsDefined(typeof(ParamArrayAttribute), false) && !Unit.inputParameters[index].hasValidConnection)
-                    {
+                    if (!Unit.inputParameters.TryGetValue(i, out var input))
                         continue;
-                    }
-                    else if (parameter.IsOptional && !Unit.inputParameters[index].hasValidConnection)
-                    {
+
+                    var param = parameters[i];
+                    if ((param.IsOptional && !input.hasValidConnection) || (param.IsDefined(typeof(ParamArrayAttribute), false) && !input.hasValidConnection))
                         continue;
-                    }
-                    else if (Unit.inputParameters.ContainsKey(index))
-                        output.Add(GenerateValue(Unit.inputParameters[index], data));
-                    index++;
+
+                    output.Add(GenerateValue(input, data));
                 }
-                return string.Join(MakeSelectableForThisUnit(", "), output);
+
+                return string.Join(MakeClickableForThisUnit(", "), output);
             }
             else
             {
-                List<string> output = Unit.valueInputs.Select(input => GenerateValue(input, data)).ToList();
-                return string.Join(MakeSelectableForThisUnit(", "), output);
+                return string.Join(MakeClickableForThisUnit(", "), Unit.valueInputs.Select(input => GenerateValue(input, data)));
             }
         }
     }

@@ -12,7 +12,7 @@ namespace Unity.VisualScripting.Community
 
         public override string GenerateValue(ValueOutput output, ControlGenerationData data)
         {
-            return MakeSelectableForThisUnit("new ".ConstructHighlight() + GetDictionaryType(data).As().CSharpName(false, true) + "()");
+            return MakeClickableForThisUnit("new ".ConstructHighlight() + GetDictionaryType(data).As().CSharpName(false, true) + "()");
         }
 
         Type GetDictionaryType(ControlGenerationData data)

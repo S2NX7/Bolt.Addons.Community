@@ -15,7 +15,7 @@ namespace Unity.VisualScripting.Community
 
         public string variableName = "";
         private int currentRecursionDepth = CSharpPreviewSettings.RecursionDepth;
-        public Recursion recursion = Recursion.New(CSharpPreviewSettings.RecursionDepth);
+        public Recursion recursion { get; private set; } = Recursion.New(CSharpPreviewSettings.RecursionDepth);
 
         #region Subgraphs
         public List<ControlOutput> connectedGraphOutputs = new List<ControlOutput>();
@@ -48,15 +48,15 @@ namespace Unity.VisualScripting.Community
             }
             else
             {
-                return MakeSelectableForThisUnit($"/* \"{input.key} Requires Input\" */".WarningHighlight());
+                return MakeClickableForThisUnit($"/* \"{input.key} Requires Input\" */".WarningHighlight());
             }
         }
 
-        public virtual string GenerateValue(ValueOutput output, ControlGenerationData data) { return MakeSelectableForThisUnit($"/* Port '{output.key}' of '{output.unit.GetType().Name}' Missing Generator. */".WarningHighlight()); }
+        public virtual string GenerateValue(ValueOutput output, ControlGenerationData data) { return MakeClickableForThisUnit($"/* Port '{output.key}' of '{output.unit.GetType().Name}' Missing Generator. */".WarningHighlight()); }
 
         public virtual string GenerateControl(ControlInput input, ControlGenerationData data, int indent)
         {
-            return CodeBuilder.Indent(indent) + MakeSelectableForThisUnit($"/*{(input != null ? " Port '" + input.key + "' of " : "")}'{unit.GetType().Name}' Missing Generator. */".WarningHighlight());
+            return CodeBuilder.Indent(indent) + MakeClickableForThisUnit($"/*{(input != null ? " Port '" + input.key + "' of " : "")}'{unit.GetType().Name}' Missing Generator. */".WarningHighlight());
         }
 
         public string GetNextUnit(ControlOutput controlOutput, ControlGenerationData data, int indent)
@@ -107,24 +107,25 @@ namespace Unity.VisualScripting.Community
             {
                 return valueInput.type;
             }
-            if (valueInput.hasValidConnection && data.TryGetSymbol(valueInput.GetPesudoSource()?.unit as Unit, out var symbol))
+            var pseudoSource = valueInput.GetPesudoSource();
+            if (valueInput.hasValidConnection && data.TryGetSymbol(pseudoSource?.unit as Unit, out var symbol))
             {
                 return symbol.Type;
             }
 
-            if (data != null && valueInput.hasValidConnection && valueInput.GetPesudoSource() != null && data.TryGetVariableType(GetSingleDecorator(valueInput.GetPesudoSource().unit as Unit, valueInput.GetPesudoSource().unit as Unit).variableName, out Type type))
+            if (data != null && valueInput.hasValidConnection && pseudoSource != null && data.TryGetVariableType((pseudoSource.unit as Unit).GetGenerator().variableName, out Type type))
             {
                 return type;
             }
 
-            if (valueInput.hasValidConnection && valueInput.GetPesudoSource() != null && GetSingleDecorator(valueInput.GetPesudoSource().unit as Unit, valueInput.GetPesudoSource().unit as Unit) is LocalVariableGenerator localVariable && localVariable.variableType != null)
+            if (valueInput.hasValidConnection && pseudoSource != null && (pseudoSource.unit as Unit).GetGenerator() is LocalVariableGenerator localVariable && localVariable.variableType != null)
             {
                 return localVariable.variableType;
             }
 
-            if (valueInput.hasValidConnection && valueInput.GetPesudoSource() != null && valueInput.GetPesudoSource()?.type != typeof(object))
+            if (valueInput.hasValidConnection && pseudoSource != null && pseudoSource?.type != typeof(object))
             {
-                return valueInput.GetPesudoSource().type;
+                return pseudoSource.type;
             }
 
             if (valueInput.hasValidConnection)
@@ -215,10 +216,10 @@ namespace Unity.VisualScripting.Community
             return false;
         }
 
-        public string MakeSelectableForThisUnit(string code, bool condition = true)
+        public string MakeClickableForThisUnit(string code, bool condition = true)
         {
             if (condition)
-                return CodeUtility.MakeSelectable(unit, code);
+                return CodeUtility.MakeClickable(unit, code);
             else
                 return code;
         }

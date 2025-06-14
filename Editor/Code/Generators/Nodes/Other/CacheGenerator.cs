@@ -32,7 +32,7 @@ namespace Unity.VisualScripting.Community
         public override string GenerateControl(ControlInput input, ControlGenerationData data, int indent)
         {
             var output = string.Empty;
-            output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit(Name.VariableHighlight() + " = ") + GenerateValue(Unit.input, data) + MakeSelectableForThisUnit(";") + "\n";
+            output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit(Name.VariableHighlight() + " = ") + GenerateValue(Unit.input, data) + MakeClickableForThisUnit(";") + "\n";
             output += GetNextUnit(Unit.exit, data, indent);
             var sourceType = GetSourceType(Unit.input, data);
             if (sourceType != type && sourceType != null)

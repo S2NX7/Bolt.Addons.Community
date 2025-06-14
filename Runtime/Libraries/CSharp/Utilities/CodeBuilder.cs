@@ -485,10 +485,10 @@ namespace Unity.VisualScripting.Community.Libraries.CSharp
 
         public static string MultiLineLambda(Unit unit, string parameters, string body, int Indent)
         {
-            return CodeUtility.MakeSelectable(unit, "(") + parameters + CodeUtility.MakeSelectable(unit, ") =>") + "\n" +
-                   CodeBuilder.Indent(Indent) + CodeUtility.MakeSelectable(unit, "{") + "\n" +
+            return CodeUtility.MakeClickable(unit, "(") + parameters + CodeUtility.MakeClickable(unit, ") =>") + "\n" +
+                   CodeBuilder.Indent(Indent) + CodeUtility.MakeClickable(unit, "{") + "\n" +
                     body + "\n" +
-                   CodeBuilder.Indent(Indent) + CodeUtility.MakeSelectable(unit, "}");
+                   CodeBuilder.Indent(Indent) + CodeUtility.MakeClickable(unit, "}");
         }
 
         public static string Assign(this string member, string value, Type castedType)
@@ -520,7 +520,7 @@ namespace Unity.VisualScripting.Community.Libraries.CSharp
         {
             if (unit != null)
             {
-                return CodeUtility.MakeSelectable(unit, value);
+                return CodeUtility.MakeClickable(unit, value);
             }
             else
             {
@@ -532,7 +532,7 @@ namespace Unity.VisualScripting.Community.Libraries.CSharp
         {
             if (isTrue)
             {
-                return CodeUtility.MakeSelectable(unit, value);
+                return CodeUtility.MakeClickable(unit, value);
             }
             else
             {
@@ -610,7 +610,7 @@ namespace Unity.VisualScripting.Community.Libraries.CSharp
         /// <returns>The method call as a string</returns>
         public static string CallCSharpUtilityMethod(Unit unit, string methodName, params string[] parameters)
         {
-            return CodeUtility.MakeSelectable(unit, $"{"CSharpUtility".TypeHighlight()}.") + methodName + CodeUtility.MakeSelectable(unit, "(") + string.Join(CodeUtility.MakeSelectable(unit, ", "), parameters) + CodeUtility.MakeSelectable(unit, ")");
+            return CodeUtility.MakeClickable(unit, $"{"CSharpUtility".TypeHighlight()}.") + methodName + CodeUtility.MakeClickable(unit, "(") + string.Join(CodeUtility.MakeClickable(unit, ", "), parameters) + CodeUtility.MakeClickable(unit, ")");
         }
 
         /// <summary>
@@ -623,7 +623,7 @@ namespace Unity.VisualScripting.Community.Libraries.CSharp
         /// <returns>The method call as a string</returns>
         public static string CallCSharpUtilityExtensitionMethod(Unit unit, string target, string methodName, params string[] parameters)
         {
-            return target + CodeUtility.MakeSelectable(unit, ".") + methodName + CodeUtility.MakeSelectable(unit, "(") + string.Join(CodeUtility.MakeSelectable(unit, ", "), parameters) + CodeUtility.MakeSelectable(unit, ")");
+            return target + CodeUtility.MakeClickable(unit, ".") + methodName + CodeUtility.MakeClickable(unit, "(") + string.Join(CodeUtility.MakeClickable(unit, ", "), parameters) + CodeUtility.MakeClickable(unit, ")");
         }
 
         public static string Highlight(string code, Color color)

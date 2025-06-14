@@ -32,7 +32,7 @@ namespace Unity.VisualScripting.Community
             variableName = Name;
             if(!typeof(MonoBehaviour).IsAssignableFrom(data.ScriptType))
             {
-                return CodeBuilder.Indent(indent + 1) + MakeSelectableForThisUnit(CodeUtility.ToolTip("Timers only works with ScriptGraphAssets, ScriptMachines or a ClassAsset that inherits MonoBehaviour",  "Could not generate Timer", ""));
+                return CodeBuilder.Indent(indent + 1) + MakeClickableForThisUnit(CodeUtility.ToolTip("Timers only works with ScriptGraphAssets, ScriptMachines or a ClassAsset that inherits MonoBehaviour",  "Could not generate Timer", ""));
             }
     
             var output = string.Empty;
@@ -40,31 +40,31 @@ namespace Unity.VisualScripting.Community
             if (input == Unit.start)
             {
                 var action = GetAction(Unit.started, indent, data);
-                output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit(variableName.VariableHighlight() + ".StartTimer(") + GenerateValue(Unit.duration, data) + MakeSelectableForThisUnit(", ") + GenerateValue(Unit.unscaledTime, data) + (!string.IsNullOrEmpty(action) ? MakeSelectableForThisUnit(", ") + action : "") + MakeSelectableForThisUnit(");") + "\n";
+                output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit(variableName.VariableHighlight() + ".StartTimer(") + GenerateValue(Unit.duration, data) + MakeClickableForThisUnit(", ") + GenerateValue(Unit.unscaledTime, data) + (!string.IsNullOrEmpty(action) ? MakeClickableForThisUnit(", ") + action : "") + MakeClickableForThisUnit(");") + "\n";
             }
             else if (input == Unit.pause)
             {
-                output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit(variableName.VariableHighlight() + ".PauseTimer();") + "\n";
+                output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit(variableName.VariableHighlight() + ".PauseTimer();") + "\n";
             }
             else if (input == Unit.resume)
             {
-                output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit(variableName.VariableHighlight() + ".ResumeTimer();") + "\n";
+                output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit(variableName.VariableHighlight() + ".ResumeTimer();") + "\n";
             }
             else if (input == Unit.toggle)
             {
-                output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit(variableName.VariableHighlight() + ".ToggleTimer();") + "\n";
+                output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit(variableName.VariableHighlight() + ".ToggleTimer();") + "\n";
             }
     
             if (Unit.tick.hasValidConnection && !data.generatorData.TryGetValue(Unit.tick, out var tickGenerated))
             {
                 data.generatorData.Add(Unit.tick, true);
-                output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit(variableName.VariableHighlight() + "." + "OnTick".VariableHighlight() + " += ") + GetAction(Unit.tick, indent, data) + MakeSelectableForThisUnit(";") + "\n";
+                output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit(variableName.VariableHighlight() + "." + "OnTick".VariableHighlight() + " += ") + GetAction(Unit.tick, indent, data) + MakeClickableForThisUnit(";") + "\n";
             }
     
             if (Unit.completed.hasValidConnection && !data.generatorData.TryGetValue(Unit.completed, out var completedGenerated))
             {
                 data.generatorData.Add(Unit.completed, true);
-                output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit(variableName.VariableHighlight() + "." + "OnCompleted".VariableHighlight() + " += ") + GetAction(Unit.completed, indent, data) + MakeSelectableForThisUnit(";") + "\n";
+                output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit(variableName.VariableHighlight() + "." + "OnCompleted".VariableHighlight() + " += ") + GetAction(Unit.completed, indent, data) + MakeClickableForThisUnit(";") + "\n";
             }
     
             return output;
@@ -77,10 +77,10 @@ namespace Unity.VisualScripting.Community
             var output = "";
             data.NewScope();
             data.SetReturns(typeof(void));
-            output += MakeSelectableForThisUnit("() =>") + "\n";
-            output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit("{") + "\n";
+            output += MakeClickableForThisUnit("() =>") + "\n";
+            output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit("{") + "\n";
             output += GetNextUnit(controlOutput, data, indent + 1);
-            output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit("}");
+            output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit("}");
             data.ExitScope();
             return output;
         }
@@ -89,19 +89,19 @@ namespace Unity.VisualScripting.Community
         {
             if (output == Unit.elapsedSeconds)
             {
-                return MakeSelectableForThisUnit(variableName.VariableHighlight() + "." + "Elapsed".VariableHighlight());
+                return MakeClickableForThisUnit(variableName.VariableHighlight() + "." + "Elapsed".VariableHighlight());
             }
             else if (output == Unit.elapsedRatio)
             {
-                return MakeSelectableForThisUnit(variableName.VariableHighlight() + "." + "ElapsedPercentage".VariableHighlight());
+                return MakeClickableForThisUnit(variableName.VariableHighlight() + "." + "ElapsedPercentage".VariableHighlight());
             }
             else if (output == Unit.remainingSeconds)
             {
-                return MakeSelectableForThisUnit(variableName.VariableHighlight() + "." + "Remaining".VariableHighlight());
+                return MakeClickableForThisUnit(variableName.VariableHighlight() + "." + "Remaining".VariableHighlight());
             }
             else if (output == Unit.remainingRatio)
             {
-                return MakeSelectableForThisUnit(variableName.VariableHighlight() + "." + "RemainingPercentage".VariableHighlight());
+                return MakeClickableForThisUnit(variableName.VariableHighlight() + "." + "RemainingPercentage".VariableHighlight());
             }
             return base.GenerateValue(output, data);
         }

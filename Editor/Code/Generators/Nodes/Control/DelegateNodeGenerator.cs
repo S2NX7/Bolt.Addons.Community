@@ -43,13 +43,13 @@ namespace Unity.VisualScripting.Community
                         }
                     }
                 }
-                var delegateCode = CodeBuilder.MultiLineLambda(Unit, MakeSelectableForThisUnit(string.Join(", ", parameters)), GenerateControl(null, data, CodeBuilder.currentIndent) + (Unit._delegate is IFunc ? "\n" + CodeBuilder.GetCurrentIndent(Unit.invoke.hasValidConnection ? 0 : 1) + MakeSelectableForThisUnit("return ".ControlHighlight()) + GenerateValue((Unit as FuncNode).@return, data) + MakeSelectableForThisUnit(";") : string.Empty), Unit.invoke.hasValidConnection ? CodeBuilder.currentIndent - 1 : (Unit._delegate is IFunc ? CodeBuilder.currentIndent - 1 : CodeBuilder.currentIndent));
+                var delegateCode = CodeBuilder.MultiLineLambda(Unit, MakeClickableForThisUnit(string.Join(", ", parameters)), GenerateControl(null, data, CodeBuilder.currentIndent) + (Unit._delegate is IFunc ? "\n" + CodeBuilder.GetCurrentIndent(Unit.invoke.hasValidConnection ? 0 : 1) + MakeClickableForThisUnit("return ".ControlHighlight()) + GenerateValue((Unit as FuncNode).@return, data) + MakeClickableForThisUnit(";") : string.Empty), Unit.invoke.hasValidConnection ? CodeBuilder.currentIndent - 1 : (Unit._delegate is IFunc ? CodeBuilder.currentIndent - 1 : CodeBuilder.currentIndent));
                 data.ExitScope();
                 return delegateCode;
             }
             else if (Unit.parameters.Contains(output) && (Unit.@delegate.hasValidConnection || Unit.Callback.hasValidConnection))
             {
-                return MakeSelectableForThisUnit(data.GetVariableName("arg" + Unit.parameters.IndexOf(output)).VariableHighlight());
+                return MakeClickableForThisUnit(data.GetVariableName("arg" + Unit.parameters.IndexOf(output)).VariableHighlight());
             }
             else return base.GenerateValue(output, data);
         }

@@ -23,20 +23,20 @@ namespace Unity.VisualScripting.Community
                 var isLiteral = Unit.selector.hasValidConnection && Unit.selector.connection.source.unit is Literal;
                 var localName = string.Empty;
                 if (isLiteral) localName = data.AddLocalNameInScope("str", typeof(string));
-                var newLiteral = isLiteral ? CodeBuilder.Indent(indent) + MakeSelectableForThisUnit("var ".ConstructHighlight() + $"{localName} = ") + ((Unit)Unit.selector.connection.source.unit).GenerateValue(Unit.selector.connection.source, data) + MakeSelectableForThisUnit(";") : string.Empty;
-                var @enum = Unit.selector.hasValidConnection ? isLiteral ? MakeSelectableForThisUnit(localName) : ((Unit)Unit.selector.connection.source.unit).GenerateValue(Unit.selector.connection.source, data) : base.GenerateControl(input, data, indent);
+                var newLiteral = isLiteral ? CodeBuilder.Indent(indent) + MakeClickableForThisUnit("var ".ConstructHighlight() + $"{localName} = ") + ((Unit)Unit.selector.connection.source.unit).GenerateValue(Unit.selector.connection.source, data) + MakeClickableForThisUnit(";") : string.Empty;
+                var @enum = Unit.selector.hasValidConnection ? isLiteral ? MakeClickableForThisUnit(localName) : ((Unit)Unit.selector.connection.source.unit).GenerateValue(Unit.selector.connection.source, data) : base.GenerateControl(input, data, indent);
 
-                if (isLiteral) output += MakeSelectableForThisUnit(newLiteral) + "\n";
-                output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit("switch".ConstructHighlight() + $" ({@enum})");
+                if (isLiteral) output += MakeClickableForThisUnit(newLiteral) + "\n";
+                output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit("switch".ConstructHighlight() + $" ({@enum})");
                 output += "\n";
-                output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit("{");
+                output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit("{");
                 output += "\n";
 
                 for (int i = 0; i < values.Count; i++)
                 {
                     var _connection = ((ControlOutput)outputs[i])?.connection;
 
-                    output += CodeBuilder.Indent(indent + 1) + MakeSelectableForThisUnit("case ".ConstructHighlight() + $@" ""{values[i].Key}""".StringHighlight() + ":");
+                    output += CodeBuilder.Indent(indent + 1) + MakeClickableForThisUnit("case ".ConstructHighlight() + $@" ""{values[i].Key}""".StringHighlight() + ":");
                     output += "\n";
                     output += "\n";
 
@@ -50,9 +50,9 @@ namespace Unity.VisualScripting.Community
                         data.ExitScope();
                     }
 
-                    if ((data.MustBreak && !data.HasBroke) || (data.MustReturn && !data.HasReturned)) output += CodeBuilder.Indent(indent + 2) + MakeSelectableForThisUnit("break".ControlHighlight() + ";") + "\n";
+                    if ((data.MustBreak && !data.HasBroke) || (data.MustReturn && !data.HasReturned)) output += CodeBuilder.Indent(indent + 2) + MakeClickableForThisUnit("break".ControlHighlight() + ";") + "\n";
                 }
-                output += CodeBuilder.Indent(indent + 1) + MakeSelectableForThisUnit("default".ConstructHighlight() + ":");
+                output += CodeBuilder.Indent(indent + 1) + MakeClickableForThisUnit("default".ConstructHighlight() + ":");
                 output += "\n";
 
                 if (Unit.@default.hasValidConnection)
@@ -65,9 +65,9 @@ namespace Unity.VisualScripting.Community
                     data.ExitScope();
                 }
 
-                if ((data.MustBreak && !data.HasBroke) || (data.MustReturn && !data.HasReturned)) output += CodeBuilder.Indent(indent + 2) + MakeSelectableForThisUnit("break".ControlHighlight() + ";") + "\n";
+                if ((data.MustBreak && !data.HasBroke) || (data.MustReturn && !data.HasReturned)) output += CodeBuilder.Indent(indent + 2) + MakeClickableForThisUnit("break".ControlHighlight() + ";") + "\n";
 
-                output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit("}");
+                output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit("}");
                 output += "\n";
 
                 return output;

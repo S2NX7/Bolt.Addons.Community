@@ -22,18 +22,18 @@ namespace Unity.VisualScripting.Community
                 var isLiteral = Unit.@enum.hasValidConnection && Unit.@enum.connection.source.unit is Literal;
                 var localName = string.Empty;
                 if (isLiteral) localName = data.AddLocalNameInScope("@enum", (Unit.@enum.connection.source.unit as Literal).type);
-                var newLiteral = isLiteral ? CodeBuilder.Indent(indent) + MakeSelectableForThisUnit("var ".ConstructHighlight() + localName + " = ") + ((Unit)Unit.@enum.connection.source.unit).GenerateValue(Unit.@enum.connection.source, data) + MakeSelectableForThisUnit(";") : string.Empty;
-                var @enum = Unit.@enum.hasValidConnection ? isLiteral ? MakeSelectableForThisUnit(localName) : ((Unit)Unit.@enum.connection.source.unit).GenerateValue(Unit.@enum.connection.source, data) : base.GenerateControl(input, data, indent);
+                var newLiteral = isLiteral ? CodeBuilder.Indent(indent) + MakeClickableForThisUnit("var ".ConstructHighlight() + localName + " = ") + ((Unit)Unit.@enum.connection.source.unit).GenerateValue(Unit.@enum.connection.source, data) + MakeClickableForThisUnit(";") : string.Empty;
+                var @enum = Unit.@enum.hasValidConnection ? isLiteral ? MakeClickableForThisUnit(localName) : ((Unit)Unit.@enum.connection.source.unit).GenerateValue(Unit.@enum.connection.source, data) : base.GenerateControl(input, data, indent);
 
-                if (isLiteral) output += MakeSelectableForThisUnit(newLiteral) + "\n";
-                output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit("switch".ConstructHighlight() + " (") + @enum + MakeSelectableForThisUnit(")");
+                if (isLiteral) output += MakeClickableForThisUnit(newLiteral) + "\n";
+                output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit("switch".ConstructHighlight() + " (") + @enum + MakeClickableForThisUnit(")");
                 output += "\n";
-                output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit("{");
+                output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit("{");
                 output += "\n";
 
                 for (int i = 0; i < values.Length; i++)
                 {
-                    output += CodeBuilder.Indent(indent + 1) + MakeSelectableForThisUnit("case ".ConstructHighlight() + Unit.enumType.Name.EnumHighlight() + "." + values.GetValue(i).ToString() + ":\n");
+                    output += CodeBuilder.Indent(indent + 1) + MakeClickableForThisUnit("case ".ConstructHighlight() + Unit.enumType.Name.EnumHighlight() + "." + values.GetValue(i).ToString() + ":\n");
 
                     if (outputs[i].hasValidConnection)
                     {
@@ -45,10 +45,10 @@ namespace Unity.VisualScripting.Community
                         data.ExitScope();
                     }
 
-                    if ((data.MustBreak && !data.HasBroke) || (data.MustReturn && !data.HasReturned)) output += CodeBuilder.Indent(indent + 2) + MakeSelectableForThisUnit("break".ControlHighlight() + ";") + "\n";
+                    if ((data.MustBreak && !data.HasBroke) || (data.MustReturn && !data.HasReturned)) output += CodeBuilder.Indent(indent + 2) + MakeClickableForThisUnit("break".ControlHighlight() + ";") + "\n";
                 }
 
-                output += CodeBuilder.Indent(indent) + MakeSelectableForThisUnit("}");
+                output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit("}");
                 output += "\n";
 
                 return output;

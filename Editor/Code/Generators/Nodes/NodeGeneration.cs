@@ -16,7 +16,7 @@ namespace Unity.VisualScripting.Community
 
             if (!generator.recursion?.TryEnter(node) ?? false)
             {
-                return generator.MakeSelectableForThisUnit(CodeUtility.ToolTip($"{input.key} is infinitely generating itself. Consider reviewing your graph logic.", "Infinite recursion detected!", ""));
+                return generator.MakeClickableForThisUnit(CodeUtility.ToolTip($"{input.key} is infinitely generating itself. Consider reviewing your graph logic.", "Infinite recursion detected!", ""));
             }
 
             try
@@ -36,7 +36,7 @@ namespace Unity.VisualScripting.Community
 
             if (!generator.recursion?.TryEnter(node) ?? false)
             {
-                return generator.MakeSelectableForThisUnit(CodeUtility.ToolTip($"{output.key} is infinitely generating itself. Consider reviewing your graph logic.", "Infinite recursion detected!", ""));
+                return generator.MakeClickableForThisUnit(CodeUtility.ToolTip($"{output.key} is infinitely generating itself. Consider reviewing your graph logic.", "Infinite recursion detected!", ""));
             }
 
             try
@@ -56,7 +56,7 @@ namespace Unity.VisualScripting.Community
 
             if (!generator.recursion?.TryEnter(node) ?? false)
             {
-                return CodeBuilder.Indent(indent) + generator.MakeSelectableForThisUnit(CodeUtility.ToolTip("This node appears to cause infinite recursion(The flow is leading back to this node). Consider using a While loop instead.", "Infinite recursion detected!", ""));
+                return CodeBuilder.Indent(indent) + generator.MakeClickableForThisUnit(CodeUtility.ToolTip("This node appears to cause infinite recursion(The flow is leading back to this node). Consider using a While loop instead.", "Infinite recursion detected!", ""));
             }
 
             try

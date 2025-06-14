@@ -1118,7 +1118,7 @@ namespace Unity.VisualScripting.Community
         {
             string tooltip;
             var codeWithoutTooltip = CodeUtility.ExtractTooltip(text, out tooltip);
-            var label = new Label(CodeUtility.RemoveAllSelectableTags(codeWithoutTooltip))
+            var label = new Label(CodeUtility.RemoveAllClickableTags(codeWithoutTooltip))
             {
                 tooltip = tooltip
             };
@@ -1148,7 +1148,7 @@ namespace Unity.VisualScripting.Community
         private Label CreateCodeLabel(ClickableRegion region, int currentLine)
         {
             var codeWithoutTooltip = CodeUtility.ExtractTooltip(region.code, out string tooltip);
-            var label = new Label(CodeUtility.RemoveAllSelectableTags(codeWithoutTooltip))
+            var label = new Label(CodeUtility.RemoveAllClickableTags(codeWithoutTooltip))
             {
                 tooltip = tooltip
             };
@@ -1519,7 +1519,7 @@ namespace Unity.VisualScripting.Community
 
             for (int i = 0; i < cachedLines.Length; i++)
             {
-                string line = CodeUtility.RemoveAllSelectableTags(cachedLines[i]);
+                string line = CodeUtility.RemoveAllClickableTags(cachedLines[i]);
                 line = RemoveColorTags(line);
                 int index = line.IndexOf(searchText, StringComparison.OrdinalIgnoreCase);
 

@@ -24,7 +24,7 @@ namespace Unity.VisualScripting.Community
         public abstract string GenerateAwakeCode(ControlGenerationData data, int indent);
         public override string GenerateControl(ControlInput input, ControlGenerationData data, int indent)
         {
-            if(!typeof(MonoBehaviour).IsAssignableFrom(data.ScriptType)) return MakeSelectableForThisUnit(CodeUtility.ToolTip($"{unit.GetType().DisplayName()} only works with ScriptGraphAssets, ScriptMachines or a ClassAsset that inherits MonoBehaviour", $"Could not generate {unit.GetType().DisplayName()}", ""));
+            if(!typeof(MonoBehaviour).IsAssignableFrom(data.ScriptType)) return MakeClickableForThisUnit(CodeUtility.ToolTip($"{unit.GetType().DisplayName()} only works with ScriptGraphAssets, ScriptMachines or a ClassAsset that inherits MonoBehaviour", $"Could not generate {unit.GetType().DisplayName()}", ""));
             foreach (var param in Parameters)
             {
                 data.AddLocalNameInScope(param.name, param.type);

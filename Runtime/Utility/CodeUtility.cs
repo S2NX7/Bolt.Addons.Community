@@ -15,24 +15,14 @@ namespace Unity.VisualScripting.Community
         private static readonly Regex RemoveHighlightsRegex = new(@"<b class='highlight'>(.*?)<\/b>", RegexOptions.Compiled | RegexOptions.Singleline);
         private static readonly ConcurrentDictionary<string, string> RemoveAllCache = new();
 
-        private static TValue GetOrAddRegex<TKey, TValue>(Dictionary<TKey, TValue> dictionary, TKey key, Func<TKey, TValue> valueFactory)
-        {
-            if (!dictionary.TryGetValue(key, out var value))
-            {
-                value = valueFactory(key);
-                dictionary[key] = value;
-            }
-            return value;
-        }
+        private static readonly Regex RemoveClickableTagWrapperRegex = new(@"⟦([^\⟧]+)⟧(.*?)⟧⟧", RegexOptions.Compiled | RegexOptions.Singleline);
 
-        private static readonly Regex RemoveSelectableTagWrapperRegex = new(@"⟦([^\⟧]+)⟧(.*?)⟧⟧", RegexOptions.Compiled | RegexOptions.Singleline);
-
-        public static string RemoveAllSelectableTags(string code)
+        public static string RemoveAllClickableTags(string code)
         {
             if (RemoveAllCache.TryGetValue(code, out string result))
                 return result;
 
-            result = RemoveSelectableTagWrapperRegex.Replace(code, "$2");
+            result = RemoveClickableTagWrapperRegex.Replace(code, "$2");
             RemoveAllCache[code] = result;
             return result;
         }
@@ -68,7 +58,7 @@ namespace Unity.VisualScripting.Community
 
             return result.ToString();
         }
-        public static string MakeSelectable(Unit unit, string code)
+        public static string MakeClickable(Unit unit, string code)
         {
             return $"⟦{unit}⟧{code}⟧⟧";
         }
@@ -136,7 +126,7 @@ namespace Unity.VisualScripting.Community
 
         public static string CleanCode(string code)
         {
-            return RemoveAllSelectableTags(RemoveAllToolTipTagsEntirely(RemoveRecommendations(RemoveCustomHighlights(code))));
+            return RemoveAllClickableTags(RemoveAllToolTipTagsEntirely(RemoveRecommendations(RemoveCustomHighlights(code))));
         }
 
         private static readonly Dictionary<string, List<ClickableRegion>> clickableRegionsCache = new();

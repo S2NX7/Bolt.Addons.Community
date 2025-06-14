@@ -18,7 +18,7 @@ namespace Unity.VisualScripting.Community
         public override string GenerateValue(ValueInput input, ControlGenerationData data)
         {
             if (input == Unit.target && !input.hasValidConnection)
-                return MakeSelectableForThisUnit("gameObject".VariableHighlight());
+                return MakeClickableForThisUnit("gameObject".VariableHighlight());
             return base.GenerateValue(input, data);
         }
         public override string GenerateValue(ValueOutput output, ControlGenerationData data)
@@ -28,7 +28,7 @@ namespace Unity.VisualScripting.Community
                 var callCode = "args".VariableHighlight() + "." + nameof(CSharpUtility.GetArgument) + "(" + Unit.argumentPorts.IndexOf(output).As().Code(false) + ", " + ((object)(data.GetExpectedType() ?? typeof(object))).As().Code(false, false, true, "", false, true) + ")";
                 var code = new ValueCode(callCode, data.GetExpectedType(), data.GetExpectedType() != null && !data.IsCurrentExpectedTypeMet() && data.GetExpectedType() != typeof(object));
                 data.CreateSymbol(Unit, typeof(object));
-                return MakeSelectableForThisUnit(code);
+                return MakeClickableForThisUnit(code);
             }
             return base.GenerateValue(output, data);
         }
