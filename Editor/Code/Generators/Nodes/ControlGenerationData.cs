@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Unity.VisualScripting.Community.Libraries.Humility;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -99,7 +100,7 @@ namespace Unity.VisualScripting.Community
         public void NewScope()
         {
             var parent = PeekScope();
-            var newScope = new GeneratorScope(new Dictionary<string, Type>(), new Dictionary<string, string>(), parent);
+            var newScope = new GeneratorScope(parent);
 
             if (parent != null)
             {
@@ -164,6 +165,7 @@ namespace Unity.VisualScripting.Community
         {
             var scope = PeekScope();
             if (scope != null) scope.Returns = type;
+            SetMustReturn(!type.Is().Void());
         }
 
         public bool ContainsNameInAnyScope(string name)
@@ -283,6 +285,9 @@ namespace Unity.VisualScripting.Community
 
         public void SetGraphPointer(GraphReference graphReference)
         {
+            // This should only happen if this is not a scriptmachine
+            // It's set so that Scene variables are predicatable in assets
+            // because GraphPointer.scene uses GameObject.scene
             if (gameObject == null && graphReference != null && graphReference.gameObject == null)
             {
                 var firstObject = SceneManager.GetActiveScene().GetRootGameObjects()[0];
@@ -310,10 +315,10 @@ namespace Unity.VisualScripting.Community
             public bool MustReturn { get; set; }
             public bool HasReturned { get; set; }
 
-            public GeneratorScope(Dictionary<string, Type> scopeVariables, Dictionary<string, string> nameMapping, GeneratorScope parentScope)
+            public GeneratorScope(GeneratorScope parentScope)
             {
-                this.scopeVariables = scopeVariables;
-                this.nameMapping = nameMapping;
+                scopeVariables = new();
+                nameMapping = new();
                 ParentScope = parentScope;
             }
         }

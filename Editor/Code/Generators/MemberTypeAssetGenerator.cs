@@ -37,8 +37,8 @@ namespace Unity.VisualScripting.Community
                     {
                         if (!string.IsNullOrEmpty(name))
                         {
-                            if (classType != null) classType.AddAttribute(AttributeGenerator.Attribute<RenamedFromAttribute>().AddParameter(name));
-                            if (structType != null) structType.AddAttribute(AttributeGenerator.Attribute<RenamedFromAttribute>().AddParameter(name));
+                            classType?.AddAttribute(AttributeGenerator.Attribute<RenamedFromAttribute>().AddParameter(name));
+                            structType?.AddAttribute(AttributeGenerator.Attribute<RenamedFromAttribute>().AddParameter(name));
                         }
 
                     }

@@ -80,7 +80,7 @@ namespace Unity.VisualScripting.Community
 
         private void AddInputPort(int index)
         {
-            var inputPort = ValueInput($"String {index + 1}", "");
+            var inputPort = ValueInput($"{index + 1}", "");
             inputPorts.Add(inputPort);
         }
 
@@ -119,11 +119,11 @@ namespace Unity.VisualScripting.Community
                         break;
 
                     case AppendMode.UpperCase:
-                        stringBuilder.Append(value.ToUpper());
+                        stringBuilder.Append(value.ToUpperInvariant());
                         break;
 
                     case AppendMode.LowerCase:
-                        stringBuilder.Append(value.ToLower());
+                        stringBuilder.Append(value.ToLowerInvariant());
                         break;
 
                     case AppendMode.Quoted:

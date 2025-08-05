@@ -29,101 +29,145 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
         /// </summary>
         public static string CSharpName(this HUMType.Data.As @as, bool hideSystemObject = false, bool fullName = false, bool highlight = true)
         {
-            if (highlight) return @as.HighlightCSharpName(hideSystemObject, fullName);
-            if (@as.type == null) return "null";
-            if (@as.type == typeof(CSharp.Void)) return "void";
-            if (@as.type.IsConstructedGenericType || @as.type.IsGenericType) return GenericDeclaration(@as.type, fullName, highlight);
-            if (@as.type == typeof(int)) return "int";
-            if (@as.type == typeof(string)) return "string";
-            if (@as.type == typeof(float)) return "float";
-            if (@as.type == typeof(void)) return "void";
-            if (@as.type == typeof(double)) return "double";
-            if (@as.type == typeof(bool)) return "bool";
-            if (@as.type == typeof(byte)) return "byte";
-            if (@as.type == typeof(void)) return "void";
-            if (@as.type == typeof(object) && @as.type.BaseType == null) return hideSystemObject ? string.Empty : "object";
-            if (@as.type == typeof(object[])) return "object[]";
-            if (@as.type is FakeGenericParameterType fakeGenericParameter) return fakeGenericParameter.Name;
-            if (@as.type.Name.Contains("Attribute")) return fullName && !string.IsNullOrEmpty(@as.type.Namespace) ? @as.type.CSharpFullName().Replace("Attribute", "") : @as.type.CSharpName().Replace("Attribute", "");
-            if (@as.type.IsArray)
+            if (highlight)
+                return @as.HighlightCSharpName(hideSystemObject, fullName);
+
+            var type = @as.type;
+            if (type == null)
+                return "null";
+
+            if (type == typeof(CSharp.Void) || type == typeof(void))
+                return "void";
+
+            if (type.IsConstructedGenericType || type.IsGenericType)
+                return GenericDeclaration(type, fullName, false);
+
+            if (type == typeof(int)) return "int";
+            if (type == typeof(string)) return "string";
+            if (type == typeof(float)) return "float";
+            if (type == typeof(double)) return "double";
+            if (type == typeof(bool)) return "bool";
+            if (type == typeof(byte)) return "byte";
+            if (type == typeof(object) && type.BaseType == null)
+                return hideSystemObject ? string.Empty : "object";
+            if (type == typeof(object[]))
+                return "object[]";
+
+            if (type is FakeGenericParameterType fake)
+                return fake.Name;
+
+            if (type.Name.EndsWith("Attribute", StringComparison.Ordinal))
             {
-                var tempType = @as.type.GetElementType();
-                var arrayString = "[]";
-                while (tempType.IsArray)
+                var name = type.Name[..^9];
+                return fullName && !string.IsNullOrEmpty(type.Namespace)
+                    ? $"{type.Namespace}.{name}"
+                    : name;
+            }
+
+            if (type.IsArray)
+            {
+                var arrayDepth = 0;
+                while (type.IsArray)
                 {
-                    tempType = tempType.GetElementType();
-                    arrayString += "[]";
+                    arrayDepth++;
+                    type = type.GetElementType();
                 }
 
-                var tempTypeName = tempType.As().CSharpName(hideSystemObject, fullName, false);
-                return tempTypeName + arrayString;
+                var elementName = type.As().CSharpName(hideSystemObject, fullName, false);
+                return elementName + new string('[', arrayDepth).Replace("[", "[]");
             }
-            if (string.IsNullOrEmpty(@as.type.Name))
-            {
+
+            if (string.IsNullOrEmpty(type.Name))
                 return "UnknownType".WarningHighlight();
-            }
-            else if (string.IsNullOrEmpty(@as.type.Namespace))
-            {
-                return @as.type.CSharpName();
-            }
-            return fullName ? @as.type.CSharpFullName() : @as.type.CSharpName();
+            if (string.IsNullOrEmpty(type.Namespace))
+                return type.CSharpName();
+
+            return fullName ? type.CSharpFullName() : type.CSharpName();
         }
 
         private static string HighlightCSharpName(this HUMType.Data.As @as, bool hideSystemObject = false, bool fullName = false)
         {
-            if (@as.type == null) return "null".ConstructHighlight();
-            if (@as.type == typeof(CSharp.Void)) return "void".ConstructHighlight();
-            if (@as.type.IsConstructedGenericType || @as.type.IsGenericType) return GenericDeclaration(@as.type, fullName, true);
-            if (@as.type == typeof(int)) return "int".ConstructHighlight();
-            if (@as.type == typeof(string)) return "string".ConstructHighlight();
-            if (@as.type == typeof(float)) return "float".ConstructHighlight();
-            if (@as.type == typeof(void)) return "void".ConstructHighlight();
-            if (@as.type == typeof(double)) return "double".ConstructHighlight();
-            if (@as.type == typeof(bool)) return "bool".ConstructHighlight();
-            if (@as.type == typeof(byte)) return "byte".ConstructHighlight();
-            if (@as.type == typeof(void)) return "void".ConstructHighlight();
-            if (@as.type.IsEnum) return (!string.IsNullOrEmpty(@as.type.Namespace) && fullName ? @as.type.Namespace.NamespaceHighlight() + "." : "") + @as.type.Name.EnumHighlight();
-            if (@as.type.IsInterface) return (!string.IsNullOrEmpty(@as.type.Namespace) && fullName ? @as.type.Namespace.NamespaceHighlight() + "." : "") + @as.type.Name.InterfaceHighlight();
-            if (@as.type == typeof(object) && @as.type.BaseType == null) return hideSystemObject ? string.Empty : "object".ConstructHighlight();
-            if (@as.type == typeof(object[])) return "object".ConstructHighlight() + "[]";
-            if (@as.type is FakeGenericParameterType fakeGenericParameter)
-            {
-                if (fakeGenericParameter._isArrayType)
-                {
-                    var tempType = @as.type.GetElementType() as FakeGenericParameterType;
-                    while (tempType._isArrayType)
-                    {
-                        tempType = (FakeGenericParameterType)tempType.GetElementType();
-                    }
+            var type = @as.type;
+            if (type == null)
+                return "null".ConstructHighlight();
 
-                    var tempTypeName = tempType.Name.TypeHighlight();
-                    return fakeGenericParameter.Name.Replace(tempType.Name, tempTypeName);
-                }
-                return fakeGenericParameter.Name.TypeHighlight();
-            }
-            if (@as.type.Name.Contains("Attribute")) return fullName && !string.IsNullOrEmpty(@as.type.Namespace) ? @as.type.CSharpFullName().Replace(@as.type.Name, @as.type.Name.TypeHighlight()).Replace(@as.type.Namespace, @as.type.Namespace.NamespaceHighlight()).Replace("Attribute", "") : @as.type.CSharpName().TypeHighlight().Replace("Attribute", "");
-            if (@as.type.IsArray)
+            if (type == typeof(CSharp.Void) || type == typeof(void))
+                return "void".ConstructHighlight();
+
+            if (type.IsConstructedGenericType || type.IsGenericType)
+                return GenericDeclaration(type, fullName, true);
+
+            if (type == typeof(int)) return "int".ConstructHighlight();
+            if (type == typeof(string)) return "string".ConstructHighlight();
+            if (type == typeof(float)) return "float".ConstructHighlight();
+            if (type == typeof(double)) return "double".ConstructHighlight();
+            if (type == typeof(bool)) return "bool".ConstructHighlight();
+            if (type == typeof(byte)) return "byte".ConstructHighlight();
+            if (type == typeof(object) && type.BaseType == null)
+                return hideSystemObject ? string.Empty : "object".ConstructHighlight();
+            if (type == typeof(object[]))
+                return "object".ConstructHighlight() + "[]";
+
+            if (type is FakeGenericParameterType fake)
             {
-                var tempType = @as.type.GetElementType();
-                var arrayString = "[]";
-                while (tempType.IsArray)
+                if (fake._isArrayType)
                 {
-                    tempType = tempType.GetElementType();
-                    arrayString += "[]";
+                    var temp = type;
+                    while (((FakeGenericParameterType)temp)._isArrayType)
+                        temp = temp.GetElementType();
+
+                    var coreName = ((FakeGenericParameterType)temp).Name.TypeHighlight();
+                    return fake.Name.Replace(((FakeGenericParameterType)temp).Name, coreName);
                 }
 
-                var tempTypeName = tempType.As().CSharpName(hideSystemObject, fullName, true);
-                return tempTypeName + arrayString;
+                return fake.Name.TypeHighlight();
             }
-            if (string.IsNullOrEmpty(@as.type.Name))
+
+            if (type.Name.EndsWith("Attribute", StringComparison.Ordinal))
             {
+                var coreName = type.Name[..^9].TypeHighlight();
+                if (fullName && !string.IsNullOrEmpty(type.Namespace))
+                    return $"{type.Namespace.NamespaceHighlight()}.{coreName}";
+                return coreName;
+            }
+
+            if (type.IsEnum)
+            {
+                var prefix = fullName && !string.IsNullOrEmpty(type.Namespace)
+                    ? type.Namespace.NamespaceHighlight() + "."
+                    : "";
+                return prefix + type.Name.EnumHighlight();
+            }
+
+            if (type.IsInterface)
+            {
+                var prefix = fullName && !string.IsNullOrEmpty(type.Namespace)
+                    ? type.Namespace.NamespaceHighlight() + "."
+                    : "";
+                return prefix + type.Name.InterfaceHighlight();
+            }
+
+            if (type.IsArray)
+            {
+                var arrayDepth = 0;
+                while (type.IsArray)
+                {
+                    arrayDepth++;
+                    type = type.GetElementType();
+                }
+
+                var elementName = type.As().CSharpName(hideSystemObject, fullName, true);
+                return elementName + new string('[', arrayDepth).Replace("[", "[]");
+            }
+
+            if (string.IsNullOrEmpty(type.Name))
                 return "UnknownType".WarningHighlight();
-            }
-            else if (string.IsNullOrEmpty(@as.type.Namespace))
-            {
-                return @as.type.CSharpName().TypeHighlight();
-            }
-            return fullName ? @as.type.CSharpFullName().Replace(@as.type.Name, @as.type.Name.TypeHighlight()).Replace(@as.type.Namespace, @as.type.Namespace.NamespaceHighlight()) : @as.type.CSharpName().TypeHighlight();
+            if (string.IsNullOrEmpty(type.Namespace))
+                return type.CSharpName().TypeHighlight();
+
+            return fullName
+                ? $"{type.Namespace.NamespaceHighlight()}.{type.Name.TypeHighlight()}"
+                : type.CSharpName().TypeHighlight();
         }
 
         public enum HighlightType
@@ -465,9 +509,9 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
         /// <summary>
         /// Converts a value into code form. Example: a float value of '10' would be '10f'. A string would add quotes, etc.
         /// </summary>
-        public static string Code(this HUMValue.Data.As @as, bool isNew, bool isLiteral = false, bool highlight = true, string parameters = "", bool newLineLiteral = false, bool fullName = false, bool variableForObject = true)
+        public static string Code(this HUMValue.Data.As @as, bool isNew, bool isLiteral = false, bool highlight = true, string parameters = "", bool newLineLiteral = false, bool fullName = false, bool variableForObjects = true)
         {
-            if (highlight) return HighlightedCode(@as, isNew, isLiteral, parameters, newLineLiteral, fullName, variableForObject);
+            if (highlight) return HighlightedCode(@as, isNew, isLiteral, parameters, newLineLiteral, fullName, variableForObjects);
             Type type = @as.value?.GetType();
             if (@as.value is Type) return "typeof(" + ((Type)@as.value).As().CSharpName(false, fullName, false) + ")";
             if (type == null) return "null";
@@ -475,11 +519,36 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
             if (type == typeof(bool)) return @as.value.ToString().ToLower();
             if (type == typeof(float)) return @as.value.ToString().Replace(",", ".") + "f";
             if (type == typeof(double) || type == typeof(decimal)) return @as.value.ToString().Replace(",", ".");
-            if (type == typeof(string)) return @"""" + @as.value.ToString() + @"""";
+            if (type == typeof(string))
+            {
+                var str = @as.value.ToString();
+                if (str.Contains('\n') || str.Contains('\r'))
+                {
+                    var lines = str.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
+                    string output = "@\"";
+
+                    for (int i = 0; i < lines.Length; i++)
+                    {
+                        var line = lines[i];
+                        bool isLast = i == lines.Length - 1;
+
+                        output += line;
+                        if (!isLast)
+                            output += "\n";
+                    }
+
+                    output += "\"";
+                    return output;
+                }
+                else
+                {
+                    return "\"" + str + "\"";
+                }
+            }
             if (type == typeof(char)) return string.IsNullOrEmpty(@as.value.ToString()) ? "new Char()" : $"'{@as.value}'";
             if (typeof(UnityEngine.Object).IsAssignableFrom(type))
             {
-                if (variableForObject)
+                if (variableForObjects)
                 {
                     var hasVariable = CodeGeneratorValueUtility.TryGetVariable((UnityEngine.Object)@as.value, out string current);
                     var variable = hasVariable ? current : $"ObjectVariable_{Guid.NewGuid().ToString()[..6]}";
@@ -521,7 +590,11 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                 var value = @as.value as AnimationCurve;
                 return Create("AnimationCurve", value.keys.Select(k => Create("Keyframe", k.time.As().Code(false, false, false), k.value.As().Code(false, false, false), k.inTangent.As().Code(false, false, false), k.outTangent.As().Code(false, false, false), k.inWeight.As().Code(false, false, false), k.outWeight.As().Code(false, false, false))).ToArray());
             }
-
+            if (type == typeof(Color))
+            {
+                var value = (Color)@as.value;
+                return Create("Color", value.r.As().Code(false, false, false), value.g.As().Code(false, false, false), value.b.As().Code(false, false, false), value.a.As().Code(false, false, false));
+            }
             if (type.IsNumeric()) return @as.value.ToString();
             if (type.IsEnum) return (@as.value as Enum).ToMultipleEnumString(false);
 
@@ -529,22 +602,22 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
             {
                 if (type.IsClass || !type.IsClass && !type.IsInterface && !type.IsEnum)
                 {
-                    if (type.IsGenericType) return isLiteral ? Literal(@as.value, newLineLiteral, fullName, false, variableForObject) : "new " + GenericDeclaration(type, fullName, false) + "()";
-                    if (type.IsConstructedGenericType) return isLiteral ? Literal(@as.value, newLineLiteral, fullName, false, variableForObject) : "new " + GenericDeclaration(type, fullName, false) + "(" + parameters + ")";
-                    return isLiteral ? Literal(@as.value, newLineLiteral, fullName, false, variableForObject) : "new " + type.As().CSharpName(false, fullName, false) + "(" + parameters + ")";
+                    if (type.IsGenericType) return isLiteral ? Literal(@as.value, newLineLiteral, fullName, false, variableForObjects) : "new " + GenericDeclaration(type, fullName, false) + "()";
+                    if (type.IsConstructedGenericType) return isLiteral ? Literal(@as.value, newLineLiteral, fullName, false, variableForObjects) : "new " + GenericDeclaration(type, fullName, false) + "(" + parameters + ")";
+                    return isLiteral ? Literal(@as.value, newLineLiteral, fullName, false, variableForObjects) : "new " + type.As().CSharpName(false, fullName, false) + "(" + parameters + ")";
                 }
                 else
                 {
-                    if (type.IsValueType && !type.IsEnum && !type.IsPrimitive) return isLiteral ? Literal(@as.value, newLineLiteral, fullName, false, variableForObject) : "new " + type.As().CSharpName(false, fullName, false) + "(" + parameters + ")";
+                    if (type.IsValueType && !type.IsEnum && !type.IsPrimitive) return isLiteral ? Literal(@as.value, newLineLiteral, fullName, false, variableForObjects) : "new " + type.As().CSharpName(false, fullName, false) + "(" + parameters + ")";
                 }
             }
 
             return @as.value.ToString();
         }
 
-        public static string Code(this HUMValue.Data.As @as, bool isNew, Unit unit, bool isLiteral = false, bool highlight = true, string parameters = "", bool newLineLiteral = false, bool fullName = false, bool variableForObject = true)
+        public static string Code(this HUMValue.Data.As @as, bool isNew, Unit unit, bool isLiteral = false, bool highlight = true, string parameters = "", bool newLineLiteral = false, bool fullName = false, bool variableForObjects = true)
         {
-            if (highlight) return HighlightedCode(@as, isNew, unit, isLiteral, parameters, newLineLiteral, fullName, variableForObject);
+            if (highlight) return HighlightedCode(@as, isNew, unit, isLiteral, parameters, newLineLiteral, fullName, variableForObjects);
             Type type = @as.value?.GetType();
             if (@as.value is Type) return CodeUtility.MakeClickable(unit, "typeof(" + ((Type)@as.value).As().CSharpName(false, fullName, false) + ")");
             if (type == null) return CodeUtility.MakeClickable(unit, "null");
@@ -552,11 +625,36 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
             if (type == typeof(bool)) return CodeUtility.MakeClickable(unit, @as.value.ToString().ToLower());
             if (type == typeof(float)) return CodeUtility.MakeClickable(unit, @as.value.ToString().Replace(",", ".") + "f");
             if (type == typeof(double) || type == typeof(decimal)) return CodeUtility.MakeClickable(unit, @as.value.ToString().Replace(",", "."));
-            if (type == typeof(string)) return CodeUtility.MakeClickable(unit, @"""" + @as.value.ToString() + @"""");
+            if (type == typeof(string))
+            {
+                var str = @as.value.ToString();
+                if (str.Contains('\n') || str.Contains('\r'))
+                {
+                    var lines = str.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
+                    string output = CodeUtility.MakeClickable(unit, "@\"");
+
+                    for (int i = 0; i < lines.Length; i++)
+                    {
+                        var line = lines[i];
+                        bool isLast = i == lines.Length - 1;
+
+                        output += CodeUtility.MakeClickable(unit, line);
+                        if (!isLast)
+                            output += "\n";
+                    }
+
+                    output += CodeUtility.MakeClickable(unit, "\"");
+                    return output;
+                }
+                else
+                {
+                    return CodeUtility.MakeClickable(unit, "\"" + str + "\"");
+                }
+            }
             if (type == typeof(char)) return CodeUtility.MakeClickable(unit, string.IsNullOrEmpty(@as.value.ToString()) ? "new Char()" : $"'{@as.value}'");
             if (typeof(UnityEngine.Object).IsAssignableFrom(type))
             {
-                if (variableForObject)
+                if (variableForObjects)
                 {
                     var hasVariable = CodeGeneratorValueUtility.TryGetVariable((UnityEngine.Object)@as.value, out string current);
                     var variable = hasVariable ? current : $"ObjectVariable_{Guid.NewGuid().ToString()[..6]}";
@@ -594,6 +692,11 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                 var value = @as.value as AnimationCurve;
                 return CodeUtility.MakeClickable(unit, Create("AnimationCurve", value.keys.Select(k => Create("Keyframe", k.time.As().Code(false, false, false), k.value.As().Code(false, false, false), k.inTangent.As().Code(false, false, false), k.outTangent.As().Code(false, false, false), k.inWeight.As().Code(false, false, false), k.outWeight.As().Code(false, false, false))).ToArray()));
             }
+            if (type == typeof(Color))
+            {
+                var value = (Color)@as.value;
+                return CodeUtility.MakeClickable(unit, Create("Color", value.r.As().Code(false, false, false), value.g.As().Code(false, false, false), value.b.As().Code(false, false, false), value.a.As().Code(false, false, false)));
+            }
             if (type.IsNumeric()) return CodeUtility.MakeClickable(unit, @as.value.ToString());
             if (type.IsEnum) return CodeUtility.MakeClickable(unit, (@as.value as Enum).ToMultipleEnumString(false));
 
@@ -601,20 +704,20 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
             {
                 if (type.IsClass || (!type.IsClass && !type.IsInterface && !type.IsEnum))
                 {
-                    if (type.IsGenericType) return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, false, variableForObject) : CodeUtility.MakeClickable(unit, "new ".ConstructHighlight() + GenericDeclaration(type, fullName, false) + "()");
-                    if (type.IsConstructedGenericType) return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, false, variableForObject) : CodeUtility.MakeClickable(unit, "new " + GenericDeclaration(type, fullName, false) + "(" + parameters + ")");
-                    return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, false, variableForObject) : CodeUtility.MakeClickable(unit, "new " + type.As().CSharpName(false, fullName, false) + "(" + parameters + ")");
+                    if (type.IsGenericType) return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, false, variableForObjects) : CodeUtility.MakeClickable(unit, "new ".ConstructHighlight() + GenericDeclaration(type, fullName, false) + "()");
+                    if (type.IsConstructedGenericType) return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, false, variableForObjects) : CodeUtility.MakeClickable(unit, "new " + GenericDeclaration(type, fullName, false) + "(" + parameters + ")");
+                    return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, false, variableForObjects) : CodeUtility.MakeClickable(unit, "new " + type.As().CSharpName(false, fullName, false) + "(" + parameters + ")");
                 }
                 else
                 {
-                    if (type.IsValueType && !type.IsEnum && !type.IsPrimitive) return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, false, variableForObject) : CodeUtility.MakeClickable(unit, "new " + (fullName ? type.FullName : type.Name) + "(" + parameters + ")");
+                    if (type.IsValueType && !type.IsEnum && !type.IsPrimitive) return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, false, variableForObjects) : CodeUtility.MakeClickable(unit, "new " + (fullName ? type.FullName : type.Name) + "(" + parameters + ")");
                 }
             }
 
             return CodeUtility.MakeClickable(unit, @as.value.ToString());
         }
 
-        private static string HighlightedCode(this HUMValue.Data.As @as, bool isNew, bool isLiteral = false, string parameters = "", bool newLineLiteral = false, bool fullName = false, bool variableForObject = true)
+        private static string HighlightedCode(this HUMValue.Data.As @as, bool isNew, bool isLiteral = false, string parameters = "", bool newLineLiteral = false, bool fullName = false, bool variableForObjects = true)
         {
             Type type = @as.value?.GetType();
             if (@as.value is Type) return "typeof".ConstructHighlight() + "(" + ((Type)@as.value).As().CSharpName(false, fullName) + ")";
@@ -623,11 +726,36 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
             if (type == typeof(bool)) return @as.value.ToString().ToLower().ConstructHighlight();
             if (type == typeof(float)) return (@as.value.ToString().Replace(",", ".") + "f").NumericHighlight();
             if (type == typeof(double) || type == typeof(decimal)) return @as.value.ToString().Replace(",", ".").NumericHighlight();
-            if (type == typeof(string)) return (@"""" + @as.value.ToString() + @"""").StringHighlight();
+            if (type == typeof(string))
+            {
+                var str = @as.value.ToString();
+                if (str.Contains('\n') || str.Contains('\r'))
+                {
+                    var lines = str.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
+                    string output = "@\"".StringHighlight();
+
+                    for (int i = 0; i < lines.Length; i++)
+                    {
+                        var line = lines[i];
+                        bool isLast = i == lines.Length - 1;
+
+                        output += line.StringHighlight();
+                        if (!isLast)
+                            output += "\n";
+                    }
+
+                    output += "\"".StringHighlight();
+                    return output;
+                }
+                else
+                {
+                    return ("\"" + str + "\"").StringHighlight();
+                }
+            }
             if (type == typeof(char)) return (char)@as.value == char.MinValue ? "/* Cannot have a empty character */".WarningHighlight() : $"'{@as.value}'".StringHighlight();
             if (typeof(UnityEngine.Object).IsAssignableFrom(type))
             {
-                if (variableForObject)
+                if (variableForObjects)
                 {
                     var hasVariable = CodeGeneratorValueUtility.TryGetVariable((UnityEngine.Object)@as.value, out string current);
                     var variable = hasVariable ? current : $"ObjectVariable_{Guid.NewGuid().ToString()[..6]}";
@@ -665,26 +793,31 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                 var value = @as.value as AnimationCurve;
                 return CreateHighlighted("AnimationCurve", value.keys.Select(k => CreateHighlighted("Keyframe", k.time.As().Code(false), k.value.As().Code(false), k.inTangent.As().Code(false), k.outTangent.As().Code(false), k.inWeight.As().Code(false), k.outWeight.As().Code(false))).ToArray());
             }
+            if (type == typeof(Color))
+            {
+                var value = (Color)@as.value;
+                return CreateHighlighted("Color", value.r.As().Code(false), value.g.As().Code(false), value.b.As().Code(false), value.a.As().Code(false));
+            }
             if (type.IsNumeric()) return @as.value.ToString().NumericHighlight();
             if (type.IsEnum) return (@as.value as Enum).ToMultipleEnumString(true);
             if (isNew)
             {
                 if (type.IsClass || !type.IsClass && !type.IsInterface && !type.IsEnum)
                 {
-                    if (type.IsGenericType) return isLiteral ? Literal(@as.value, newLineLiteral, fullName, true, variableForObject) : "new ".ConstructHighlight() + GenericDeclaration(type, fullName) + "()";
-                    if (type.IsConstructedGenericType) return isLiteral ? Literal(@as.value, newLineLiteral, fullName, true, variableForObject) : "new ".ConstructHighlight() + GenericDeclaration(type, fullName) + "(" + parameters + ")";
-                    return isLiteral ? Literal(@as.value, newLineLiteral, fullName, true, variableForObject) : "new ".ConstructHighlight() + type.As().CSharpName(false, fullName, true) + "(" + parameters + ")";
+                    if (type.IsGenericType) return isLiteral ? Literal(@as.value, newLineLiteral, fullName, true, variableForObjects) : "new ".ConstructHighlight() + GenericDeclaration(type, fullName) + "()";
+                    if (type.IsConstructedGenericType) return isLiteral ? Literal(@as.value, newLineLiteral, fullName, true, variableForObjects) : "new ".ConstructHighlight() + GenericDeclaration(type, fullName) + "(" + parameters + ")";
+                    return isLiteral ? Literal(@as.value, newLineLiteral, fullName, true, variableForObjects) : "new ".ConstructHighlight() + type.As().CSharpName(false, fullName, true) + "(" + parameters + ")";
                 }
                 else
                 {
-                    if (type.IsValueType && !type.IsEnum && !type.IsPrimitive) return isLiteral ? Literal(@as.value, newLineLiteral, fullName, true, variableForObject) : "new ".ConstructHighlight() + type.As().CSharpName(false, fullName, true) + "(" + parameters + ")";
+                    if (type.IsValueType && !type.IsEnum && !type.IsPrimitive) return isLiteral ? Literal(@as.value, newLineLiteral, fullName, true, variableForObjects) : "new ".ConstructHighlight() + type.As().CSharpName(false, fullName, true) + "(" + parameters + ")";
                 }
             }
 
             return @as.value.ToString();
         }
 
-        private static string HighlightedCode(this HUMValue.Data.As @as, bool isNew, Unit unit, bool isLiteral = false, string parameters = "", bool newLineLiteral = false, bool fullName = false, bool variableForObject = true)
+        private static string HighlightedCode(this HUMValue.Data.As @as, bool isNew, Unit unit, bool isLiteral = false, string parameters = "", bool newLineLiteral = false, bool fullName = false, bool variableForObjects = true)
         {
             Type type = @as.value?.GetType();
             if (@as.value is Type) return CodeUtility.MakeClickable(unit, "typeof".ConstructHighlight() + "(" + ((Type)@as.value).As().CSharpName(false, true) + ")");
@@ -693,11 +826,36 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
             if (type == typeof(bool)) return CodeUtility.MakeClickable(unit, @as.value.ToString().ToLower().ConstructHighlight());
             if (type == typeof(float)) return CodeUtility.MakeClickable(unit, (@as.value.ToString().Replace(",", ".") + "f").NumericHighlight());
             if (type == typeof(double) || type == typeof(decimal)) return CodeUtility.MakeClickable(unit, @as.value.ToString().Replace(",", ".").NumericHighlight());
-            if (type == typeof(string)) return CodeUtility.MakeClickable(unit, (@"""" + @as.value.ToString() + @"""").StringHighlight());
+            if (type == typeof(string))
+            {
+                var str = @as.value.ToString();
+                if (str.Contains('\n') || str.Contains('\r'))
+                {
+                    var lines = str.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
+                    string output = CodeUtility.MakeClickable(unit, "@\"".StringHighlight());
+
+                    for (int i = 0; i < lines.Length; i++)
+                    {
+                        var line = lines[i];
+                        bool isLast = i == lines.Length - 1;
+
+                        output += CodeUtility.MakeClickable(unit, line.StringHighlight());
+                        if (!isLast)
+                            output += "\n";
+                    }
+
+                    output += CodeUtility.MakeClickable(unit, "\"".StringHighlight());
+                    return output;
+                }
+                else
+                {
+                    return CodeUtility.MakeClickable(unit, ("\"" + str + "\"").StringHighlight());
+                }
+            }
             if (type == typeof(char)) return (char)@as.value == char.MinValue ? CodeUtility.MakeClickable(unit, "/* Cannot have an empty character */".WarningHighlight()) : CodeUtility.MakeClickable(unit, $"'{@as.value}'".StringHighlight());
             if (typeof(UnityEngine.Object).IsAssignableFrom(type))
             {
-                if (variableForObject)
+                if (variableForObjects)
                 {
                     var hasVariable = CodeGeneratorValueUtility.TryGetVariable((UnityEngine.Object)@as.value, out string current);
                     var variable = hasVariable ? current : $"ObjectVariable_{Guid.NewGuid().ToString()[..6]}";
@@ -736,19 +894,24 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                 var value = @as.value as AnimationCurve;
                 return CodeUtility.MakeClickable(unit, CreateHighlighted("AnimationCurve", value.keys.Select(k => CreateHighlighted("Keyframe", k.time.As().Code(false), k.value.As().Code(false), k.inTangent.As().Code(false), k.outTangent.As().Code(false), k.inWeight.As().Code(false), k.outWeight.As().Code(false))).ToArray()));
             }
+            if (type == typeof(Color))
+            {
+                var value = (Color)@as.value;
+                return CodeUtility.MakeClickable(unit, CreateHighlighted("Color", value.r.As().Code(false), value.g.As().Code(false), value.b.As().Code(false), value.a.As().Code(false)));
+            }
             if (type.IsNumeric()) return CodeUtility.MakeClickable(unit, @as.value.ToString().NumericHighlight());
             if (type.IsEnum) return CodeUtility.MakeClickable(unit, (@as.value as Enum).ToMultipleEnumString(true));
             if (isNew)
             {
                 if (type.IsClass || !type.IsClass && !type.IsInterface && !type.IsEnum)
                 {
-                    if (type.IsGenericType) return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, true, variableForObject) : CodeUtility.MakeClickable(unit, "new ".ConstructHighlight() + GenericDeclaration(type, fullName) + "()");
-                    if (type.IsConstructedGenericType) return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, true, variableForObject) : CodeUtility.MakeClickable(unit, "new ".ConstructHighlight() + GenericDeclaration(type, fullName) + "(" + parameters + ")");
-                    return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, true, variableForObject) : CodeUtility.MakeClickable(unit, "new ".ConstructHighlight() + type.As().CSharpName(false, fullName, true) + "(" + parameters + ")");
+                    if (type.IsGenericType) return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, true, variableForObjects) : CodeUtility.MakeClickable(unit, "new ".ConstructHighlight() + GenericDeclaration(type, fullName) + "()");
+                    if (type.IsConstructedGenericType) return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, true, variableForObjects) : CodeUtility.MakeClickable(unit, "new ".ConstructHighlight() + GenericDeclaration(type, fullName) + "(" + parameters + ")");
+                    return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, true, variableForObjects) : CodeUtility.MakeClickable(unit, "new ".ConstructHighlight() + type.As().CSharpName(false, fullName, true) + "(" + parameters + ")");
                 }
                 else
                 {
-                    if (type.IsValueType && !type.IsEnum && !type.IsPrimitive) return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, true, variableForObject) : CodeUtility.MakeClickable(unit, "new ".ConstructHighlight() + type.As().CSharpName(false, fullName, true) + "(" + parameters + ")");
+                    if (type.IsValueType && !type.IsEnum && !type.IsPrimitive) return isLiteral ? Literal(@as.value, unit, newLineLiteral, fullName, true, variableForObjects) : CodeUtility.MakeClickable(unit, "new ".ConstructHighlight() + type.As().CSharpName(false, fullName, true) + "(" + parameters + ")");
                 }
             }
 
@@ -788,11 +951,11 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
             return fields;
         }
 
-        private static string Literal(object value, bool newLine = false, bool fullName = false, bool highlight = true, bool variableForObject = true)
+        private static string Literal(object value, bool newLine = false, bool fullName = false, bool highlight = true, bool variableForObjects = true)
         {
             if (highlight)
             {
-                return HightlightedLiteral(value, newLine, fullName, variableForObject);
+                return HightlightedLiteral(value, newLine, fullName, variableForObjects);
             }
             var fields = GetCachedFields(value?.GetType());
             var output = string.Empty;
@@ -837,11 +1000,11 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                     if (list.Count > 2)
                     {
                         output += "\n";
-                        output += indent + item.As().Code(true, true, false, "", false, fullName, variableForObject);
+                        output += indent + item.As().Code(true, true, false, "", false, fullName, variableForObjects);
                     }
                     else
                     {
-                        output += (index == 0 ? " " : "") + item.As().Code(true, true, false, "", false, fullName, variableForObject);
+                        output += (index == 0 ? " " : "") + item.As().Code(true, true, false, "", false, fullName, variableForObjects);
                     }
 
                     if (++index != list.Count)
@@ -857,9 +1020,9 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                 {
                     string newLinestr = _dictionary.Count > 2 ? "\n" : "";
                     output += indent + "{ ";
-                    output += entry.Key.As().Code(true, true, false, "", false, fullName, variableForObject);
+                    output += entry.Key.As().Code(true, true, false, "", false, fullName, variableForObjects);
                     output += ", ";
-                    output += entry.Value.As().Code(true, true, false, "", false, fullName, variableForObject);
+                    output += entry.Value.As().Code(true, true, false, "", false, fullName, variableForObjects);
                     output += " }";
                     if (++index != _dictionary.Count)
                     {
@@ -875,11 +1038,11 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                     if (array.Length > 2)
                     {
                         output += "\n";
-                        output += indent + item.As().Code(true, true, false, "", false, fullName, variableForObject);
+                        output += indent + item.As().Code(true, true, false, "", false, fullName, variableForObjects);
                     }
                     else
                     {
-                        output += (index == 0 ? " " : "") + item.As().Code(true, true, false, "", false, fullName, variableForObject);
+                        output += (index == 0 ? " " : "") + item.As().Code(true, true, false, "", false, fullName, variableForObjects);
                     }
 
                     if (++index != array.Length)
@@ -893,7 +1056,7 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                 CodeBuilder.Indent(CodeBuilder.currentIndent + 1);
             for (int i = 0; i < usableFields.Count; i++)
             {
-                output += (isMultiLine ? CodeBuilder.GetCurrentIndent() : string.Empty) + usableFields[i].Name + " = " + usableFields[i].GetValue(value).As().Code(true, true, false, "", false, fullName, variableForObject);
+                output += (isMultiLine ? CodeBuilder.GetCurrentIndent() : string.Empty) + usableFields[i].Name + " = " + usableFields[i].GetValue(value).As().Code(true, true, false, "", false, fullName, variableForObjects);
                 output += i < usableFields.Count - 1 ? ", " + (isMultiLine ? "\n" : string.Empty) : string.Empty;
             }
             if (isMultiLine)
@@ -904,7 +1067,7 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
             return output;
         }
 
-        private static string HightlightedLiteral(object value, bool newLine = false, bool fullName = false, bool variableForObject = true)
+        private static string HightlightedLiteral(object value, bool newLine = false, bool fullName = false, bool variableForObjects = true)
         {
             var fields = GetCachedFields(value?.GetType());
             var output = string.Empty;
@@ -949,11 +1112,11 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                     if (list.Count > 2)
                     {
                         output += "\n";
-                        output += indent + item.As().Code(true, true, true, "", false, fullName, variableForObject);
+                        output += indent + item.As().Code(true, true, true, "", false, fullName, variableForObjects);
                     }
                     else
                     {
-                        output += (index == 0 ? " " : "") + item.As().Code(true, true, true, "", false, fullName, variableForObject);
+                        output += (index == 0 ? " " : "") + item.As().Code(true, true, true, "", false, fullName, variableForObjects);
                     }
 
                     if (++index != list.Count)
@@ -969,9 +1132,9 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                 {
                     string newLinestr = _dictionary.Count > 2 ? "\n" : "";
                     output += indent + "{ ";
-                    output += entry.Key.As().Code(true, true, true, "", false, fullName, variableForObject);
+                    output += entry.Key.As().Code(true, true, true, "", false, fullName, variableForObjects);
                     output += ", ";
-                    output += entry.Value.As().Code(true, true, true, "", false, fullName, variableForObject);
+                    output += entry.Value.As().Code(true, true, true, "", false, fullName, variableForObjects);
                     output += " }";
                     if (++index != _dictionary.Count)
                     {
@@ -987,11 +1150,11 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                     if (array.Length > 2)
                     {
                         output += "\n";
-                        output += indent + item.As().Code(true, true, true, "", false, fullName, variableForObject);
+                        output += indent + item.As().Code(true, true, true, "", false, fullName, variableForObjects);
                     }
                     else
                     {
-                        output += (index == 0 ? " " : "") + item.As().Code(true, true, true, "", false, fullName, variableForObject);
+                        output += (index == 0 ? " " : "") + item.As().Code(true, true, true, "", false, fullName, variableForObjects);
                     }
 
                     if (++index != array.Length)
@@ -1005,7 +1168,7 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                 CodeBuilder.Indent(CodeBuilder.currentIndent + 1);
             for (int i = 0; i < usableFields.Count; i++)
             {
-                output += (isMultiLine ? CodeBuilder.GetCurrentIndent() : string.Empty) + usableFields[i].Name + " = " + usableFields[i].GetValue(value).As().Code(true, true, true, "", false, fullName, variableForObject);
+                output += (isMultiLine ? CodeBuilder.GetCurrentIndent() : string.Empty) + usableFields[i].Name + " = " + usableFields[i].GetValue(value).As().Code(true, true, true, "", false, fullName, variableForObjects);
                 output += i < usableFields.Count - 1 ? ", " + (isMultiLine ? "\n" : string.Empty) : string.Empty;
             }
             if (isMultiLine || (value is ICollection _collection && _collection.Count > 0))
@@ -1016,11 +1179,11 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
             return output;
         }
 
-        private static string Literal(object value, Unit unit, bool newLine = false, bool fullName = false, bool highlight = true, bool variableForObject = true)
+        private static string Literal(object value, Unit unit, bool newLine = false, bool fullName = false, bool highlight = true, bool variableForObjects = true)
         {
             if (highlight)
             {
-                return HighlightedLiteral(value, unit, newLine, fullName, variableForObject);
+                return HighlightedLiteral(value, unit, newLine, fullName, variableForObjects);
             }
             var fields = GetCachedFields(value?.GetType());
             var output = string.Empty;
@@ -1065,11 +1228,11 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                     if (list.Count > 2)
                     {
                         output += "\n";
-                        output += indent + CodeUtility.MakeClickable(unit, item.As().Code(true, true, false, "", false, fullName, variableForObject));
+                        output += indent + CodeUtility.MakeClickable(unit, item.As().Code(true, true, false, "", false, fullName, variableForObjects));
                     }
                     else
                     {
-                        output += (index == 0 ? " " : "") + CodeUtility.MakeClickable(unit, item.As().Code(true, true, false, "", false, fullName, variableForObject));
+                        output += (index == 0 ? " " : "") + CodeUtility.MakeClickable(unit, item.As().Code(true, true, false, "", false, fullName, variableForObjects));
                     }
 
                     if (++index != list.Count)
@@ -1085,9 +1248,9 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                 {
                     string newLinestr = _dictionary.Count > 2 ? "\n" : "";
                     output += indent + CodeUtility.MakeClickable(unit, "{ ");
-                    output += CodeUtility.MakeClickable(unit, entry.Key.As().Code(true, true, false, "", false, fullName, variableForObject));
+                    output += CodeUtility.MakeClickable(unit, entry.Key.As().Code(true, true, false, "", false, fullName, variableForObjects));
                     output += CodeUtility.MakeClickable(unit, ", ");
-                    output += CodeUtility.MakeClickable(unit, entry.Value.As().Code(true, true, false, "", false, fullName, variableForObject));
+                    output += CodeUtility.MakeClickable(unit, entry.Value.As().Code(true, true, false, "", false, fullName, variableForObjects));
                     output += CodeUtility.MakeClickable(unit, " }");
                     if (++index != _dictionary.Count)
                     {
@@ -1103,11 +1266,11 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                     if (array.Length > 2)
                     {
                         output += "\n";
-                        output += indent + CodeUtility.MakeClickable(unit, item.As().Code(true, true, false, "", false, fullName, variableForObject));
+                        output += indent + CodeUtility.MakeClickable(unit, item.As().Code(true, true, false, "", false, fullName, variableForObjects));
                     }
                     else
                     {
-                        output += (index == 0 ? " " : "") + CodeUtility.MakeClickable(unit, item.As().Code(true, true, false, "", false, fullName, variableForObject));
+                        output += (index == 0 ? " " : "") + CodeUtility.MakeClickable(unit, item.As().Code(true, true, false, "", false, fullName, variableForObjects));
                     }
 
                     if (++index != array.Length)
@@ -1121,7 +1284,7 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                 CodeBuilder.Indent(CodeBuilder.currentIndent + 1);
             for (int i = 0; i < usableFields.Count; i++)
             {
-                output += (isMultiLine ? CodeBuilder.GetCurrentIndent() : string.Empty) + CodeUtility.MakeClickable(unit, usableFields[i].Name + " = " + usableFields[i].GetValue(value).As().Code(true, true, false, "", false, fullName, variableForObject));
+                output += (isMultiLine ? CodeBuilder.GetCurrentIndent() : string.Empty) + CodeUtility.MakeClickable(unit, usableFields[i].Name + " = " + usableFields[i].GetValue(value).As().Code(true, true, false, "", false, fullName, variableForObjects));
                 output += i < usableFields.Count - 1 ? CodeUtility.MakeClickable(unit, ", ") + (isMultiLine ? "\n" : string.Empty) : string.Empty;
             }
             if (isMultiLine)
@@ -1132,7 +1295,7 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
             return output;
         }
 
-        private static string HighlightedLiteral(object value, Unit unit, bool newLine = false, bool fullName = false, bool variableForObject = false)
+        private static string HighlightedLiteral(object value, Unit unit, bool newLine = false, bool fullName = false, bool variableForObjects = false)
         {
             var fields = GetCachedFields(value?.GetType());
             var output = string.Empty;
@@ -1177,11 +1340,11 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                     if (list.Count > 2)
                     {
                         output += "\n";
-                        output += indent + CodeUtility.MakeClickable(unit, item.As().Code(true, true, true, "", false, fullName, variableForObject));
+                        output += indent + CodeUtility.MakeClickable(unit, item.As().Code(true, true, true, "", false, fullName, variableForObjects));
                     }
                     else
                     {
-                        output += (index == 0 ? " " : "") + CodeUtility.MakeClickable(unit, item.As().Code(true, true, true, "", false, fullName, variableForObject));
+                        output += (index == 0 ? " " : "") + CodeUtility.MakeClickable(unit, item.As().Code(true, true, true, "", false, fullName, variableForObjects));
                     }
 
                     if (++index != list.Count)
@@ -1197,9 +1360,9 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                 {
                     string newLinestr = _dictionary.Count > 2 ? "\n" : "";
                     output += indent + CodeUtility.MakeClickable(unit, "{ ");
-                    output += CodeUtility.MakeClickable(unit, entry.Key.As().Code(true, true, true, "", false, fullName, variableForObject));
+                    output += CodeUtility.MakeClickable(unit, entry.Key.As().Code(true, true, true, "", false, fullName, variableForObjects));
                     output += CodeUtility.MakeClickable(unit, ", ");
-                    output += CodeUtility.MakeClickable(unit, entry.Value.As().Code(true, true, true, "", false, fullName, variableForObject));
+                    output += CodeUtility.MakeClickable(unit, entry.Value.As().Code(true, true, true, "", false, fullName, variableForObjects));
                     output += CodeUtility.MakeClickable(unit, " }");
                     if (++index != _dictionary.Count)
                     {
@@ -1215,11 +1378,11 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                     if (array.Length > 2)
                     {
                         output += "\n";
-                        output += indent + CodeUtility.MakeClickable(unit, item.As().Code(true, true, true, "", false, fullName, variableForObject));
+                        output += indent + CodeUtility.MakeClickable(unit, item.As().Code(true, true, true, "", false, fullName, variableForObjects));
                     }
                     else
                     {
-                        output += (index == 0 ? " " : "") + CodeUtility.MakeClickable(unit, item.As().Code(true, true, true, "", false, fullName, variableForObject));
+                        output += (index == 0 ? " " : "") + CodeUtility.MakeClickable(unit, item.As().Code(true, true, true, "", false, fullName, variableForObjects));
                     }
 
                     if (++index != array.Length)
@@ -1233,7 +1396,7 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                 CodeBuilder.Indent(CodeBuilder.currentIndent + 1);
             for (int i = 0; i < usableFields.Count; i++)
             {
-                output += (isMultiLine ? CodeBuilder.GetCurrentIndent() : string.Empty) + CodeUtility.MakeClickable(unit, usableFields[i].Name + " = " + usableFields[i].GetValue(value).As().Code(true, true, true, "", false, fullName, variableForObject));
+                output += (isMultiLine ? CodeBuilder.GetCurrentIndent() : string.Empty) + CodeUtility.MakeClickable(unit, usableFields[i].Name + " = " + usableFields[i].GetValue(value).As().Code(true, true, true, "", false, fullName, variableForObjects));
                 output += i < usableFields.Count - 1 ? CodeUtility.MakeClickable(unit, ", ") + (isMultiLine ? "\n" : string.Empty) : string.Empty;
             }
             if (isMultiLine)

@@ -11,7 +11,7 @@ namespace Unity.VisualScripting.Community
         [Inspectable]
         [UnitHeaderInspectable]
         [InspectorTextArea()]
-        public string stringLiteral;
+        public string stringLiteral = "";
 
         /// <summary>
         /// The value of the provided string, which is a constant

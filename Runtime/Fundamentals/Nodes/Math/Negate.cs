@@ -1,14 +1,9 @@
-using UnityEngine;
-using Unity.VisualScripting;
-using System.Numerics;
-using UnityEngine.Windows;
-
 namespace Unity.VisualScripting.Community
 {
-[RenamedFrom("NegativeValueNode")]    
-    [UnitTitle("Negate")] // Node title
-    [UnitCategory("Community\\Math")] // Node category
-    [TypeIcon(typeof(Negate))] // Node category
+    [RenamedFrom("NegativeValueNode")]
+    [UnitTitle("Negate")]
+    [UnitCategory("Community\\Math")]
+    [TypeIcon(typeof(Negate))]
     public class NegativeValueNode : Unit
     {
         [UnitHeaderInspectable]
@@ -22,17 +17,14 @@ namespace Unity.VisualScripting.Community
         public ValueInput Vector2;
         [DoNotSerialize]
         public ValueInput Vector3;
-    
+
         [DoNotSerialize]
         public ValueOutput output;
-    
+
         protected override void Definition()
         {
             switch (type)
             {
-                case NegateType.Float:
-                    Float = ValueInput<float>(nameof(Float));
-                    break;
                 case NegateType.Int:
                     Int = ValueInput<int>(nameof(Int));
                     break;
@@ -42,21 +34,19 @@ namespace Unity.VisualScripting.Community
                 case NegateType.Vector3:
                     Vector3 = ValueInput<UnityEngine.Vector3>(nameof(Vector3));
                     break;
+                case NegateType.Float:
                 default:
                     Float = ValueInput<float>(nameof(Float));
                     break;
             }
-    
+
             output = ValueOutput(nameof(output), GetNegativeValue);
         }
-    
+
         private object GetNegativeValue(Flow flow)
         {
             switch (type)
             {
-                case NegateType.Float:
-                    float floatvalue = flow.GetValue<float>(Float);
-                    return -floatvalue;
                 case NegateType.Int:
                     int intvalue = flow.GetValue<int>(Int);
                     return -intvalue;
@@ -66,14 +56,15 @@ namespace Unity.VisualScripting.Community
                 case NegateType.Vector3:
                     UnityEngine.Vector3 vector3value = flow.GetValue<UnityEngine.Vector3>(Vector3);
                     return -vector3value;
+                case NegateType.Float:
                 default:
                     float value = flow.GetValue<float>(Float);
                     return -value;
             }
-    
+
         }
     }
-    
+
     public enum NegateType
     {
         Float,
@@ -81,5 +72,5 @@ namespace Unity.VisualScripting.Community
         Vector2,
         Vector3,
     }
-    
+
 }

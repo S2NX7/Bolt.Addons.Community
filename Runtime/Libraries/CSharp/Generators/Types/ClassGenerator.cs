@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.VisualScripting;
+using System.Linq;
 
 namespace Unity.VisualScripting.Community.Libraries.CSharp
 {
@@ -86,8 +87,7 @@ namespace Unity.VisualScripting.Community.Libraries.CSharp
 
         protected override string GenerateBefore(int indent)
         {
-            var output = "";
-            output += !string.IsNullOrEmpty(beforeUsings) ? CodeBuilder.Indent(indent) + beforeUsings : string.Empty;
+            var output = !string.IsNullOrEmpty(beforeUsings) ? CodeBuilder.Indent(indent) + beforeUsings + "\n" : string.Empty;
             if (generateUsings)
             {
                 var usings = Usings();
@@ -122,7 +122,7 @@ namespace Unity.VisualScripting.Community.Libraries.CSharp
         {
             return modifier != ClassModifier.Static && modifier != ClassModifier.StaticPartial;
         }
-        
+
         private bool IsVaildInheritance()
         {
             return (inherits != null && inherits != typeof(object)) || !string.IsNullOrEmpty(assemblyQualifiedInheritanceType);
@@ -254,9 +254,9 @@ namespace Unity.VisualScripting.Community.Libraries.CSharp
         {
             _usingsSet.Clear();
 
-            if (this.usings != null)
+            if (usings != null)
             {
-                foreach (var @using in this.usings)
+                foreach (var @using in usings)
                 {
                     _usingsSet.Add(@using);
                 }
@@ -264,7 +264,7 @@ namespace Unity.VisualScripting.Community.Libraries.CSharp
 
             if (useAssemblyQualifiedNameForInheritance)
             {
-                if (!string.IsNullOrEmpty(assemblyQualifiedInheritanceNamespace) && 
+                if (!string.IsNullOrEmpty(assemblyQualifiedInheritanceNamespace) &&
                     assemblyQualifiedInheritanceNamespace + "." + assemblyQualifiedInheritanceType != "System.Void")
                 {
                     _usingsSet.Add(assemblyQualifiedInheritanceNamespace);
@@ -315,7 +315,7 @@ namespace Unity.VisualScripting.Community.Libraries.CSharp
                 }
             }
 
-            return new List<string>(_usingsSet);
+            return _usingsSet.ToList();
         }
 
         public ClassGenerator Inherit(Type type)
@@ -328,6 +328,7 @@ namespace Unity.VisualScripting.Community.Libraries.CSharp
         /// </summary>
         public ClassGenerator ImplementInterface(Type type)
         {
+            if (interfaces.Contains(type)) return this;
             interfaces.Add(type);
             return this;
         }

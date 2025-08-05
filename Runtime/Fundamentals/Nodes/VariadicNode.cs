@@ -42,7 +42,7 @@ namespace Unity.VisualScripting.Community
             for (var i = 0; i < Math.Min(argumentCount, ArgumentLimit()); i++)
             {
                 var argument = ValueInput<T1>(GetArgumentName(i));
-                argument.SetDefaultValue(GetDefaultValue(typeof(T1)));
+                argument.SetDefaultValue(typeof(T1).PseudoDefault());
                 arguments.Add(argument);
                 BuildRelations(argument);
             }

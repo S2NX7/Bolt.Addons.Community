@@ -32,7 +32,7 @@ namespace Unity.VisualScripting.Community
 
         public override List<TypeParam> Parameters => new List<TypeParam>() { new TypeParam(0, "value") };
 
-        public override string MethodBody => GetNextUnit(OutputPort, Data, 0);
+        public override string MethodBody => GetNextUnit(OutputPort, Data, indent);
 
         public override int GenericCount => 1;
 
@@ -42,6 +42,7 @@ namespace Unity.VisualScripting.Community
 
         public override string GenerateControl(ControlInput input, ControlGenerationData data, int indent)
         {
+            if (input == null) return "";
             var output = string.Empty;
             Data = data;
             if (Unit.graph.groups.Any(_group => _group.position.Contains(Unit.position)))

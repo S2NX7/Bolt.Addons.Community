@@ -30,7 +30,7 @@ namespace Unity.VisualScripting.Community
                 data.SetCurrentExpectedTypeMet(_isMet, collectionType);
             }
 
-            return new ValueCode(listCode + code, data.GetExpectedType(), data.GetExpectedType() != null && !data.IsCurrentExpectedTypeMet() && !data.GetExpectedType().IsAssignableFrom(GetCollectionType(type)), true, Unit);
+            return Unit.CreateIgnoreString(listCode + code).EndIgnoreContext().Cast(data.GetExpectedType(), data.GetExpectedType() != null && !data.IsCurrentExpectedTypeMet() && !data.GetExpectedType().IsAssignableFrom(GetCollectionType(type)));
         }
 
         private Type GetCollectionType(Type type)

@@ -15,7 +15,7 @@ namespace Unity.VisualScripting.Community
 
         public override FieldModifier FieldModifier => FieldModifier.None;
 
-        public override string Name => "LimitedTrigger_" + count;
+        public override string Name => "limitedTrigger_" + count;
 
         public override object DefaultValue => new LimitedTriggerLogic();
 

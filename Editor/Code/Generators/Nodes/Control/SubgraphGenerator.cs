@@ -112,6 +112,22 @@ public class SubgraphGenerator : NodeGenerator<SubgraphUnit>
                 }
             }
         }
+        if (graphInput != null)
+        {
+            var inputGen = graphInput.GetGenerator();
+            if (inputGen != null)
+            {
+                inputGen.connectedValueInputs.Clear();
+                foreach (var _input in Unit.valueInputs)
+                {
+                    if ((_input.hasDefaultValue || _input.hasValidConnection) && !inputGen.connectedValueInputs.Contains(_input))
+                    {
+                        inputGen.connectedValueInputs.Add(_input);
+                    }
+                }
+            }
+        }
+
         var subgraphName = Unit.nest.graph.title?.Trim();
 
         if (string.IsNullOrWhiteSpace(subgraphName))
@@ -131,7 +147,7 @@ public class SubgraphGenerator : NodeGenerator<SubgraphUnit>
         foreach (var variable in Unit.nest.graph.variables)
         {
             var type = GetCachedType(variable.typeHandle.Identification);
-            var name = data.AddLocalNameInScope(variable.name, type);
+            var name = data.AddLocalNameInScope(variable.name.LegalMemberName(), type);
             sb.Append(CodeBuilder.Indent(indent));
             sb.Append(MakeClickableForThisUnit($"{type.As().CSharpName(false, true)} {name.VariableHighlight()} = "));
             sb.Append(variable.value.As().Code(true, Unit, true, true, "", false, true));
@@ -139,6 +155,7 @@ public class SubgraphGenerator : NodeGenerator<SubgraphUnit>
         }
 
         int index = 0;
+        if (customEvents.Count > 0) NameSpaces = "Unity.VisualScripting.Community";
         foreach (var customEvent in customEvents)
         {
             if (!customEvent.trigger.hasValidConnection) continue;

@@ -52,6 +52,10 @@ namespace Unity.VisualScripting.Community
 
         public override bool canClip => false;
 
+        /// <summary>
+        /// Migrates the rects from the old system to the new one if they are not set.
+        /// Using Unit to better support Undo.
+        /// </summary>
         void MigrateRects()
         {
             if (unit.wholeRect == default && wholeRect != default)
@@ -70,10 +74,8 @@ namespace Unity.VisualScripting.Community
         {
             if (hash == 0) hash = unit.GetHashCode();
 
-            // If first time running, create a palette.
             if (!CommentNodeInspector.initialised) { CommentNodeInspector.UpdatePalette(); CommentNodeInspector.initialised = true; }
 
-            // If unit locked to palette, grab the assigned color
             if (unit.lockedToPalette)
             {
                 unit.color = CommentNodeInspector.colorPalette[unit.customPalette ? 1 : 0, unit.paletteSelection.row, unit.paletteSelection.col] / 3f;
@@ -91,8 +93,6 @@ namespace Unity.VisualScripting.Community
 
             // Set whole area rect
             unit.wholeRect = new Rect(unit.position.x, unit.position.y, unit.hasTitle ? Mathf.Max(titleGUI.CalcSize(new GUIContent(unit.title)).x + borderTotal, Mathf.Clamp(textAreaSize.x + borderTotal, unit.autoWidth ? borderTotal : unit.maxWidth, unit.maxWidth)) : Mathf.Clamp(textAreaSize.x + borderTotal, unit.autoWidth ? borderTotal : unit.maxWidth, unit.maxWidth), Mathf.Clamp(textAreaSize.y + borderTotal, borderTotal, 1000));
-
-            // Resource - https://unitylist.com/p/5c3/Unity-editor-icons
 
             // Draw border if mouse present
             if (unit.wholeRect.Contains(e.mousePosition) || selection.Contains(unit))
@@ -165,17 +165,19 @@ namespace Unity.VisualScripting.Community
             GUI.DrawTexture(unit.borderRect, Texture2D.whiteTexture, ScaleMode.ScaleAndCrop, true, 0, unit.color, 0, 7);
             GUI.DrawTexture(unit.borderRect, Texture2D.whiteTexture, ScaleMode.ScaleAndCrop, true, 0, unit.color * (2f - unit.color.grayscale), borderInside, 7);
         }
-#if VISUAL_SCRIPTING_1_8_0_OR_GREATER
+
         private Vector2 GetElementPosition(IGraphElement graphElement, IGraphElementWidget elementWidget)
         {
             if (graphElement is GraphGroup graphGroup)
             {
                 return new Vector2(graphGroup.position.position.x + elementWidget.position.width / 2, graphGroup.position.position.y + elementWidget.position.height / 2);
             }
+#if VISUAL_SCRIPTING_1_8_0_OR_GREATER
             else if (graphElement is StickyNote stickyNote)
             {
                 return new Vector2(stickyNote.position.position.x + elementWidget.position.width / 2, stickyNote.position.position.y + elementWidget.position.height / 2);
             }
+#endif
             else if (graphElement is Unit unit)
             {
                 return new Vector2(unit.position.x + elementWidget.position.width / 2, unit.position.y + (elementWidget.position.height / 2));
@@ -183,21 +185,7 @@ namespace Unity.VisualScripting.Community
 
             throw new InvalidOperationException("Cannot get element position : " + graphElement);
         }
-#else
-        private Vector2 GetElementPosition(IGraphElement graphElement, IGraphElementWidget elementWidget)
-        {
-            if (graphElement is GraphGroup graphGroup)
-            {
-                return new Vector2(graphGroup.position.position.x + elementWidget.position.width / 2, graphGroup.position.position.y + elementWidget.position.height / 2);
-            }
-            else if (graphElement is Unit unit)
-            {
-                return new Vector2(unit.position.x + elementWidget.position.width / 2, unit.position.y + elementWidget.position.height / 2);
-            }
-
-            throw new InvalidOperationException("Cannot get element position : " + graphElement);
-        }
-#endif
+        
         Vector2 CorrectLineEnd(Edge edge, Vector2 vector2)
         {
             if (edge == Edge.Top)
@@ -248,11 +236,9 @@ namespace Unity.VisualScripting.Community
                     throw new System.ArgumentException("Invalid edge specified for arrowhead.");
             }
 
-            // Calculate arrowhead points (tip + two side points)
             Vector3 leftPoint = arrowBase + (direction * arrowLength) + (perpendicular * arrowWidth);
             Vector3 rightPoint = arrowBase + (direction * arrowLength) - (perpendicular * arrowWidth);
 
-            // Create the arrowhead polygon points (tip and sides)
             Vector3[] arrowPoints = new Vector3[]
             {
             arrowBase,
@@ -420,7 +406,7 @@ namespace Unity.VisualScripting.Community
                 }
                 foreach (var element in canvas.selection.Where(element => element is IGraphElement))
                 {
-                    if (element != unit)
+                    if (element != unit && !unit.connectedElements.Contains(element))
                     {
                         Action action = () => { metadata["connectedElements"].RecordUndo(); unit.connectedElements.Add(element); };
                         yield return new DropdownOption(action, "Connect " + element);
@@ -432,9 +418,7 @@ namespace Unity.VisualScripting.Community
         public override void DrawForeground()
         {
             GUI.contentColor = unit.fontColor;
-            // Get text area rect
             unit.textRect = unit.borderRect.Offset(xy: borderText, centre: true);
-            // If mouse hovering over unit
             if (unit.textRect.Contains(e.mousePosition))
             {
                 GUI.SetNextControlName("commentField" + hash.ToString());
@@ -446,8 +430,7 @@ namespace Unity.VisualScripting.Community
                     metadata["comment"].value = comment;
                 }
             }
-            // Draw main comment
-            // If unit text selected
+
             else if (GUI.GetNameOfFocusedControl() == "commentField" + hash.ToString())
             {
                 EditorGUI.BeginChangeCheck();

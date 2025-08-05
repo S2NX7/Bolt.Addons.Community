@@ -3,9 +3,9 @@ using Unity.VisualScripting;
 namespace Unity.VisualScripting.Community
 {
     [RenamedFrom("BoldString")]
-    [UnitTitle("Bold")]//Unit title
+    [UnitTitle("Bold")]
     [UnitCategory("Community\\Utility\\string")]
-    [TypeIcon(typeof(string))]//Unit icon
+    [TypeIcon(typeof(string))]
     public class BoldString : Unit
     {
         [DoNotSerialize]
@@ -17,10 +17,10 @@ namespace Unity.VisualScripting.Community
         protected override void Definition()
         {
             Value = ValueInput<string>(nameof(Value), default);
-            Result = ValueOutput<string>(nameof(Result), Enter_);
+            Result = ValueOutput<string>(nameof(Result), Enter);
         }
 
-        public string Enter_(Flow flow)
+        public string Enter(Flow flow)
         {
             var value = flow.GetValue(Value);
 

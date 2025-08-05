@@ -435,7 +435,7 @@ namespace Unity.VisualScripting.Community
                         settings.VariableColor = value;
                         field.value = value;
                     }
-                    CodeBuilder.VariableColor = default;
+                    CodeBuilder.VariableColor = defaultVariableColor;
                 });
                 const string defaultStringColor = "CC8833";
                 UIBuilder.AddColorField(settings, () => CodeBuilder.StringColor = settings.StringColor.ToHexString(), syntaxHighlightsSection, "String Color :", "The color for strings.", settings.StringColor, color =>
@@ -445,7 +445,7 @@ namespace Unity.VisualScripting.Community
                     settings.SaveAndDirty();
                 }, (field) =>
                 {
-                    if (UnityEngine.ColorUtility.TryParseHtmlString(defaultStringColor, out var value))
+                    if (UnityEngine.ColorUtility.TryParseHtmlString($"#{defaultStringColor}", out var value))
                     {
                         value = value.WithAlpha(1f);
                         settings.StringColor = value;
@@ -1025,7 +1025,7 @@ namespace Unity.VisualScripting.Community
                 {
                     if (gameObjectGenerator.Data != null)
                     {
-                        List<(GraphReference, Unit)> units = new List<(GraphReference, Unit)>();
+                        List<(GraphReference, Unit)> units = new();
                         units = GraphTraversal.TraverseFlowGraph(gameObjectGenerator.current.GetReference() as GraphReference).ToList();
                         var ordered = units.OrderableSearchFilter(unitId ?? "", (value) => value.Item2.ToString());
                         GraphWindow.OpenActive(ordered.First().result.Item1.isRoot ? ordered.First().result.Item1 : ordered.First().result.Item1.root.GetReference() as GraphReference);
@@ -1144,7 +1144,7 @@ namespace Unity.VisualScripting.Community
             label.RegisterCallback<ClickEvent>(evt => SelectLabel(label, evt, "", currentLine));
             return label;
         }
-        ExternalEventManipulator selectManipulator;
+        EventManipulator selectManipulator;
         private Label CreateCodeLabel(ClickableRegion region, int currentLine)
         {
             var codeWithoutTooltip = CodeUtility.ExtractTooltip(region.code, out string tooltip);
@@ -1316,7 +1316,7 @@ namespace Unity.VisualScripting.Community
         }
 
         private VisualElement markerContainer;
-        ExternalEventManipulator scrollBarMarkerManipulator;
+        EventManipulator scrollBarMarkerManipulator;
         private void SetupScrollbarMarkers(ScrollView scrollView)
         {
             if (scrollBarMarkerManipulator != null)
@@ -1329,7 +1329,7 @@ namespace Unity.VisualScripting.Community
             var scroller = scrollView.verticalScroller;
             if (scroller == null) return;
 
-            scrollBarMarkerManipulator = new ExternalEventManipulator(labels.Select(val => val.label as VisualElement).ToList(), (evt) => UpdateScrollBarMarkers(scrollView, selectedLabels));
+            scrollBarMarkerManipulator = new EventManipulator(labels.Select(val => val.label as VisualElement).ToList(), (evt) => UpdateScrollBarMarkers(scrollView, selectedLabels));
 
             foreach (var (label, line) in selectedLabels)
             {
@@ -1611,9 +1611,9 @@ namespace Unity.VisualScripting.Community
                         int offset = 0;
                         foreach (var (matchIndex, matchLength) in matches)
                         {
-                            string before = highlighted.Substring(0, matchIndex + offset);
+                            string before = highlighted[..(matchIndex + offset)];
                             string match = highlighted.Substring(matchIndex + offset, matchLength);
-                            string after = highlighted.Substring(matchIndex + offset + matchLength);
+                            string after = highlighted[(matchIndex + offset + matchLength)..];
 
                             highlighted = before + $"<mark class=\"highlight\">{match}</mark>" + after;
                             offset += "<mark class=\"highlight\">".Length + "</mark>".Length;
@@ -1659,21 +1659,14 @@ namespace Unity.VisualScripting.Community
         }
 
 
-        private class ExternalEventManipulator : Manipulator
+        private class EventManipulator : Manipulator
         {
             private readonly HashSet<VisualElement> externalElements;
             private readonly EventCallback<ClickEvent> action;
 
-            public ExternalEventManipulator(IReadOnlyCollection<VisualElement> externalElements, EventCallback<ClickEvent> action)
+            public EventManipulator(IReadOnlyCollection<VisualElement> externalElements, EventCallback<ClickEvent> action)
             {
-                this.externalElements = new HashSet<VisualElement>(externalElements.Count);
-                foreach (var element in externalElements)
-                {
-                    if (element != null)
-                    {
-                        this.externalElements.Add(element);
-                    }
-                }
+                this.externalElements = new HashSet<VisualElement>(externalElements);
                 this.action = action;
             }
 

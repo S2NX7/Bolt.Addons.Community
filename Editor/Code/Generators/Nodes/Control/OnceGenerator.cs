@@ -19,7 +19,7 @@ public sealed class OnceGenerator : VariableNodeGenerator
 
     public override FieldModifier FieldModifier => FieldModifier.None;
 
-    public override string Name => "Once_" + count;
+    public override string Name => "once_" + count;
 
     public override object DefaultValue => null;
 

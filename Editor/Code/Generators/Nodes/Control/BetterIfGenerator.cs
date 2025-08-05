@@ -30,7 +30,7 @@ namespace Unity.VisualScripting.Community
                 data.NewScope();
                 if (TrueIsUnreachable())
                 {
-                    output.AppendLine(CodeBuilder.Indent(indent + 1) + MakeClickableForThisUnit(CodeUtility.ToolTip($"The code in the 'True' branch is unreachable due to the output of the condition value: ({CodeUtility.CleanCode(GenerateValue(Unit.Condition, data))}). Don't worry this does not break your code.", $"Unreachable Code in 'True' Branch: {Unit.True.key}", "")));
+                    output.AppendLine(CodeBuilder.Indent(indent + 1) + MakeClickableForThisUnit(CodeUtility.ToolTip($"The code in the 'True' branch is unreachable due to the output of the condition value: ({CodeUtility.CleanCode(GenerateValue(Unit.Condition, data))}).", $"Unreachable Code in 'True' Branch: {Unit.True.key}", "")));
                 }
                 trueCode = GetNextUnit(Unit.True, data, indent + 1);
                 data.ExitScope();
@@ -58,7 +58,7 @@ namespace Unity.VisualScripting.Community
                     data.NewScope();
                     if (FalseIsUnreachable())
                     {
-                        output.AppendLine(CodeBuilder.Indent(indent + 1) + MakeClickableForThisUnit(CodeUtility.ToolTip($"The code in the 'False' branch is unreachable due to the output of the condition value: ({CodeUtility.CleanCode(GenerateValue(Unit.Condition, data))}). Don't worry this does not break your code.", $"Unreachable Code in 'False' Branch: {Unit.False.key}", "")));
+                        output.AppendLine(CodeBuilder.Indent(indent + 1) + MakeClickableForThisUnit(CodeUtility.ToolTip($"The code in the 'False' branch is unreachable due to the output of the condition value: ({CodeUtility.CleanCode(GenerateValue(Unit.Condition, data))}).", $"Unreachable Code in 'False' Branch: {Unit.False.key}", "")));
                     }
                     output.Append(GetNextUnit(Unit.False, data, indent + 1))
                           .AppendLine();
@@ -83,7 +83,7 @@ namespace Unity.VisualScripting.Community
         {
             if (!Unit.Condition.hasValidConnection) return false;
     
-            if (Unit.Condition.connection.source.unit is Literal literal && (bool)literal.value == false)
+            if (Unit.Condition.GetPesudoSource().unit is Literal literal && (bool)literal.value == false)
                 return true;
     
             if (Unit.Condition.GetPesudoSource() is ValueInput valueInput &&
@@ -101,7 +101,7 @@ namespace Unity.VisualScripting.Community
         {
             if (!Unit.Condition.hasValidConnection) return false;
     
-            if (Unit.Condition.connection.source.unit is Literal literal && (bool)literal.value == true)
+            if (Unit.Condition.GetPesudoSource().unit is Literal literal && (bool)literal.value == true)
                 return true;
     
             if (Unit.Condition.GetPesudoSource() is ValueInput valueInput &&
@@ -123,7 +123,7 @@ namespace Unity.VisualScripting.Community
                 var connectedCode = GetNextValueUnit(input, data);
                 data.RemoveExpectedType();
     
-                return new ValueCode(connectedCode, input.type, ShouldCast(input, data));
+                return Unit.CreateIgnoreString(connectedCode).EndIgnoreContext().Cast(input.type, ShouldCast(input, data));
             }
     
             return base.GenerateValue(input, data);

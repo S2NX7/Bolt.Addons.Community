@@ -23,30 +23,30 @@ namespace Unity.VisualScripting.Community
             {
                 if (Unit.target.hasValidConnection)
                 {
-                    string type;
+                    string name;
 
                     if (Unit.member.isField)
                     {
-                        type = Unit.member.fieldInfo.Name;
+                        name = Unit.member.fieldInfo.Name;
                     }
                     else if (Unit.member.isProperty)
                     {
-                        type = Unit.member.name;
+                        name = Unit.member.name;
                     }
                     else
                     {
-                        type = Unit.member.ToPseudoDeclarer().ToString(); // I don't think this should be possible.
+                        name = Unit.member.ToPseudoDeclarer().ToString(); // I don't think this should be possible.
                     }
 
-                    string outputCode;
+                    var outputCode = Unit.CreateClickableString();
 
                     if (typeof(Component).IsAssignableFrom(Unit.member.pseudoDeclaringType))
                     {
-                        outputCode = new ValueCode($"{GenerateValue(Unit.target, data)}{MakeClickableForThisUnit($"{GetComponent(Unit.target, data)}.{type.VariableHighlight()}")}");
+                        outputCode.Ignore(GenerateValue(Unit.target, data)).Clickable(GetComponent(Unit.target, data)).Dot().Clickable(name.VariableHighlight());
                     }
                     else
                     {
-                        outputCode = new ValueCode(GenerateValue(Unit.target, data) + MakeClickableForThisUnit($".{type.VariableHighlight()}"));
+                        outputCode.Ignore(GenerateValue(Unit.target, data)).Dot().Clickable(name.VariableHighlight());
                     }
 
                     return outputCode;
@@ -76,27 +76,21 @@ namespace Unity.VisualScripting.Community
                         data.RemoveExpectedType();
                         if (Unit.member.pseudoDeclaringType.IsSubclassOf(typeof(Component)))
                         {
-                            return new ValueCode(connectedCode, typeof(GameObject), ShouldCast(input, data));
+                            return Unit.CreateIgnoreString(connectedCode).EndIgnoreContext().Cast(typeof(GameObject), ShouldCast(input, data));
                         }
-                        return new ValueCode(connectedCode, input.type, ShouldCast(input, data));
+                        return Unit.CreateIgnoreString(connectedCode).EndIgnoreContext().Cast(input.type, ShouldCast(input, data));
                     }
                     else if (Unit.target.hasDefaultValue)
                     {
-                        var defaultValue = Unit.defaultValues[input.key];
-
-                        if (Unit.target.type == typeof(GameObject) || input.type.IsSubclassOf(typeof(Component)))
+                        if (input.type == typeof(GameObject) || input.type.IsSubclassOf(typeof(Component)) || input.type == typeof(Component))
                         {
-                            return MakeClickableForThisUnit("gameObject".VariableHighlight() + new ValueCode($"{GetComponent(Unit.target, data)}"));
+                            return MakeClickableForThisUnit("gameObject".VariableHighlight() + GetComponent(Unit.target, data));
                         }
-                        else
-                        {
-                            return MakeClickableForThisUnit(defaultValue.As().Code(false, true, true));
-                        }
-
+                        return Unit.defaultValues[input.key].As().Code(true, Unit, true, true, "", false, true);
                     }
                     else
                     {
-                        return MakeClickableForThisUnit("/* Target Requires Input */".WarningHighlight());
+                        return base.GenerateValue(input, data);
                     }
                 }
             }

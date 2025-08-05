@@ -224,10 +224,10 @@ namespace Unity.VisualScripting.Community
             buttonContainer.style.flexDirection = FlexDirection.Row;
             buttonContainer.style.height = 24;
 
-            // var nodeFinderWindowButton = new Button(() => { NodeFinderWindow.Open(); }) { text = "Node Finder" };
-            // nodeFinderWindowButton.style.flexGrow = 1;
+            var nodeFinderWindowButton = new Button(() => { NodeFinderWindow.Open(); }) { text = "Node Finder" };
+            nodeFinderWindowButton.style.flexGrow = 1;
 
-            // buttonContainer.Add(nodeFinderWindowButton);
+            buttonContainer.Add(nodeFinderWindowButton);
 
             container.Add(buttonContainer);
             return container;

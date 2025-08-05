@@ -11,6 +11,7 @@ using SMachine = Unity.VisualScripting.FlowMachine;
 namespace Unity.VisualScripting.Community
 {
     [UnitTitle("Get Machines")]
+    [UnitSubtitle("With asset")]
     [TypeIcon(typeof(SMachine))]
     [UnitCategory("Community/Graphs")]
     [RenamedFrom("Bolt.Addons.Community.Fundamentals.GetMachinesUnit")]
@@ -29,17 +30,17 @@ namespace Unity.VisualScripting.Community
 
         protected override void Definition()
         {
-            target = ValueInput<GameObject>("target", (GameObject)null);
+            target = ValueInput("target", (GameObject)null);
             target.NullMeansSelf();
-            asset = ValueInput<ScriptGraphAsset>("asset", (ScriptGraphAsset)null);
-            machines = ValueOutput<SMachine[]>("machine", (flow) =>
+            asset = ValueInput("asset", (ScriptGraphAsset)null);
+            machines = ValueOutput("machine", (flow) =>
             {
                 var machines = flow.GetValue<GameObject>(target).GetComponents<SMachine>();
                 var _machines = new List<SMachine>();
-
+                var targetAsset = flow.GetValue<ScriptGraphAsset>(asset);
                 for (int i = 0; i < machines.Length; i++)
                 {
-                    if (machines[i].nest.macro == flow.GetValue<ScriptGraphAsset>(asset)) _machines.Add(machines[i]);
+                    if (machines[i].nest.macro == targetAsset) _machines.Add(machines[i]);
                 }
 
                 return _machines.ToArrayPooled();

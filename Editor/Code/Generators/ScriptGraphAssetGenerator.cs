@@ -5,8 +5,14 @@ using System.Linq;
 using Unity.VisualScripting.Community.Libraries.Humility;
 using UnityEngine;
 using System.Collections;
-using UnityEngine.InputSystem;
+using Unity.VisualScripting.Community.Utility;
+using Mono.Cecil;
+
+
+#if PACKAGE_INPUT_SYSTEM_EXISTS
 using Unity.VisualScripting.InputSystem;
+using UnityEngine.InputSystem;
+#endif
 
 namespace Unity.VisualScripting.Community
 {
@@ -48,88 +54,96 @@ namespace Unity.VisualScripting.Community
 #endif
             typeof(OnApplicationFocus),
             typeof(OnApplicationPause),
+            typeof(OnApplicationQuit),
             typeof(Start),
             typeof(Update),
             typeof(FixedUpdate),
             typeof(LateUpdate),
+            typeof(OnBecameVisible),
+            typeof(OnBecameInvisible),
 #if PACKAGE_INPUT_SYSTEM_EXISTS
             typeof(OnInputSystemEventButton),
             typeof(OnInputSystemEventVector2),
             typeof(OnInputSystemEventFloat),
 #endif
         };
-
         #endregion
 
         #region Private Fields
-        private Dictionary<string, GraphMethodDecleration> _methods;
+        // Todo: find a better way to handle these
         private Dictionary<CustomEvent, int> _customEventIds;
-        private HashSet<Unit> _specialUnits = new HashSet<Unit>();
+        private Dictionary<BoltNamedAnimationEvent, int> _namedAnimationEventIds;
+        private Dictionary<BoltUnityEvent, int> _unityEventIds;
+
+        private readonly HashSet<Unit> _specialUnits = new HashSet<Unit>();
         private List<Unit> _allUnits;
-        private IReadOnlyList<IEventUnit> _eventUnits;
-        private Dictionary<Type, NodeGenerator> _generatorCache = new Dictionary<Type, NodeGenerator>();
+        private IReadOnlyList<Unit> _eventUnits;
         private HashSet<string> _processedMethodNames = new HashSet<string>();
         private Dictionary<Type, bool> _delegateTypeCache = new Dictionary<Type, bool>();
         private Dictionary<Type, int> _generatorCount = new Dictionary<Type, int>();
         #endregion
+
+        // Todo: find a better way to handle these
+        List<IEventUnit> focusTrueUnits = new List<IEventUnit>();
+        List<IEventUnit> focusFalseUnits = new List<IEventUnit>();
+        List<IEventUnit> pauseTrueUnits = new List<IEventUnit>();
+        List<IEventUnit> pauseFalseUnits = new List<IEventUnit>();
+
         private ControlGenerationData data;
+
         public override string Generate(int indent)
         {
-            if (Data?.graph == null) return string.Empty;
+            if (Data == null || Data.GetReference() == null) return "";
+            CodeBuilder.Indent(1);
 
+            var @class = ClassGenerator.Class(RootAccessModifier.Public, ClassModifier.None, $"{(Data.graph.title?.Length > 0 ? Data.graph.title : Data.name)}".LegalMemberName(), typeof(MonoBehaviour));
+            if (Data.graph.units.Any(u => u is GraphInput || u is GraphOutput))
+            {
+                @class.beforeUsings = "/* Warning: This graph appears to be a subgraph. Direct generation of subgraphs is not supported. */\n".WarningHighlight();
+            }
+            data = new ControlGenerationData(typeof(MonoBehaviour), Data.GetReference());
+            @class.generateUsings = true;
             Initialize();
-            var script = new System.Text.StringBuilder();
-            script.Append(GenerateScriptHeader());
-            script.Append(GenerateClassDefinition());
-            script.Append(GenerateVariableDeclarations());
-            script.Append(GenerateAwakeHandlers());
-            script.Append(GenerateEventMethods());
-            script.Append(GenerateSpecialUnits());
-            script.Append(GenerateMethodDeclarations());
-            script.Append("}");
+            AddNamespaces(@class);
+            GenerateVariableDeclarations(@class);
+            GenerateAwakeHandlers(@class);
+            GenerateEventMethods(@class);
+            GenerateSpecialUnits(@class);
 
-            return script.ToString();
+            return @class.Generate(0);
         }
 
-        #region Private Methods
         private void Initialize()
         {
-            data = new ControlGenerationData(typeof(MonoBehaviour), Data.GetReference());
-            _methods = new Dictionary<string, GraphMethodDecleration>(32);
-            _customEventIds = new Dictionary<CustomEvent, int>(16);
+            _customEventIds = new Dictionary<CustomEvent, int>(2);
+            _namedAnimationEventIds = new Dictionary<BoltNamedAnimationEvent, int>(2);
+            _unityEventIds = new Dictionary<BoltUnityEvent, int>(2);
             _specialUnits.Clear();
             _processedMethodNames.Clear();
             _delegateTypeCache.Clear();
             _generatorCount.Clear();
 
+            focusTrueUnits.Clear();
+            focusFalseUnits.Clear();
+            pauseTrueUnits.Clear();
+            pauseFalseUnits.Clear();
+
             _allUnits = Data.graph.GetUnitsRecursive(Recursion.New(Recursion.defaultMaxDepth)).Cast<Unit>().ToList();
 
-            _eventUnits = _allUnits.OfType<IEventUnit>()
-                .Where(unit => !(unit is CustomEvent evt && evt.graph != Data.graph) &&
-                              !(unit is ReturnEvent) &&
-                              !(unit is TriggerReturnEvent))
+            _eventUnits = _allUnits
+                .Where(unit => (unit is IEventUnit || unit.GetGenerator() is MethodNodeGenerator) && !(unit is CustomEvent evt && evt.graph != Data.graph) && unit is not ReturnEvent && unit is not TriggerReturnEvent)
                 .ToList()
                 .AsReadOnly();
 
             _specialUnits.UnionWith(_allUnits.Where(u => u is Timer || u is Cooldown));
         }
-
-        private string GenerateScriptHeader()
+        private void AddNamespaces(ClassGenerator @class)
         {
-            units = Data.graph.GetUnitsRecursive(Recursion.New(Recursion.defaultMaxDepth)).Cast<Unit>().ToList();
-            var usings = GetRequiredNamespaces();
-            return "#pragma warning disable\n".ConstructHighlight() + string.Join("\n", usings.Select(u => GenerateUsingStatement(u))) + "\n" + (Data.graph.units.Any(u => u is GraphInput or GraphOutput) ? CodeUtility.ToolTip("This graph contains a GraphInput or GraphOutput. Generating subgraphs directly is not supported and may cause generation issues.", "This graph appears to be a subgraph", "") : "");
-        }
-
-        private List<Unit> units = new List<Unit>();
-
-        private List<(string, Unit)> GetRequiredNamespaces()
-        {
-            var usings = new List<(string, Unit)> { ("Unity", null), ("UnityEngine", null), ("Unity.VisualScripting", null) };
-            foreach (Unit unit in units)
+            var usings = new List<string> { "Unity", "UnityEngine", "Unity.VisualScripting" };
+            Dictionary<Type, int> generatorCount = new Dictionary<Type, int>();
+            foreach (Unit unit in _allUnits)
             {
-                var generator = NodeGenerator.GetSingleDecorator(unit, unit);
-
+                var generator = unit.GetGenerator();
                 if (unit is Timer timer)
                 {
                     if (!_generatorCount.ContainsKey(typeof(TimerGenerator)))
@@ -150,59 +164,93 @@ namespace Unity.VisualScripting.Community
                     (generator as CooldownGenerator).count = _generatorCount[typeof(CooldownGenerator)];
                     _generatorCount[typeof(CooldownGenerator)]++;
                 }
-                else if (generator is MethodNodeGenerator methodNodeGenerator)
+
+                if (generator is VariableNodeGenerator variableNodeGenerator)
                 {
-                    if (!_generatorCount.ContainsKey(methodNodeGenerator.GetType()))
+                    if (!generatorCount.ContainsKey(variableNodeGenerator.GetType()))
                     {
-                        _generatorCount[methodNodeGenerator.GetType()] = 0;
+                        generatorCount[variableNodeGenerator.GetType()] = 0;
                     }
-                    methodNodeGenerator.count = _generatorCount[methodNodeGenerator.GetType()];
-                    _generatorCount[methodNodeGenerator.GetType()]++;
+                    variableNodeGenerator.count = generatorCount[variableNodeGenerator.GetType()];
+                    var field = FieldGenerator.Field(variableNodeGenerator.AccessModifier, variableNodeGenerator.FieldModifier, variableNodeGenerator.Type, variableNodeGenerator.Name);
+                    if (variableNodeGenerator.HasDefaultValue)
+                        field.CustomDefault(variableNodeGenerator.DefaultValue.As().Code(variableNodeGenerator.IsNew, variableNodeGenerator.Literal, true, "", variableNodeGenerator.NewLineLiteral, true, false));
+                    @class.AddField(field);
+                    generatorCount[variableNodeGenerator.GetType()]++;
+
+                }
+
+#if PACKAGE_INPUT_SYSTEM_EXISTS && !PACKAGE_INPUT_SYSTEM_1_2_0_OR_NEWER_EXISTS
+                else if (unit is OnInputSystemEvent eventUnit && generator is MethodNodeGenerator methodNodeGenerator)
+                {
+                    if (!eventUnit.trigger.hasValidConnection) continue;
+                    var field = FieldGenerator.Field(AccessModifier.Private, FieldModifier.None, typeof(bool), GetInputSystemEventVariableName(unit as OnInputSystemEvent, methodNodeGenerator));
+                    @class.AddField(field);
+                }
+#endif
+                if (unit is IEventUnit iEvent)
+                {
+                    if (iEvent is OnApplicationFocus focusEvent)
+                    {
+                        focusTrueUnits.Add(focusEvent);
+                    }
+                    else if (iEvent is OnApplicationLostFocus lostFocusEvent)
+                    {
+                        focusFalseUnits.Add(lostFocusEvent);
+                    }
+                    else if (iEvent is OnApplicationPause pauseEvent)
+                    {
+                        pauseTrueUnits.Add(pauseEvent);
+                    }
+                    else if (iEvent is OnApplicationResume resumeEvent)
+                    {
+                        pauseFalseUnits.Add(resumeEvent);
+                    }
+                    else if (generator is InterfaceNodeGenerator interfaceNodeGenerator)
+                    {
+                        foreach (var interfaceType in interfaceNodeGenerator.InterfaceTypes)
+                        {
+                            @class.ImplementInterface(interfaceType);
+                        }
+                    }
                 }
 
                 if (!string.IsNullOrEmpty(generator.NameSpaces))
                 {
                     foreach (var ns in generator.NameSpaces.Split(","))
                     {
-                        if (!usings.Any(@using => @using.Item1 == ns))
-                        {
-                            usings.Add((ns, unit));
-                        }
+                        var @namespace = ns.Replace("`", ",").Trim();
+
+                        usings.Add(@namespace);
                     }
                 }
             }
-            return usings;
+            @class.AddUsings(usings);
         }
 
-        private string GenerateUsingStatement((string, Unit) @using)
+        private void GenerateVariableDeclarations(ClassGenerator @class)
         {
-            return !string.IsNullOrWhiteSpace(@using.Item1)
-                ? @using.Item2 != null
-                    ? CodeUtility.MakeClickable(@using.Item2, $"using".ConstructHighlight() + $" {@using.Item1};")
-                    : $"using".ConstructHighlight() + $" {@using.Item1};"
-                : string.Empty;
-        }
-
-        private string GenerateClassDefinition()
-        {
-            return $"\n" + "public class ".ConstructHighlight()
-                + $"{(Data.graph.title?.Length > 0 ? Data.graph.title : Data.name)}".LegalMemberName().TypeHighlight()
-                + " : "
-                + "MonoBehaviour\n".TypeHighlight()
-                + "{";
-        }
-
-        private string GenerateVariableDeclarations()
-        {
-            var script = string.Empty;
             var values = CodeGeneratorValueUtility.GetAllValues(Data);
             var index = 0;
             foreach (var variable in values)
             {
-                if (variable.Value != null)
-                    script += (index == 0 ? "\n" + CodeBuilder.Indent(1) + $"[{typeof(FoldoutAttribute).As().CSharpName(false, true, true)}({"ObjectReferences".Quotes().StringHighlight()})]\n" + (values.Count == 1 ? CodeBuilder.Indent(1) + $"[{typeof(FoldoutEndAttribute).As().CSharpName(false, true, true)}]\n" : "") : index == values.Count - 1 ? CodeBuilder.Indent(1) + $"[{"FoldoutEnd".TypeHighlight()}]\n" + CodeBuilder.Indent(1) + $"[{"UnityEngine".NamespaceHighlight()}.{"HideInInspector".TypeHighlight()}]\n" : CodeBuilder.Indent(1) + $"[{"UnityEngine".NamespaceHighlight()}.{"HideInInspector".TypeHighlight()}]\n") + CodeBuilder.Indent(1) + "public ".ConstructHighlight() + variable.Value.GetType().As().CSharpName(false, true, true) + " " + variable.Key.LegalMemberName().VariableHighlight() + ";\n";
+                var field = FieldGenerator.Field(AccessModifier.Public, FieldModifier.None, variable.Value != null ? variable.Value.GetType() : typeof(UnityEngine.Object), data.AddLocalNameInScope(variable.Key.LegalMemberName()));
+                if (index == 0)
+                {
+                    var attribute = AttributeGenerator.Attribute(typeof(FoldoutAttribute));
+                    attribute.AddParameter("ObjectReferences");
+                    field.AddAttribute(attribute);
+                }
                 else
-                    script += (index == 0 ? "\n" + CodeBuilder.Indent(1) + $"[{typeof(FoldoutAttribute).As().CSharpName(false, true, true)}({"ObjectReferences".Quotes().StringHighlight()})]\n" + (values.Count == 1 ? CodeBuilder.Indent(1) + $"[{"FoldoutEnd".TypeHighlight()}]\n" : "") : index == values.Count - 1 ? CodeBuilder.Indent(1) + $"[{"FoldoutEnd".TypeHighlight()}]\n" + CodeBuilder.Indent(1) + $"[{"UnityEngine".NamespaceHighlight()}.{"HideInInspector".TypeHighlight()}]\n" : CodeBuilder.Indent(1) + $"[{"UnityEngine".NamespaceHighlight()}.{"HideInInspector".TypeHighlight()}]\n") + CodeBuilder.Indent(1) + "public ".ConstructHighlight() + typeof(UnityEngine.Object).As().CSharpName(false, true, true) + " " + variable.Key.LegalMemberName().VariableHighlight() + ";\n";
+                {
+                    field.AddAttribute(AttributeGenerator.Attribute(typeof(HideInInspector)));
+                }
+
+                if (index == values.Count - 1)
+                {
+                    field.AddAttribute(AttributeGenerator.Attribute(typeof(FoldoutEndAttribute)));
+                }
+                @class.AddField(field);
                 index++;
             }
 
@@ -210,39 +258,10 @@ namespace Unity.VisualScripting.Community
             {
                 var type = Type.GetType(variable.typeHandle.Identification);
                 type = typeof(IDelegate).IsAssignableFrom(type) ? (variable.value as IDelegate)?.GetDelegateType() ?? (Activator.CreateInstance(type) as IDelegate)?.GetDelegateType() : type;
-                var typeCode = type.As().CSharpName(false, true);
-                script +=
-                    "\n" + CodeBuilder.Indent(1) + "public ".ConstructHighlight()
-                    + typeCode
-                    + " "
-                    + variable.name.LegalMemberName().VariableHighlight()
-                    + (variable.value != null && !typeof(IDelegate).IsAssignableFrom(Type.GetType(variable.typeHandle.Identification)) ? $" = " + $"{variable.value.As().Code(true, true, true, "", true, true, false)};\n" : string.Empty + ";\n");
+                var name = data.AddLocalNameInScope(variable.name.LegalMemberName(), type);
+                var field = FieldGenerator.Field(AccessModifier.Public, FieldModifier.None, type, name, variable.value);
+                @class.AddField(field);
             }
-
-            foreach (Unit unit in units)
-            {
-                var generator = unit.GetGenerator();
-                CodeBuilder.Indent(1);
-                if (generator is VariableNodeGenerator variableNodeGenerator)
-                {
-                    script +=
-                        "\n" + CodeBuilder.Indent(1) + CodeUtility.MakeClickable(unit, variableNodeGenerator.AccessModifier.AsString().ConstructHighlight() + " "
-                        + variableNodeGenerator.Type.As().CSharpName(false, true) + " " + variableNodeGenerator.FieldModifier.AsString().ConstructHighlight()
-                        + variableNodeGenerator.Name.VariableHighlight()
-                        + (variableNodeGenerator.HasDefaultValue ? $" = " : "")) + (variableNodeGenerator.HasDefaultValue ? variableNodeGenerator.DefaultValue.As().Code(variableNodeGenerator.IsNew, variableNodeGenerator.unit, variableNodeGenerator.Literal, true, "", variableNodeGenerator.NewLineLiteral, true, false) : "") + CodeUtility.MakeClickable(unit, ";") + "\n";
-                }
-#if PACKAGE_INPUT_SYSTEM_EXISTS && !PACKAGE_INPUT_SYSTEM_1_2_0_OR_NEWER_EXISTS
-                else if (unit is OnInputSystemEvent eventUnit && generator is MethodNodeGenerator methodNodeGenerator)
-                {
-                    if (!eventUnit.trigger.hasValidConnection) continue;
-                    script +=
-                        "\n" + CodeBuilder.Indent(1) + CodeUtility.MakeSelectable(unit, "private".ConstructHighlight() + " "
-                        + "bool".ConstructHighlight() + " "
-                        + GetInputSystemEventVariableName(unit as OnInputSystemEvent, methodNodeGenerator).VariableHighlight());
-                }
-#endif
-            }
-            return script;
         }
 
 #if PACKAGE_INPUT_SYSTEM_EXISTS && !PACKAGE_INPUT_SYSTEM_1_2_0_OR_NEWER_EXISTS
@@ -263,279 +282,408 @@ namespace Unity.VisualScripting.Community
         }
 #endif
 
-        private string GenerateAwakeHandlers()
+        private void GenerateAwakeHandlers(ClassGenerator @class)
         {
-            var script = string.Empty;
             var customEvents = Data.graph.units.OfType<CustomEvent>();
-            var awakeRequiredGenerators = Data.graph.GetUnitsRecursive(Recursion.New()).Where(unit => (unit as Unit).GetGenerator() is AwakeMethodNodeGenerator).Select(unit => (unit as Unit).GetGenerator()).Cast<AwakeMethodNodeGenerator>().ToList();
-            if (customEvents.Any() || awakeRequiredGenerators.Any())
+            var awakeRequiredUnits = _allUnits.Where(unit => unit.GetGenerator() is AwakeMethodNodeGenerator).ToList();
+            if (customEvents.Any() || awakeRequiredUnits.Count > 0)
             {
-                script += $"\n" + CodeBuilder.Indent(1) + "private void".ConstructHighlight() + " Awake()";
-                script += "\n" + CodeBuilder.Indent(1) + "{\n";
+                var awakeMethod = MethodGenerator.Method(AccessModifier.Private, MethodModifier.None, typeof(void), "Awake");
                 int id = 0;
+                string body = "";
                 foreach (CustomEvent eventUnit in customEvents)
                 {
                     data.NewScope();
                     data.SetReturns(eventUnit.coroutine ? typeof(IEnumerator) : typeof(void));
                     data.AddLocalNameInScope("args", typeof(CustomEventArgs));
-                    foreach (VariableDeclaration variable in Data.graph.variables)
-                    {
-                        data.AddLocalNameInScope(variable.name, !string.IsNullOrEmpty(variable.typeHandle.Identification) ? Type.GetType(variable.typeHandle.Identification) : typeof(object));
-                    }
-                    ;
+
                     _customEventIds.Add(eventUnit, id);
                     id++;
-                    script += CodeUtility.MakeClickable(eventUnit, $"{CodeBuilder.Indent(2)}{"CSharpUtility".TypeHighlight()}.RegisterCustomEvent(") + eventUnit.GenerateValue(eventUnit.target) + CodeUtility.MakeClickable(eventUnit, $", ") + GetMethodName(eventUnit) + CodeUtility.MakeClickable(eventUnit, "Runner);");
+                    body += CodeUtility.MakeClickable(eventUnit, $"{CodeBuilder.Indent(2)}{"CSharpUtility".TypeHighlight()}.RegisterCustomEvent(") + eventUnit.GenerateValue(eventUnit.target) + CodeUtility.MakeClickable(eventUnit, $", " + GetMethodName(eventUnit) + "Runner);");
 
-                    script += "\n";
+                    body += "\n";
 
-                    var eventName = GetMethodName(eventUnit) + CodeUtility.MakeClickable(eventUnit, "Runner");
+                    var eventName = GetMethodName(eventUnit) + "Runner";
                     string runnerCode = GetCustomEventRunnerCode(eventUnit, data);
-                    AddNewMethod(eventUnit, eventName, GetMethodSignature(eventUnit, false, eventName, AccessModifier.Private), runnerCode, "CustomEventArgs ".TypeHighlight() + "args".VariableHighlight(), data);
+                    var method = MethodGenerator.Method(AccessModifier.Private, MethodModifier.None, typeof(void), eventName);
+                    method.AddParameter(ParameterGenerator.Parameter("args", typeof(CustomEventArgs), ParameterModifier.None));
+                    method.Body(runnerCode);
+                    @class.AddMethod(method);
                     data.ExitScope();
                 }
                 var nodeIDs = new Dictionary<Type, int>();
-                foreach (var generator in awakeRequiredGenerators)
+                foreach (var unit in awakeRequiredUnits)
                 {
-                    if (generator.unit.controlOutputs.Count > 0 && generator.unit.controlOutputs[0].hasValidConnection)
+                    var generator = unit.GetGenerator() as AwakeMethodNodeGenerator;
+                    if (nodeIDs.ContainsKey(unit.GetType()))
+                    {
+                        nodeIDs[unit.GetType()]++;
+                        generator.count = nodeIDs[unit.GetType()];
+                    }
+                    else
+                    {
+                        nodeIDs.Add(unit.GetType(), 0);
+                        generator.count = nodeIDs[unit.GetType()];
+                    }
+                    if (generator.OutputPort != null && generator.OutputPort.hasValidConnection)
                     {
                         data.NewScope();
                         data.SetReturns(generator.ReturnType);
-                        if (nodeIDs.ContainsKey(generator.unit.GetType()))
-                        {
-                            nodeIDs[generator.unit.GetType()]++;
-                            generator.count = nodeIDs[generator.unit.GetType()];
-                        }
-                        else
-                        {
-                            nodeIDs.Add(generator.unit.GetType(), 0);
-                            generator.count = nodeIDs[generator.unit.GetType()];
-                        }
-
-                        script += generator.GenerateAwakeCode(data, 2) + "\n";
+                        body += generator.GenerateAwakeCode(data, 0) + "\n";
                         data.ExitScope();
                     }
                 }
-                script += $"\n{CodeBuilder.Indent(1)}}}\n";
+                awakeMethod.Body(body);
+                @class.AddMethod(awakeMethod);
             }
-            return script;
         }
 
-        private string GenerateEventMethods()
+        private void GenerateEventMethods(ClassGenerator @class)
         {
-            var script = string.Empty;
+            var methodBodies = new Dictionary<string, MethodGenerator>();
+            var coroutineBodies = new Dictionary<string, MethodGenerator>();
+
             bool addedSpecialUpdateCode = false;
             bool addedSpecialFixedUpdateCode = false;
-            foreach (IEventUnit unit in units.Where(unit => unit is IEventUnit).Cast<IEventUnit>())
+
+            if (focusTrueUnits.Count > 0 || focusFalseUnits.Count > 0)
             {
-                if ((unit is CustomEvent && unit.graph != Data.graph) || unit is ReturnEvent or TriggerReturnEvent) continue;
-                var specialUnitCode = "";
-                string methodName = CodeUtility.CleanCode(GetMethodName(unit));
+                const int indent = 1;
+                var method = MethodGenerator.Method(AccessModifier.Private, MethodModifier.None, typeof(void), "OnApplicationFocus");
+                method.AddParameter(ParameterGenerator.Parameter("focus", typeof(bool), ParameterModifier.None));
 
-                data.NewScope();
-                if (unit.coroutine)
+                if (focusTrueUnits.Count > 0)
                 {
-                    data.SetReturns(typeof(IEnumerator));
-                    if (!_methods.ContainsKey(methodName))
-                    {
-                        foreach (VariableDeclaration variable in Data.graph.variables)
-                        {
-                            data.AddLocalNameInScope(variable.name, !string.IsNullOrEmpty(variable.typeHandle.Identification) ? Type.GetType(variable.typeHandle.Identification) : typeof(object));
-                        }
-
-                        var parameterInfo = GetMethodParameters(unit);
-                        foreach (var (parameterType, parameterName) in parameterInfo.Item2)
-                        {
-                            data.AddLocalNameInScope(parameterName, parameterType);
-                        }
-
-                        if (unit.controlOutputs.Any(output => output.key == "trigger"))
-                        {
-                            if (unit is Update update && !addedSpecialUpdateCode)
-                            {
-                                addedSpecialUpdateCode = true;
-                                specialUnitCode = string.Join("\n", _specialUnits.Select(t => CodeBuilder.Indent(2) + CodeUtility.MakeClickable(t, (NodeGenerator.GetSingleDecorator(t, t) as VariableNodeGenerator).Name.VariableHighlight() + ".Update();")));
-                                specialUnitCode += "\n";
-#if PACKAGE_INPUT_SYSTEM_EXISTS
-                                if (UnityEngine.InputSystem.InputSystem.settings.updateMode == InputSettings.UpdateMode.ProcessEventsInDynamicUpdate)
-                                {
-                                    foreach (var inputsystemUnit in units.Where(unit => unit is OnInputSystemEvent).Cast<OnInputSystemEvent>())
-                                    {
-                                        if (!inputsystemUnit.trigger.hasValidConnection) continue;
-                                        specialUnitCode += CodeBuilder.Indent(2) + CodeUtility.MakeClickable(inputsystemUnit, MethodNodeGenerator.GetSingleDecorator<MethodNodeGenerator>(inputsystemUnit, inputsystemUnit).Name + "();") + "\n";
-                                    }
-                                }
-#endif
-                            }
-#if PACKAGE_INPUT_SYSTEM_EXISTS
-                            else if (!addedSpecialFixedUpdateCode && unit is FixedUpdate && UnityEngine.InputSystem.InputSystem.settings.updateMode != InputSettings.UpdateMode.ProcessEventsInDynamicUpdate)
-                            {
-                                addedSpecialFixedUpdateCode = true;
-                                foreach (var inputsystemUnit in units.Where(unit => unit is OnInputSystemEvent).Cast<OnInputSystemEvent>())
-                                {
-                                    if (!inputsystemUnit.trigger.hasValidConnection) continue;
-                                    specialUnitCode += CodeBuilder.Indent(2) + CodeUtility.MakeClickable(inputsystemUnit, MethodNodeGenerator.GetSingleDecorator<MethodNodeGenerator>(inputsystemUnit, inputsystemUnit).Name + "();") + "\n";
-                                }
-                            }
-#endif
-                            if (UNITY_METHOD_TYPES.Contains(unit.GetType()))
-                            {
-                                if (unit.controlOutputs["trigger"].hasValidConnection)
-                                {
-                                    AddNewMethod(unit as Unit, GetMethodName(unit), GetMethodSignature(unit, false), specialUnitCode + CodeBuilder.Indent(2) + CodeUtility.MakeClickable(unit as Unit, $"StartCoroutine(") + GetMethodName(unit) + CodeUtility.MakeClickable(unit as Unit, "_Coroutine());"), parameterInfo.parameterSignature, data);
-                                    AddNewMethod(unit as Unit, GetMethodName(unit) + CodeUtility.MakeClickable(unit as Unit, "_Coroutine"), GetMethodSignature(unit, GetMethodName(unit) + CodeUtility.MakeClickable(unit as Unit, "_Coroutine")), GetMethodBody(unit, data), parameterInfo.parameterSignature, data);
-                                }
-                            }
-                            else if (unit.controlOutputs.First(output => output.key == "trigger").hasValidConnection)
-                            {
-                                AddNewMethod(unit as Unit, GetMethodName(unit), GetMethodSignature(unit), GetMethodBody(unit, data), parameterInfo.parameterSignature, data);
-                            }
-                        }
-                    }
-                    else if (_methods.TryGetValue(methodName, out var method))
-                    {
-                        method.methodBody += "\n" + GetMethodBody(unit, method.generationData);
-                    }
-                }
-                else
-                {
+                    data.NewScope();
                     data.SetReturns(typeof(void));
-                    if (!_methods.ContainsKey(methodName))
-                    {
-                        foreach (VariableDeclaration variable in Data.graph.variables)
-                        {
-                            data.AddLocalNameInScope(variable.name, !string.IsNullOrEmpty(variable.typeHandle.Identification) ? Type.GetType(variable.typeHandle.Identification) : typeof(object));
-                        }
+                    string body = string.Join("\n", focusTrueUnits.Select(u => GetMethodBody(u, data, indent)));
+                    method.body += $"{"if".ControlHighlight()} ({"focus".VariableHighlight()})\n{{\n{body}\n}}\n";
+                    data.ExitScope();
+                }
 
-                        var parameterInfo = GetMethodParameters(unit);
-                        foreach (var (parameterType, parameterName) in parameterInfo.Item2)
-                        {
-                            data.AddLocalNameInScope(parameterName, parameterType);
-                        }
-                        if (unit is Update update && !addedSpecialUpdateCode)
-                        {
-                            addedSpecialUpdateCode = true;
-                            specialUnitCode = string.Join("\n", _specialUnits.Select(t => CodeBuilder.Indent(2) + CodeUtility.MakeClickable(t, (NodeGenerator.GetSingleDecorator(t, t) as VariableNodeGenerator).Name.VariableHighlight() + ".Update();")));
-                            specialUnitCode += "\n";
+                if (focusFalseUnits.Count > 0)
+                {
+                    data.NewScope();
+                    data.SetReturns(typeof(void));
+                    string body = string.Join("\n", focusFalseUnits.Select(u => GetMethodBody(u, data, indent)));
+                    method.body += $"{"else".ControlHighlight()}\n{{\n{body}\n}}\n";
+                    data.ExitScope();
+                }
+
+                @class.AddMethod(method);
+            }
+
+            if (pauseTrueUnits.Count > 0 || pauseFalseUnits.Count > 0)
+            {
+                const int indent = 1;
+                var method = MethodGenerator.Method(AccessModifier.Private, MethodModifier.None, typeof(void), "OnApplicationPause");
+                method.AddParameter(ParameterGenerator.Parameter("paused", typeof(bool), ParameterModifier.None));
+
+                if (pauseTrueUnits.Count > 0)
+                {
+                    data.NewScope();
+                    data.SetReturns(typeof(void));
+                    string body = string.Join("\n", pauseTrueUnits.Select(u => GetMethodBody(u, data, indent)));
+                    method.body += $"{"if".ControlHighlight()} ({"paused".VariableHighlight()})\n{{\n{body}\n}}\n";
+                    data.ExitScope();
+                }
+
+                if (pauseFalseUnits.Count > 0)
+                {
+                    data.NewScope();
+                    data.SetReturns(typeof(void));
+                    string body = string.Join("\n", pauseFalseUnits.Select(u => GetMethodBody(u, data, indent)));
+                    method.body += $"{"else".ControlHighlight()}\n{{\n{body}\n}}\n";
+                    data.ExitScope();
+                }
+
+                @class.AddMethod(method);
+            }
+
+            foreach (Unit Unit in _eventUnits)
+            {
+                if (Unit is OnApplicationFocus or OnApplicationLostFocus or OnApplicationPause or OnApplicationResume) continue;
+                if (Unit is IEventUnit unit)
+                {
+                    string unityMethodName = GetMethodName(unit);
+                    string coroutineMethodName = GetMethodName(unit, true);
+                    var parameters = GetMethodParameters(unit);
+
+                    data.NewScope();
+
+                    string specialUnitCode = string.Empty;
+                    bool isUpdate = unit is Update;
+                    bool isFixedUpdate = unit is FixedUpdate;
+                    bool isCoroutine = unit.coroutine;
+
+                    if (isUpdate && !addedSpecialUpdateCode)
+                    {
+                        addedSpecialUpdateCode = true;
+                        specialUnitCode = GenerateSpecialUnitCode(true);
+                    }
 #if PACKAGE_INPUT_SYSTEM_EXISTS
-                            if (UnityEngine.InputSystem.InputSystem.settings.updateMode == InputSettings.UpdateMode.ProcessEventsInDynamicUpdate)
+                    else if (isFixedUpdate && !addedSpecialFixedUpdateCode && UnityEngine.InputSystem.InputSystem.settings.updateMode != UnityEngine.InputSystem.InputSettings.UpdateMode.ProcessEventsInDynamicUpdate)
+                    {
+                        addedSpecialFixedUpdateCode = true;
+                        specialUnitCode = GenerateSpecialUnitCode(false);
+                    }
+#endif
+
+                    if (isCoroutine)
+                    {
+                        var generator = Unit.GetMethodGenerator();
+                        const int indent = 0;
+                        data.SetReturns(typeof(IEnumerator));
+                        string coroutineBody = GetMethodBody(unit, data, indent);
+                        bool HasReturned = data.HasReturned;
+
+                        if (!coroutineBodies.TryGetValue(coroutineMethodName, out var coroutineMethod))
+                        {
+                            coroutineMethod = MethodGenerator.Method(AccessModifier.Private, MethodModifier.None, typeof(IEnumerator), coroutineMethodName);
+                            if (!HasReturned) coroutineMethod.SetWarning("Not all code paths return a value");
+                            if (generator != null && generator.Parameters.Count > 0)
                             {
-                                foreach (var inputsystemUnit in units.Where(unit => unit is OnInputSystemEvent).Cast<OnInputSystemEvent>())
+                                foreach (var param in generator.Parameters)
                                 {
-                                    if (!inputsystemUnit.trigger.hasValidConnection) continue;
-                                    specialUnitCode += CodeBuilder.Indent(2) + CodeUtility.MakeClickable(inputsystemUnit, MethodNodeGenerator.GetSingleDecorator<MethodNodeGenerator>(inputsystemUnit, inputsystemUnit).Name + "();") + "\n";
+                                    coroutineMethod.AddParameter(ParameterGenerator.Parameter(param.name, param.type, ParameterModifier.None));
+                                    data.AddLocalNameInScope(param.name, param.type);
                                 }
                             }
-#endif
+                            coroutineBodies[coroutineMethodName] = coroutineMethod;
                         }
-#if PACKAGE_INPUT_SYSTEM_EXISTS
-                        else if (!addedSpecialFixedUpdateCode && unit is FixedUpdate && UnityEngine.InputSystem.InputSystem.settings.updateMode != InputSettings.UpdateMode.ProcessEventsInDynamicUpdate)
+                        coroutineMethod.body += coroutineBody;
+
+                        if (!methodBodies.TryGetValue(unityMethodName, out var unityMethod))
                         {
-                            addedSpecialFixedUpdateCode = true;
-                            foreach (var inputsystemUnit in units.Where(unit => unit is OnInputSystemEvent).Cast<OnInputSystemEvent>())
+                            unityMethod = MethodGenerator.Method(AccessModifier.Private, MethodModifier.None, typeof(void), unityMethodName);
+                            if (Unit is BoltNamedAnimationEvent or BoltAnimationEvent or BoltUnityEvent)
                             {
-                                if (!inputsystemUnit.trigger.hasValidConnection) continue;
-                                specialUnitCode += CodeBuilder.Indent(2) + CodeUtility.MakeClickable(inputsystemUnit, MethodNodeGenerator.GetSingleDecorator<MethodNodeGenerator>(inputsystemUnit, inputsystemUnit).Name + "();") + "\n";
+                                unityMethod.SetSummary($"Handles the linked {Unit.GetType().Name} event logic.\nUse this method when assigning the event callback in the Unity Inspector.");
+                                if (Unit is BoltNamedAnimationEvent namedAnimationEvent && namedAnimationEvent.name.hasValidConnection)
+                                {
+                                    unityMethod.SetWarning("Note: Dynamic event names (e.g., connected to variables) are not supported. This will only generate the method for the first resolved name at generation time.");
+                                }
+                                else if (Unit is BoltUnityEvent unityEvent && unityEvent.name.hasValidConnection)
+                                {
+                                    unityMethod.SetWarning("Note: Dynamic event names (e.g., connected to variables) are not supported. This will only generate the method for the first resolved name at generation time.");
+                                }
                             }
+                            foreach (var param in parameters)
+                            {
+                                unityMethod.AddParameter(ParameterGenerator.Parameter(param.name, param.type, ParameterModifier.None));
+                                data.AddLocalNameInScope(param.name, param.type);
+                            }
+                            methodBodies[unityMethodName] = unityMethod;
+
+                            if (!string.IsNullOrEmpty(specialUnitCode))
+                                unityMethod.body += specialUnitCode;
                         }
-#endif
-                        if (unit.controlOutputs.Any(output => output.key == "trigger"))
+                        if (Unit is BoltNamedAnimationEvent animationEvent)
                         {
-                            if (unit.controlOutputs.First(output => output.key == "trigger").hasValidConnection) AddNewMethod(unit as Unit, GetMethodName(unit), GetMethodSignature(unit), specialUnitCode + GetMethodBody(unit, data), parameterInfo.parameterSignature, data);
+                            var code = animationEvent.CreateClickableString(CodeBuilder.Indent(indent)).Clickable("if ".ControlHighlight()).Parentheses(inside => inside.Clickable($"{"animationEvent".VariableHighlight()}.{"stringParameter".VariableHighlight()} == ").Ignore(animationEvent.GenerateValue(animationEvent.name, data))).NewLine();
+                            unityMethod.body += code.Braces(inner => inner.Indent(indent + 1).Clickable($"StartCoroutine({coroutineMethodName}({(generator != null ? string.Join(", ", generator.Parameters.Select(p => p.name.VariableHighlight())) : "")}));"), true, indent).NewLine().Build();
                         }
                         else
-                        {
-                            if (unit.controlOutputs.Count > 0 && unit.controlOutputs[0].hasValidConnection) AddNewMethod(unit as Unit, GetMethodName(unit), GetMethodSignature(unit), GetMethodBody(unit, data), parameterInfo.parameterSignature, data);
-                        }
+                            unityMethod.body += CodeUtility.MakeClickable(unit as Unit, $"StartCoroutine({coroutineMethodName}({(generator != null ? string.Join(", ", generator.Parameters.Select(p => p.name.VariableHighlight())) : "")}));") + "\n";
                     }
-                    else if (_methods.TryGetValue(methodName, out var method))
+                    else
                     {
-                        method.methodBody += GetMethodBody(unit, method.generationData) + "\n";
+                        const int indent = 0;
+                        data.SetReturns(typeof(void));
+                        string body = GetMethodBody(unit, data, indent);
+
+                        if (!methodBodies.TryGetValue(unityMethodName, out var method))
+                        {
+                            method = MethodGenerator.Method(AccessModifier.Private, MethodModifier.None, typeof(void), unityMethodName);
+                            if (Unit is BoltNamedAnimationEvent or BoltAnimationEvent or BoltUnityEvent)
+                            {
+                                method.SetSummary($"Handles the linked {Unit.GetType().Name} event logic.\nUse this method when assigning the event callback in the Unity Inspector.");
+                                if (Unit is BoltNamedAnimationEvent namedAnimationEvent && namedAnimationEvent.name.hasValidConnection)
+                                {
+                                    method.SetWarning("Note: Dynamic event names (e.g., connected to variables) are not supported. This will only generate the method for the first resolved name at generation time.");
+                                }
+                                else if (Unit is BoltUnityEvent unityEvent && unityEvent.name.hasValidConnection)
+                                {
+                                    method.SetWarning("Note: Dynamic event names (e.g., connected to variables) are not supported. This will only generate the method for the first resolved name at generation time.");
+                                }
+                            }
+                            foreach (var param in parameters)
+                            {
+                                method.AddParameter(ParameterGenerator.Parameter(param.name, param.type, ParameterModifier.None));
+                            }
+
+                            methodBodies[unityMethodName] = method;
+
+                            if (!string.IsNullOrEmpty(specialUnitCode))
+                                method.body += specialUnitCode;
+                        }
+                        if (Unit is BoltNamedAnimationEvent animationEvent)
+                        {
+                            var code = animationEvent.CreateClickableString(CodeBuilder.Indent(indent)).Clickable("if ".ControlHighlight()).Parentheses(inside => inside.Clickable($"{"animationEvent".VariableHighlight()}.{"stringParameter".VariableHighlight()} == ").Ignore(animationEvent.GenerateValue(animationEvent.name, data))).NewLine();
+                            methodBodies[unityMethodName].body += code.Braces(inner => inner.Ignore(GetMethodBody(unit, data, indent + 1)), true, indent);
+                        }
+                        else
+                            methodBodies[unityMethodName].body += body;
                     }
+
+                    data.ExitScope();
                 }
-                data.ExitScope();
+                else if (Unit.GetGenerator() is MethodNodeGenerator methodNodeGenerator)
+                {
+                    methodNodeGenerator.Data = data;
+                    data.SetReturns(methodNodeGenerator.ReturnType);
+                    string body = string.IsNullOrEmpty(methodNodeGenerator.MethodBody) ? methodNodeGenerator.GenerateControl(null, data, 0) : methodNodeGenerator.MethodBody;
+                    if (!methodBodies.TryGetValue(methodNodeGenerator.Name, out var method))
+                    {
+                        method = MethodGenerator.Method(methodNodeGenerator.AccessModifier, methodNodeGenerator.MethodModifier, methodNodeGenerator.ReturnType, methodNodeGenerator.Name);
+                        method.AddGenerics(methodNodeGenerator.GenericCount);
+                        foreach (var param in methodNodeGenerator.Parameters)
+                        {
+                            if (methodNodeGenerator.GenericCount == 0 || !param.usesGeneric)
+                                method.AddParameter(ParameterGenerator.Parameter(param.name, param.type, param.modifier));
+                            else if (methodNodeGenerator.GenericCount > 0 && param.usesGeneric)
+                            {
+                                var genericString = method.generics[param.generic].name;
+                                method.AddParameter(ParameterGenerator.Parameter(param.name, genericString.TypeHighlight(), param.type, param.modifier));
+                            }
+                        }
+                        methodBodies[methodNodeGenerator.Name] = method;
+                    }
+
+                    methodBodies[methodNodeGenerator.Name].body += body;
+                }
             }
-            return script;
+
+            foreach (var method in methodBodies.Values)
+                @class.AddMethod(method);
+
+            foreach (var coroutine in coroutineBodies.Values)
+                @class.AddMethod(coroutine);
         }
 
-        private string GenerateSpecialUnits()
+        private string GenerateSpecialUnitCode(bool isUpdate)
         {
-            var script = string.Empty;
+            var code = string.Join("\n", _specialUnits.Select(t =>
+                CodeBuilder.Indent(2) +
+                CodeUtility.MakeClickable(t, t.GetVariableGenerator().Name.VariableHighlight() + ".Update();")))
+                + "\n";
+
+#if PACKAGE_INPUT_SYSTEM_EXISTS
+            if (isUpdate)
+            {
+                if (UnityEngine.InputSystem.InputSystem.settings.updateMode == InputSettings.UpdateMode.ProcessEventsInDynamicUpdate)
+                {
+                    foreach (var inputUnit in _allUnits.OfType<OnInputSystemEvent>())
+                    {
+                        if (!inputUnit.trigger.hasValidConnection) continue;
+                        code += CodeUtility.MakeClickable(inputUnit, inputUnit.GetMethodGenerator().Name + "();") + "\n";
+                    }
+                }
+            }
+            else
+            {
+                foreach (var inputUnit in _allUnits.OfType<OnInputSystemEvent>())
+                {
+                    if (!inputUnit.trigger.hasValidConnection) continue;
+                    code += CodeUtility.MakeClickable(inputUnit, inputUnit.GetMethodGenerator().Name + "();") + "\n";
+                }
+            }
+#endif
+
+            return code;
+        }
+
+        private void GenerateSpecialUnits(ClassGenerator @class)
+        {
             data.NewScope();
-            if (_specialUnits.Count > 0 && !units.Any(e => e is Update))
+            bool hasUpdate = false;
+            bool hasFixedUpdate = false;
+#if PACKAGE_INPUT_SYSTEM_EXISTS
+            bool hasInputSystemNode = false;
+#endif
+
+            foreach (var unit in _allUnits)
+            {
+                if (unit is Update) { hasUpdate = true; continue; }
+                if (unit is FixedUpdate) { hasFixedUpdate = true; continue; }
+#if PACKAGE_INPUT_SYSTEM_EXISTS
+                if (unit is OnInputSystemEvent onInputSystemEvent && onInputSystemEvent.trigger.hasValidConnection) { hasInputSystemNode = true; continue; }
+#endif
+            }
+            if (_specialUnits.Count > 0 && !hasUpdate)
             {
                 var update = new Update();
-                var specialCode = string.Join("\n", _specialUnits.Select(t => CodeBuilder.Indent(2) + CodeUtility.MakeClickable(t, (NodeGenerator.GetSingleDecorator(t, t) as VariableNodeGenerator).Name.VariableHighlight() + ".Update();")));
+                var updateMethod = MethodGenerator.Method(AccessModifier.Private, MethodModifier.None, typeof(void), "Update");
+
+                var specialCode = string.Join("\n", _specialUnits.Select(t =>
+                    CodeUtility.MakeClickable(t, t.GetVariableGenerator().Name.VariableHighlight() + ".Update();")));
+
 #if PACKAGE_INPUT_SYSTEM_EXISTS
                 if (UnityEngine.InputSystem.InputSystem.settings.updateMode == InputSettings.UpdateMode.ProcessEventsInDynamicUpdate)
                 {
-                    foreach (var unit in units.Where(unit => unit is OnInputSystemEvent).Cast<OnInputSystemEvent>())
+                    foreach (var unit in _allUnits.OfType<OnInputSystemEvent>())
                     {
                         if (!unit.trigger.hasValidConnection) continue;
-                        specialCode += CodeBuilder.Indent(2) + CodeUtility.MakeClickable(unit, MethodNodeGenerator.GetSingleDecorator<MethodNodeGenerator>(unit, unit).Name + "();") + "\n";
+
+                        specialCode += CodeUtility.MakeClickable(unit, unit.GetMethodGenerator().Name + "();") + "\n";
                     }
                 }
 #endif
-                AddNewMethod(update, GetMethodName(update), GetMethodSignature(update), specialCode, "", data);
+                updateMethod.body = specialCode;
+                @class.AddMethod(updateMethod);
             }
+
 #if PACKAGE_INPUT_SYSTEM_EXISTS
-            else if (UnityEngine.InputSystem.InputSystem.settings.updateMode == InputSettings.UpdateMode.ProcessEventsInDynamicUpdate && !units.Any(e => e is Update) && units.Any(unit => unit is OnInputSystemEvent onInputSystemEvent && onInputSystemEvent.trigger.hasValidConnection))
+            else if (UnityEngine.InputSystem.InputSystem.settings.updateMode == InputSettings.UpdateMode.ProcessEventsInDynamicUpdate
+                     && !hasUpdate
+                     && hasInputSystemNode)
             {
-                var update = new Update();
+                var updateMethod = MethodGenerator.Method(AccessModifier.Private, MethodModifier.None, typeof(void), "Update");
+
                 var specialCode = "";
-                foreach (var unit in units.Where(unit => unit is OnInputSystemEvent).Cast<OnInputSystemEvent>())
+                foreach (var unit in _allUnits.OfType<OnInputSystemEvent>())
                 {
                     if (!unit.trigger.hasValidConnection) continue;
-                    specialCode += CodeBuilder.Indent(2) + CodeUtility.MakeClickable(unit, MethodNodeGenerator.GetSingleDecorator<MethodNodeGenerator>(unit, unit).Name + "();") + "\n";
+
+                    specialCode += CodeUtility.MakeClickable(unit, unit.GetMethodGenerator().Name + "();") + "\n";
                 }
-                AddNewMethod(update, GetMethodName(update), GetMethodSignature(update), specialCode, "", data);
+
+                updateMethod.body = specialCode;
+                @class.AddMethod(updateMethod);
             }
-            else if (UnityEngine.InputSystem.InputSystem.settings.updateMode != InputSettings.UpdateMode.ProcessEventsInDynamicUpdate && !units.Any(e => e is FixedUpdate) && units.Any(unit => unit is OnInputSystemEvent onInputSystemEvent && onInputSystemEvent.trigger.hasValidConnection))
+            else if (UnityEngine.InputSystem.InputSystem.settings.updateMode != InputSettings.UpdateMode.ProcessEventsInDynamicUpdate
+                     && !hasFixedUpdate
+                     && hasInputSystemNode)
             {
-                var update = new FixedUpdate();
+                var fixedMethod = MethodGenerator.Method(AccessModifier.Private, MethodModifier.None, typeof(void), "FixedUpdate");
+
                 var specialCode = "";
-                foreach (var unit in units.Where(unit => unit is OnInputSystemEvent).Cast<OnInputSystemEvent>())
+                foreach (var unit in _allUnits.OfType<OnInputSystemEvent>())
                 {
                     if (!unit.trigger.hasValidConnection) continue;
-                    specialCode += CodeBuilder.Indent(2) + CodeUtility.MakeClickable(unit, MethodNodeGenerator.GetSingleDecorator<MethodNodeGenerator>(unit, unit).Name + "();") + "\n";
+
+                    specialCode += CodeUtility.MakeClickable(unit, unit.GetMethodGenerator().Name + "();") + "\n";
                 }
-                AddNewMethod(update, GetMethodName(update), GetMethodSignature(update), specialCode, "", data);
+
+                fixedMethod.body = specialCode;
+                @class.AddMethod(fixedMethod);
             }
 #endif
+
             data.ExitScope();
-            return script;
-        }
-
-
-        private string GenerateMethodDeclarations()
-        {
-            var script = string.Empty;
-            foreach (var method in _methods.Values)
-            {
-                script += "\n" + method.GetMethod() + "\n";
-            }
-            return script;
         }
 
         private string GetCustomEventRunnerCode(CustomEvent eventUnit, ControlGenerationData data)
         {
             var output = "";
-            output += CodeBuilder.Indent(2) + CodeUtility.MakeClickable(eventUnit, "if ".ControlHighlight() + $"({"args".VariableHighlight()}.name == ") + eventUnit.GenerateValue(eventUnit.name, data) + CodeUtility.MakeClickable(eventUnit, ")") + "\n";
-            output += CodeBuilder.Indent(2) + CodeUtility.MakeClickable(eventUnit, "{") + "\n";
-            output += CodeBuilder.Indent(3) + (eventUnit.coroutine ? CodeUtility.MakeClickable(eventUnit, $"StartCoroutine(") + GetMethodName(eventUnit) + CodeUtility.MakeClickable(eventUnit, $"({"args".VariableHighlight()}));") : GetMethodName(eventUnit) + CodeUtility.MakeClickable(eventUnit, $"({"args".VariableHighlight()});"));
-            output += "\n" + CodeBuilder.Indent(2) + CodeUtility.MakeClickable(eventUnit, "}") + "\n";
+            output += CodeUtility.MakeClickable(eventUnit, "if ".ControlHighlight() + $"({"args".VariableHighlight()}.{"name".VariableHighlight()} == ") + eventUnit.GenerateValue(eventUnit.name, data) + CodeUtility.MakeClickable(eventUnit, ")") + "\n";
+            output += CodeUtility.MakeClickable(eventUnit, "{") + "\n";
+            output += CodeBuilder.Indent(1) + (eventUnit.coroutine ? CodeUtility.MakeClickable(eventUnit, $"StartCoroutine(" + GetMethodName(eventUnit) + $"({"args".VariableHighlight()}));") : CodeUtility.MakeClickable(eventUnit, GetMethodName(eventUnit) + $"({"args".VariableHighlight()});"));
+            output += "\n" + CodeUtility.MakeClickable(eventUnit, "}") + "\n";
             return output;
         }
 
-        private string AddNewMethod(Unit unit, string name, string methodSignture, string methodBody, string parameters, ControlGenerationData generationData)
-        {
-            var method = new GraphMethodDecleration(unit, name, methodSignture, methodBody, parameters, generationData);
-            _methods.Add(CodeUtility.CleanCode(name), method);
-            return method.GetMethod();
-        }
-
-
-        private string GetMethodName(IEventUnit eventUnit)
+        private string GetMethodName(IEventUnit eventUnit, bool getCoroutine = false)
         {
             var UnitTitle = BoltFlowNameUtility.UnitTitle(eventUnit.GetType(), false, false).LegalMemberName();
 
@@ -543,162 +691,97 @@ namespace Unity.VisualScripting.Community
 
             if (EVENT_NAMES.TryGetValue(UnitTitle, out var title))
             {
-                methodName = CodeUtility.MakeClickable(eventUnit as Unit, title);
+                methodName = title;
             }
             else
             {
-                methodName = CodeUtility.MakeClickable(eventUnit as Unit, UnitTitle);
+                methodName = UnitTitle;
             }
 
             if (eventUnit is CustomEvent customEvent)
             {
                 if (!customEvent.name.hasValidConnection)
                 {
-                    methodName = CodeUtility.MakeClickable(eventUnit as Unit, (string)customEvent.defaultValues[customEvent.name.key]);
+                    methodName = (string)customEvent.defaultValues[customEvent.name.key];
                 }
                 else
                 {
-                    return CodeUtility.MakeClickable(eventUnit as Unit, "CustomEvent" + _customEventIds[eventUnit as CustomEvent]);
+                    if (NodeGenerator.CanPredictConnection(customEvent.name, data))
+                    {
+                        data.TryGetGraphPointer(out var graphPointer);
+                        methodName = Flow.Predict<string>(customEvent.name, graphPointer.AsReference());
+                    }
+                    else
+                        return "CustomEvent" + _customEventIds[customEvent];
                 }
             }
             else if (eventUnit is BoltNamedAnimationEvent animationEvent)
             {
-                methodName = animationEvent.GenerateValue(animationEvent.name);
+                if (NodeGenerator.CanPredictConnection(animationEvent.name, data))
+                {
+                    data.TryGetGraphPointer(out var graphPointer);
+                    methodName = Flow.Predict<string>(animationEvent.name, graphPointer.AsReference()) + "_AnimationEvent";
+                }
+                else if (!animationEvent.name.hasValidConnection)
+                    methodName = animationEvent.defaultValues[animationEvent.name.key] as string + "_AnimationEvent";
+                else
+                {
+                    if (!_namedAnimationEventIds.TryGetValue(animationEvent, out int count))
+                    {
+                        count = 0;
+                    }
+                    _namedAnimationEventIds[animationEvent] = count + 1;
+                    methodName = "AnimationEvent" + _namedAnimationEventIds[animationEvent];
+                }
+                return methodName + (getCoroutine && eventUnit.coroutine ? "_Coroutine" : "");
             }
-            else if (NodeGenerator.GetSingleDecorator(eventUnit as Unit, eventUnit as Unit) is MethodNodeGenerator methodNodeGenerator)
+            else if (eventUnit is BoltUnityEvent unityEvent)
             {
-                return CodeUtility.MakeClickable(eventUnit as Unit, methodNodeGenerator.Name);
+                if (NodeGenerator.CanPredictConnection(unityEvent.name, data))
+                {
+                    data.TryGetGraphPointer(out var graphPointer);
+                    methodName = Flow.Predict<string>(unityEvent.name, graphPointer.AsReference()) + "_UnityEvent";
+                }
+                else if (!unityEvent.name.hasValidConnection)
+                    methodName = unityEvent.defaultValues[unityEvent.name.key] as string + "_UnityEvent";
+                else
+                {
+                    if (!_unityEventIds.TryGetValue(unityEvent, out int count))
+                    {
+                        count = 0;
+                    }
+                    _unityEventIds[unityEvent] = count + 1;
+                    methodName = "UnityEvent" + _unityEventIds[unityEvent];
+                }
+                return methodName + (getCoroutine && eventUnit.coroutine ? "_Coroutine" : "");
+            }
+            else if ((eventUnit as Unit).GetMethodGenerator(false) is MethodNodeGenerator methodNodeGenerator)
+            {
+                return methodNodeGenerator.Name + (getCoroutine && eventUnit.coroutine && UNITY_METHOD_TYPES.Contains(eventUnit.GetType()) ? "_Coroutine" : "");
             }
 
             return methodName;
         }
 
-        private string GetMethodBody(IEventUnit eventUnit, ControlGenerationData data)
+        private string GetMethodBody(IEventUnit eventUnit, ControlGenerationData data, int indent)
         {
             var variablesCode = "";
             foreach (var variable in eventUnit.graph.variables)
             {
                 if (!data.ContainsNameInAnyScope(variable.name))
                 {
-                    variablesCode += CodeBuilder.Indent(2) + CodeUtility.MakeClickable(eventUnit as Unit, Type.GetType(variable.typeHandle.Identification).As().CSharpName(false, true) + " " + variable.name.LegalMemberName().VariableHighlight() + (variable.value != null ? $" = " + "" + $"{variable.value.As().Code(true, true, true)}" : string.Empty) + ";") + "\n";
+                    variablesCode += CodeUtility.MakeClickable(eventUnit as Unit, Type.GetType(variable.typeHandle.Identification).As().CSharpName(false, true) + " " + variable.name.LegalMemberName().VariableHighlight() + (variable.value != null ? $" = " + "" + $"{variable.value.As().Code(true, true, true)}" : string.Empty) + ";") + "\n";
                     data.AddLocalNameInScope(variable.name, Type.GetType(variable.typeHandle.Identification) ?? typeof(object));
                 }
             }
-
-            var methodBody = variablesCode + (eventUnit as Unit).GenerateControl(null, data, 2);
+            var methodBody = variablesCode + (eventUnit as Unit).GenerateControl(null, data, indent);
 
             return methodBody;
         }
 
-        private string GetMethodSignature(IEventUnit eventUnit, string methodName = null)
+        private List<TypeParam> GetMethodParameters(IEventUnit eventUnit)
         {
-            return GetMethodSignature(eventUnit as Unit, eventUnit.coroutine, methodName ?? GetMethodName(eventUnit), (eventUnit as Unit).GetGenerator() is MethodNodeGenerator generator ? generator.AccessModifier : AccessModifier.Public);
+            return (eventUnit as Unit).GetMethodGenerator(false)?.Parameters ?? new List<TypeParam>();
         }
-
-        private string GetMethodSignature(IEventUnit eventUnit, bool isCoroutine)
-        {
-            return GetMethodSignature(eventUnit as Unit, isCoroutine, GetMethodName(eventUnit), (eventUnit as Unit).GetGenerator() is MethodNodeGenerator generator ? generator.AccessModifier : AccessModifier.Public);
-        }
-
-        private string GetMethodSignature(Unit unit, bool isCoroutine, string _methodName, AccessModifier accessModifier = AccessModifier.Public)
-        {
-            var returnType = isCoroutine ? "System.Collections".NamespaceHighlight() + "." + "IEnumerator".TypeHighlight() : "void".ConstructHighlight();
-            var methodName = _methodName;
-
-            return $"\n" + CodeBuilder.Indent(1) + CodeUtility.MakeClickable(unit, accessModifier.AsString().ConstructHighlight() + $"{(accessModifier == AccessModifier.None ? "" : " ")}{returnType} ") + $"{methodName.Replace(" ", "")}";
-        }
-
-        private (string parameterSignature, List<(Type parameterType, string parameterName)>) GetMethodParameters(IEventUnit eventUnit)
-        {
-            return MethodParameterMapper.GetParameters(eventUnit);
-        }
-        #endregion
-
-        #region Helper Classes
-        private static class MethodParameterMapper
-        {
-            private static readonly Dictionary<Type, (string signature, (Type type, string name) info)> _parameterMap = new Dictionary<Type, (string, (Type, string))>
-            {
-#if MODULE_PHYSICS_EXISTS
-                { typeof(OnCollisionEnter), ($"{"Collision".TypeHighlight()} {"collision".VariableHighlight()}", (typeof(Collision), "collision")) },
-                { typeof(OnCollisionExit), ($"{"Collision".TypeHighlight()} {"collision".VariableHighlight()}", (typeof(Collision), "collision")) },
-                { typeof(OnCollisionStay), ($"{"Collision".TypeHighlight()} {"collision".VariableHighlight()}", (typeof(Collision), "collision")) },
-                { typeof(OnJointBreak), ($"{"float".ConstructHighlight()} {"breakForce".VariableHighlight()}", (typeof(float), "breakForce")) },
-                { typeof(OnTriggerEnter), ($"{"Collider".TypeHighlight()} {"other".VariableHighlight()}", (typeof(Collider), "other")) },
-                { typeof(OnTriggerExit), ($"{"Collider".TypeHighlight()} {"other".VariableHighlight()}", (typeof(Collider), "other")) },
-                { typeof(OnTriggerStay), ($"{"Collider".TypeHighlight()} {"other".VariableHighlight()}", (typeof(Collider), "other")) },
-                { typeof(OnControllerColliderHit), ($"{"ControllerColliderHit".TypeHighlight()} {"hitData".VariableHighlight()}", (typeof(ControllerColliderHit), "hitData")) },
-                { typeof(OnParticleCollision), ($"{"GameObject".TypeHighlight()} {"other".VariableHighlight()}", (typeof(GameObject), "other")) },
-#endif
-#if MODULE_PHYSICS_2D_EXISTS
-                { typeof(OnCollisionEnter2D), ($"{"Collision2D".TypeHighlight()} {"collision".VariableHighlight()}", (typeof(Collision2D), "collision")) },
-                { typeof(OnCollisionExit2D), ($"{"Collision2D".TypeHighlight()} {"collision".VariableHighlight()}", (typeof(Collision2D), "collision")) },
-                { typeof(OnCollisionStay2D), ($"{"Collision2D".TypeHighlight()} {"collision".VariableHighlight()}", (typeof(Collision2D), "collision")) },
-                { typeof(OnJointBreak2D), ($"{"Joint2D".TypeHighlight()} {"brokenJoint".VariableHighlight()}", (typeof(Joint2D), "brokenJoint")) },
-                { typeof(OnTriggerEnter2D), ($"{"Collider2D".TypeHighlight()} {"other".VariableHighlight()}", (typeof(Collider2D), "other")) },
-                { typeof(OnTriggerExit2D), ($"{"Collider2D".TypeHighlight()} {"other".VariableHighlight()}", (typeof(Collider2D), "other")) },
-                { typeof(OnTriggerStay2D), ($"{"Collider2D".TypeHighlight()} {"other".VariableHighlight()}", (typeof(Collider2D), "other")) },
-#endif
-                { typeof(OnApplicationFocus), ($"{"bool".ConstructHighlight()} {"focusStatus".VariableHighlight()}", (typeof(bool), "focusStatus")) },
-                { typeof(OnApplicationPause), ($"{"bool".ConstructHighlight()} {"pauseStatus".VariableHighlight()}", (typeof(bool), "pauseStatus")) },
-                { typeof(CustomEvent), ($"{"CustomEventArgs".TypeHighlight()} {"args".VariableHighlight()}", (typeof(CustomEventArgs), "args")) }
-            };
-            public static (string parameterSignature, List<(Type parameterType, string parameterName)>) GetParameters(IEventUnit eventUnit)
-            {
-                if (_parameterMap.TryGetValue(eventUnit.GetType(), out var parameterInfo))
-                {
-                    return (parameterInfo.signature, new List<(Type parameterType, string parameterName)>() { (parameterInfo.info.type, parameterInfo.info.name) });
-                }
-                else
-                {
-                    if ((eventUnit as Unit).GetGenerator() is MethodNodeGenerator generator)
-                    {
-                        var parameters = generator.Parameters;
-                        var parameterSignature = string.Join(", ", parameters.Select(p => $"{p.type.As().CSharpName(false, true)} {p.name.VariableHighlight()}"));
-                        var list = new List<(Type, string)>();
-                        foreach (var parameter in parameters)
-                        {
-                            list.Add((parameter.type, parameter.name));
-                        }
-                        return (parameterSignature, list);
-                    }
-                    else
-                    {
-                        return ("", new List<(Type, string)>());
-                    }
-                }
-            }
-        }
-
-        private class GraphMethodDecleration
-        {
-            public string name;
-            public string parameters;
-            public string methodBody;
-            public string methodSignature;
-            private Unit unit;
-            public ControlGenerationData generationData;
-
-            public GraphMethodDecleration(Unit unit, string name, string methodSignature, string methodBody, string parameters, ControlGenerationData generationData)
-            {
-                this.unit = unit;
-                this.name = name;
-                this.methodSignature = methodSignature;
-                this.parameters = parameters;
-                this.methodBody = methodBody;
-                this.generationData = generationData;
-            }
-
-            public string GetMethod()
-            {
-                var method = string.Empty;
-                method += CodeBuilder.Indent(1) + methodSignature;
-                method += CodeUtility.MakeClickable(unit, $"({parameters})");
-                method += $"\n{CodeBuilder.Indent(1)}{{\n{methodBody}\n";
-                method += CodeBuilder.Indent(1) + "}";
-                return method;
-            }
-        }
-        #endregion
     }
 }

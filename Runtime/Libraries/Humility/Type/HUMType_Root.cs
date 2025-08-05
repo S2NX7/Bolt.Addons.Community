@@ -116,8 +116,16 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
         /// <returns>instance of <paramref name="type"/></returns>
         public static object New(this Type type, params object[] args)
         {
-            if (args.Length == 0 && type.GetPublicDefaultConstructor() != null)
-                return System.Activator.CreateInstance(type);
+            if (args.Length == 0)
+            {
+                if (type.GetPublicDefaultConstructor() != null)
+                    return System.Activator.CreateInstance(type);
+                else if (type.GetConstructors().Any(c => c.IsPublic && c.GetParameters().All(p => p.IsOptional || p.HasDefaultValue())))
+                {
+                    var constructor = type.GetConstructors().First(c => c.IsPublic && c.GetParameters().All(p => p.IsOptional || p.HasDefaultValue()));
+                    return constructor.Invoke(new object[constructor.GetParameters().Length]);
+                }
+            }
             else if (args.Length > 0 && type.GetPublicConstructorAccepting(args.Select(arg => arg?.GetType()).ToArray()) != null)
                 return System.Activator.CreateInstance(type, args);
             return null;

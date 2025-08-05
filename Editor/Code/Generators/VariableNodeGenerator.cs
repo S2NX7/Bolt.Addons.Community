@@ -10,7 +10,6 @@ namespace Unity.VisualScripting.Community
     /// <summary>
     /// Abstract base class for generating nodes that require a class-wide variable.
     /// </summary>
-    /// <typeparam name="T">The type of Unit to decorate.</typeparam>
     public abstract class VariableNodeGenerator : CountGenerator
     {
         public abstract AccessModifier AccessModifier { get; }
@@ -31,13 +30,5 @@ namespace Unity.VisualScripting.Community
         protected VariableNodeGenerator(Unit unit) : base(unit)
         {
         }
-    }
-
-    public abstract class CountGenerator : NodeGenerator
-    {
-        protected CountGenerator(Unit unit) : base(unit)
-        {
-        }
-        public int count;
     }
 }

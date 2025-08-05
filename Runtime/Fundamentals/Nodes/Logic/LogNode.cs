@@ -76,7 +76,6 @@ namespace Unity.VisualScripting.Community
         {
             string formatstr = flow.GetValue<string>(format);
 
-            //Optimized check for 1 arg and no format.
             if (argumentCount == 1 && string.IsNullOrEmpty(formatstr))
             {
                 Debug.Log(flow.GetValue(arguments[0]).ToString());
@@ -84,12 +83,12 @@ namespace Unity.VisualScripting.Community
             }
 
 
-            var stringArgs = arguments.Select<ValueInput, string>(x =>
+            var stringArgs = arguments.Select(x =>
             {
 
                 var val = flow.GetValue(x);
-                if (val is string)
-                    return val as string;
+                if (val is string s)
+                    return s;
                 return val.ToString();
             });
 

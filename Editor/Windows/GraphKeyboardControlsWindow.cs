@@ -36,9 +36,9 @@ namespace Unity.VisualScripting.Community
                 DrawControlRow("Ctrl + Tab (Requires selection)", "Open Surround with Commands");
                 DrawControlRow("Ctrl + / + /", "Create comment");
                 DrawControlRow("Ctrl + / + / (Requires selection)", "Create comment with connections");
-                DrawControlRow("← or → (Requires selection)\nThis only works on a single Unit", "Cycle through all ports");
-                DrawControlRow("Ctrl + 1-9 (Requires selection)\nThis only works on a single Unit", "Cycle through Control ports");
-                DrawControlRow("Alt + 1-9 (Requires selection)\nThis only works on a single Unit", "Cycle through Value ports");
+                DrawControlRow("← or → (Requires selection)\nThis only works on a single Unit \n(↑ to add Unit)", "Cycle through all ports");
+                DrawControlRow("Ctrl + 1-9 (Requires selection)\nThis only works on a single Unit \n(↑ to add Unit)", "Cycle through Control ports");
+                DrawControlRow("Alt + 1-9 (Requires selection)\nThis only works on a single Unit \n(↑ to add Unit)", "Cycle through Value ports");
                 DrawControlRow("Tab (Requires Fuzzy Finder & Creating Connection)\nSnippet Layout: [Name],[Parameters(Separated by ',')]", "Add Graph Snippet");
                 DrawControlRow("Space (While Creating Connection)", "Create Reroute");
                 GUILayout.EndScrollView();

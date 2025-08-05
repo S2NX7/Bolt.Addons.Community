@@ -17,7 +17,7 @@ namespace Unity.VisualScripting.Community
 
         Type GetDictionaryType(ControlGenerationData data)
         {
-            if (data.GetExpectedType() == typeof(System.Collections.IDictionary))
+            if (data.GetExpectedType() == typeof(System.Collections.IDictionary) || data.GetExpectedType() == typeof(object))
             {
                 return typeof(AotDictionary);
             }

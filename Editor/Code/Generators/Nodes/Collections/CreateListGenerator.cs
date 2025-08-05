@@ -18,14 +18,15 @@ namespace Unity.VisualScripting.Community
         public override string GenerateValue(ValueOutput output, ControlGenerationData data)
         {
             List<string> result = new List<string>();
-            foreach (ValueInput item in this.Unit.multiInputs)
+            foreach (ValueInput item in Unit.multiInputs)
             {
                 result.Add(base.GenerateValue(item, data));
             }
             var Type = typeof(AotList);
-            if(data.GetExpectedType() != null)
+            var expectedType = data.GetExpectedType();
+            if (expectedType != null && expectedType != typeof(object))
             {
-                Type = data.GetExpectedType();
+                Type = expectedType;
             }
             return MakeClickableForThisUnit("new ".ConstructHighlight() + Type.As().CSharpName(false, true) + (!Type.IsArray ? "()" : string.Empty) + " { ") + string.Join(MakeClickableForThisUnit(", "), result) + MakeClickableForThisUnit(" }");
         }

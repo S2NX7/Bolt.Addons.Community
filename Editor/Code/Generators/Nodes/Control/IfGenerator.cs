@@ -36,7 +36,7 @@ namespace Unity.VisualScripting.Community
                 else
                 {
                     data.NewScope();
-                    output.AppendLine(CodeBuilder.Indent(indent + 1) + MakeClickableForThisUnit(CodeUtility.ToolTip($"The code in the 'True' branch is unreachable due to the output of the condition value: ({CodeUtility.CleanCode(GenerateValue(Unit.condition, data))}). Don't worry this does not break your code.", $"Unreachable Code in 'True' Branch: {Unit.ifTrue.key}", "")));
+                    output.AppendLine(CodeBuilder.Indent(indent + 1) + MakeClickableForThisUnit(CodeUtility.ToolTip($"The code in the 'True' branch is unreachable due to the output of the condition value: ({CodeUtility.CleanCode(GenerateValue(Unit.condition, data))}).", $"Unreachable Code in 'True' Branch: {Unit.ifTrue.key}", "")));
                     trueCode = GetNextUnit(Unit.ifTrue, data, indent + 1);
                     data.ExitScope();
                     output.Append(trueCode);
@@ -75,7 +75,7 @@ namespace Unity.VisualScripting.Community
                     else
                     {
                         data.NewScope();
-                        output.AppendLine(CodeBuilder.Indent(indent + 1) + MakeClickableForThisUnit(CodeUtility.ToolTip($"The code in the 'False' branch is unreachable due to the output of the condition value: ({CodeUtility.CleanCode(GenerateValue(Unit.condition, data))}). Don't worry this does not break your code.", $"Unreachable Code in 'False' Branch: {Unit.ifFalse.key}", "")));
+                        output.AppendLine(CodeBuilder.Indent(indent + 1) + MakeClickableForThisUnit(CodeUtility.ToolTip($"The code in the 'False' branch is unreachable due to the output of the condition value: ({CodeUtility.CleanCode(GenerateValue(Unit.condition, data))}).", $"Unreachable Code in 'False' Branch: {Unit.ifFalse.key}", "")));
                         output.Append(GetNextUnit(Unit.ifFalse, data, indent + 1));
                         data.ExitScope();
                     }
@@ -93,7 +93,7 @@ namespace Unity.VisualScripting.Community
         {
             if (!Unit.condition.hasValidConnection) return false;
 
-            if (Unit.condition.connection.source.unit is Literal literal && (bool)literal.value == false)
+            if (Unit.condition.GetPesudoSource().unit is Literal literal && (bool)literal.value == false)
                 return true;
 
             if (Unit.condition.GetPesudoSource() is ValueInput valueInput &&
@@ -111,7 +111,7 @@ namespace Unity.VisualScripting.Community
         {
             if (!Unit.condition.hasValidConnection) return false;
 
-            if (Unit.condition.connection.source.unit is Literal literal && (bool)literal.value == true)
+            if (Unit.condition.GetPesudoSource().unit is Literal literal && (bool)literal.value == true)
                 return true;
 
             if (Unit.condition.GetPesudoSource() is ValueInput valueInput &&

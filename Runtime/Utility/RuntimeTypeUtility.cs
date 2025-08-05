@@ -73,21 +73,21 @@ namespace Unity.VisualScripting.Community
             }
         }
 
-        public static string GetEnumString<T>(this T @enum, Enum noneValue, string noneString = "None", string separator = ", ") where T : Enum
+        public static string GetEnumString<T>(this T @enum, Enum defaultValue, string defaultString = "Default", string separator = ", ") where T : Enum
         {
-            if (Convert.ToInt32(@enum) == Convert.ToInt32(noneValue))
-                return noneString;
+            if (Convert.ToInt32(@enum) == Convert.ToInt32(defaultValue))
+                return defaultString;
 
             var value = EnumUtility.ValuesByNames<T>();
             List<string> selected = new List<string>();
 
             foreach (var name in Enum.GetNames(typeof(T)))
             {
-                if (!value[name].Equals(noneValue) && @enum.HasFlag(value[name]))
+                if (!value[name].Equals(defaultValue) && @enum.HasFlag(value[name]))
                     selected.Add(name);
             }
 
-            return selected.Count > 0 ? string.Join(separator, selected) : noneString;
+            return selected.Count > 0 ? string.Join(separator, selected) : defaultString;
         }
 
         public static string GetModifierAsString(ParameterModifier modifiers)
@@ -181,6 +181,24 @@ namespace Unity.VisualScripting.Community
 
             if (constraintType == typeof(Enum) || constraintType == typeof(Delegate))
                 return true;
+
+            return false;
+        }
+
+        /// <summary>
+        /// Checks if a generic base type is assignable from the given type, traversing its inheritance chain.
+        /// </summary>
+        public static bool IsAssignableFromGeneric(this Type genericType, Type givenType)
+        {
+            while (givenType != null && givenType != typeof(object))
+            {
+                var current = givenType.IsGenericType ? givenType.GetGenericTypeDefinition() : givenType;
+
+                if (genericType == current)
+                    return true;
+
+                givenType = givenType.BaseType;
+            }
 
             return false;
         }

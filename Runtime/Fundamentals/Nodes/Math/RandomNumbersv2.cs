@@ -31,7 +31,7 @@ namespace Unity.VisualScripting.Community
 
         [DoNotSerialize]
         public ValueInput maximum { get; private set; }
-        
+
         [DoNotSerialize]
         [PortLabelHidden]
         public ValueOutput output { get; private set; }
@@ -68,8 +68,8 @@ namespace Unity.VisualScripting.Community
         public bool unique { get; set; } = true;
 
 
-      //  IList _list = new List<object>();
-         IList _list;
+        //  IList _list = new List<object>();
+        IList _list;
 
         protected override void Definition()
         {

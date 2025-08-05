@@ -6,12 +6,12 @@ using UnityEngine;
 namespace Unity.VisualScripting.Community
 {
     [RenamedFrom("ColorString")]
-    [UnitTitle("Color")]//Unit title
+    [UnitTitle("Color")]
+    [UnitSurtitle("String")]
     [UnitCategory("Community\\Utility\\string")]
-    [TypeIcon(typeof(string))]//Unit icon
+    [TypeIcon(typeof(string))]
     public class ColorString : Unit
     {
-
         [UnitHeaderInspectable("Color")]
         [Inspectable]
         public TextColor color;

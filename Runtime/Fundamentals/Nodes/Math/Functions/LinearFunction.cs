@@ -61,7 +61,7 @@
 
         private float Operation(Flow flow)
         {
-            return MathLibrary.LinearFunction(flow.GetValue<float>(minimum), flow.GetValue<float>(maximum), flow.GetValue<float>(input));
+            return MathLibrary.LinearFunction(flow.GetValue<float>(input), flow.GetValue<float>(minimum), flow.GetValue<float>(maximum));
         }
     }
 }

@@ -43,8 +43,7 @@ namespace Unity.VisualScripting.Community
                     if (values[i].Value.hasValidConnection)
                     {
                         data.NewScope();
-                        data.SetMustBreak(data.Returns == typeof(Void));
-                        data.SetMustReturn(!data.MustBreak);
+                        data.SetMustBreak(true);
                         output += GetNextUnit(values[i].Value, data, indent + 2);
                         output += "\n";
                         data.ExitScope();
@@ -58,8 +57,7 @@ namespace Unity.VisualScripting.Community
                 if (Unit.@default.hasValidConnection)
                 {
                     data.NewScope();
-                    data.SetMustBreak(data.Returns == typeof(Void));
-                    data.SetMustReturn(!data.MustBreak);
+                    data.SetMustBreak(true);
                     output += GetNextUnit(Unit.@default, data, indent + 2);
                     output += "\n";
                     data.ExitScope();

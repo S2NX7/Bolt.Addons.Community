@@ -188,7 +188,7 @@ namespace Unity.VisualScripting.Community
 #else
             BeginBlock(metadata, position, GUIContent.none);
 #endif
-            if (!initialised) UpdatePalette();  // Probably not required with Scriptable **************
+            if (!initialised) UpdatePalette();
 
             xWidth = position.width;
             xFieldRatio = (xWidth < 336 ? ((335 - xWidth) / xFieldDivision) + xFieldDivision / 10f : 0) + ((xWidth - 335) / xFieldDivision);
@@ -474,7 +474,8 @@ namespace Unity.VisualScripting.Community
             if (EndBlock(metadata))
             {
                 metadata.RecordUndo();
-                metadata.value = unit;
+                // Do this to avoid attempting to change the Style
+                ((CommentNode)metadata.value).UpdateFrom(unit);
             }
         }
     }

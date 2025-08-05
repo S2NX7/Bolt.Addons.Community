@@ -21,6 +21,7 @@ namespace Unity.VisualScripting.Community
         public ControlOutput exit;
 
         [DoNotSerialize]
+        [PortLabel("Triggers")]
         public ValueOutput timesTriggered;
 
         private int counter;

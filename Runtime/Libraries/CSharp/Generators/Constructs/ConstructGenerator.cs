@@ -29,19 +29,19 @@ namespace Unity.VisualScripting.Community.Libraries.CSharp
         public string GenerateWithoutStyles(int indent)
         {
             var output = this.Generate(indent);
-            return output.RemoveHighlights().RemoveMarkdown();
+            return CodeUtility.CleanCode(output.RemoveHighlights().RemoveMarkdown());
         }
 
         public abstract List<string> Usings();
 
         string ICodeGenerator.Generate(int indent)
         {
-            throw new System.NotImplementedException();
+            return Generate(indent);
         }
 
         string ICodeGenerator.GenerateClean(int indent)
         {
-            throw new System.NotImplementedException();
+            return GenerateClean(indent);
         }
     }
 }

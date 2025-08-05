@@ -69,7 +69,7 @@ namespace Unity.VisualScripting.Community
         /// <returns>The string with the ToolTip tags</returns>
         public static string ToolTip(string ToolTip, string notifyString, string code, bool highlight = true)
         {
-            return CSharpPreviewSettings.ShouldGenerateTooltips ? $"[CommunityAddonsCodeToolTip({ToolTip})]{(highlight ? $"/* {notifyString} (Hover for more info) */".WarningHighlight() : $"/* {notifyString} (Hover for more info) */")}[CommunityAddonsCodeToolTipEnd] {code}" : code;
+            return CSharpPreviewSettings.ShouldGenerateTooltips ? $"[CommunityAddonsCodeToolTip({ToolTip})]{(highlight ? $"/* {notifyString} (Hover for more info) */".WarningHighlight() : $"/* {notifyString} (Hover for more info) */")}[CommunityAddonsCodeToolTipEnd] {code}" : (highlight ? $"/* {notifyString} */".WarningHighlight() : $"/* {notifyString} */") + code;
         }
 
         private static readonly Dictionary<string, string> ToolTipCache = new();
@@ -201,17 +201,20 @@ namespace Unity.VisualScripting.Community
 
         public static List<int> PrecomputeLineBreaks(ReadOnlySpan<char> span)
         {
-            var lineBreaks = new List<int> { 0 };
-            int start = 0;
-            int index;
-            while ((index = span[start..].IndexOf('\n')) != -1)
+            var lineBreaks = new List<int>(128) { 0 };
+            int length = span.Length;
+
+            for (int i = 0; i < length; i++)
             {
-                start += index + 1;
-                lineBreaks.Add(start);
+                if (span[i] == '\n')
+                {
+                    lineBreaks.Add(i + 1);
+                }
             }
 
             return lineBreaks;
         }
+
 
         private static int GetLineNumber(List<int> lineBreaks, int charIndex)
         {

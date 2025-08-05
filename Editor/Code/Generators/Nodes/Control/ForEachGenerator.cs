@@ -128,7 +128,7 @@ namespace Unity.VisualScripting.Community
                     data.SetExpectedType(sourceType == typeof(object) ? (Unit.dictionary ? typeof(IDictionary) : typeof(IEnumerable)) : sourceType);
                     var connectedCode = GetNextValueUnit(input, data);
                     data.RemoveExpectedType();
-                    return new ValueCode(connectedCode, sourceType == typeof(object) ? (Unit.dictionary ? typeof(IDictionary) : typeof(IEnumerable)) : sourceType, ShouldCast(input, data, false));
+                    return Unit.CreateIgnoreString(connectedCode).EndIgnoreContext().Cast(sourceType == typeof(object) ? (Unit.dictionary ? typeof(IDictionary) : typeof(IEnumerable)) : sourceType, ShouldCast(input, data, false));
                 }
             }
     

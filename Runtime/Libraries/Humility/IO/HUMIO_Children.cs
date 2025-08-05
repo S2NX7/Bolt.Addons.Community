@@ -137,11 +137,10 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
         /// </summary>
         public static void Path(this HUMIO.Data.Ensure ensure)
         {
-            var legalPath = !ensure.path.Contains(".") ? ensure.path : ensure.path.Remove(ensure.path.LastIndexOf("/") + 1, (ensure.path.Length - 1) - ensure.path.LastIndexOf("/"));
-
-            if (!Directory.Exists(legalPath))
+            var legalPath = !ensure.path.Contains(".") ? ensure.path : ensure.path.Remove(ensure.path.LastIndexOf("/") + 1, ensure.path.Length - 1 - ensure.path.LastIndexOf("/"));
+            if (!Directory.Exists(ensure.path))
             {
-                Directory.CreateDirectory(legalPath);
+                Directory.CreateDirectory(ensure.path);
             }
         }
 

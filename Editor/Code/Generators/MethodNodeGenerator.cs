@@ -25,6 +25,7 @@ namespace Unity.VisualScripting.Community
         public abstract List<TypeParam> Parameters { get; }
         public virtual string MethodBody { get; }
         public ControlGenerationData Data;
+        public int indent = 0;
 
         protected MethodNodeGenerator(Unit unit) : base(unit)
         {

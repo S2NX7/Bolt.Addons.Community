@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Unity.VisualScripting.Community
 {
-    [RenamedFrom("Vector4ListAverage")]
+    [RenamedFrom("ScalarAverage")]
     [UnitCategory("Community/Math")]
     [UnitTitle("List Average (Scalar)")]
     [TypeIcon(typeof(ScalarAverage))]
@@ -42,6 +42,7 @@ namespace Unity.VisualScripting.Community
         }
     }
 
+    [RenamedFrom("Vector2ListAverage")]
     [UnitCategory("Community/Math")]
     [UnitTitle("List Average (Vector2)")]
     [TypeIcon(typeof(ScalarAverage))]
@@ -79,6 +80,7 @@ namespace Unity.VisualScripting.Community
         }
     }
 
+    [RenamedFrom("Vector3ListAverage")]
     [UnitCategory("Community/Math")]
     [UnitTitle("List Average (Vector3)")]
     [TypeIcon(typeof(Vector3Average))]
@@ -116,6 +118,7 @@ namespace Unity.VisualScripting.Community
         }
     }
 
+    [RenamedFrom("Vector4ListAverage")]
     [UnitCategory("Community/Math")]
     [UnitTitle("List Average (Vector4)")]
     [TypeIcon(typeof(Vector4Average))]

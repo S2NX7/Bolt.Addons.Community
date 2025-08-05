@@ -6,6 +6,8 @@ using Unity.VisualScripting.Community.Libraries.CSharp;
 using System.Collections.Generic;
 using Unity.VisualScripting.Community.Libraries.Humility;
 using UnityEngine;
+using System.Reflection;
+using System;
 
 namespace Unity.VisualScripting.Community
 {
@@ -23,26 +25,77 @@ namespace Unity.VisualScripting.Community
 
         public override string GenerateValue(ValueOutput output, ControlGenerationData data)
         {
-            var _output = string.Empty;
-            _output += GenerateValue(Unit.target, data) + MakeClickableForThisUnit("." + output.key);
-            return _output;
-        }
+            var members = Unit.type.GetMembers().Where(m => m is FieldInfo || m is PropertyInfo).Select(m => m.ToManipulator(Unit.type)).DistinctBy(m => m.name).Where(Include);
 
+            var member = members.FirstOrDefault(m => m.name == output.key);
+
+            if (member != null)
+            {
+                if (Unit.instance && member.requiresTarget)
+                {
+                    return GenerateValue(Unit.target, data) + MakeClickableForThisUnit("." + output.key.VariableHighlight());
+                }
+                else if (Unit.@static && !member.requiresTarget)
+                {
+                    return MakeClickableForThisUnit(Unit.type.As().CSharpName(false, true) + "." + output.key.VariableHighlight());
+                }
+            }
+
+            return CodeUtility.ToolTip(output.key + " for type " + Unit.type.As().CSharpName(false, true) + " could not be found", "Could not find member with name: " + output.key, "");
+        }
 
         public override string GenerateValue(ValueInput input, ControlGenerationData data)
         {
-            if (input.hasValidConnection)
+            if (input == Unit.target)
             {
-                return input.connection.source.type == typeof(object) ? MakeClickableForThisUnit($"(({input.type.DisplayName().TypeHighlight()})") + (input.connection.source.unit as Unit).GenerateValue(input.connection.source) + ")" : string.Empty + (input.connection.source.unit as Unit).GenerateValue(input.connection.source, data);
+                if (input.nullMeansSelf && !input.hasValidConnection)
+                {
+                    if (input.type == typeof(GameObject))
+                    {
+                        return MakeClickableForThisUnit("gameObject".VariableHighlight());
+                    }
+                    else if (typeof(Component).IsAssignableFrom(input.type))
+                    {
+                        return MakeClickableForThisUnit("gameObject".VariableHighlight() + ".GetComponent<" + input.type.As().CSharpName(false, true) + ">()");
+                    }
+                }
             }
-            else if (input.hasDefaultValue)
+            return base.GenerateValue(input, data);
+        }
+
+        private bool Include(Member member)
+        {
+            if (!Unit.instance && member.requiresTarget)
             {
-                return unit.defaultValues[input.key].As().Code(false, Unit, true, true);
+                return false;
             }
-            else
+
+            if (!Unit.@static && !member.requiresTarget)
             {
-                return MakeClickableForThisUnit($"/* {input.key} Requires Input ");
+                return false;
             }
+
+            if (!member.isPubliclyGettable)
+            {
+                return false;
+            }
+
+            if (member.info.HasAttribute<ObsoleteAttribute>())
+            {
+                return false;
+            }
+
+            if (member.isIndexer)
+            {
+                return false;
+            }
+
+            if (member.name == "runInEditMode" && member.declaringType == typeof(MonoBehaviour))
+            {
+                return false;
+            }
+
+            return true;
         }
     }
 }

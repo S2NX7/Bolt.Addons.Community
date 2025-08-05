@@ -1,5 +1,6 @@
 ﻿using Unity.VisualScripting;
 using Unity.VisualScripting.Community.Libraries.Humility;
+using UnityEngine;
 
 namespace Unity.VisualScripting.Community
 {
@@ -16,12 +17,14 @@ namespace Unity.VisualScripting.Community
             {
                 if (Unit.a.hasAnyConnection)
                 {
-                    if (Unit.b.hasValidConnection && Unit.b.GetPesudoSource()?.unit is Literal literal)
+                    var bIsConnected = Unit.b.hasValidConnection;
+                    var bIsLiteral = IsSourceLiteral(Unit.b, out var sourceType);
+                    if (bIsConnected && bIsLiteral)
                     {
-                        data.SetExpectedType(literal.type);
+                        data.SetExpectedType(sourceType);
                     }
                     var code = base.GenerateValue(Unit.a, data);
-                    if (Unit.b.hasValidConnection && Unit.b.GetPesudoSource()?.unit is Literal)
+                    if (bIsConnected && bIsLiteral)
                     {
                         data.RemoveExpectedType();
                     }
@@ -33,12 +36,14 @@ namespace Unity.VisualScripting.Community
             {
                 if (Unit.b.hasAnyConnection)
                 {
-                    if (Unit.a.hasValidConnection && Unit.a.GetPesudoSource()?.unit is Literal literal)
+                    var aIsConnected = Unit.a.hasValidConnection;
+                    var aIsLiteral = IsSourceLiteral(Unit.a, out var sourceType);
+                    if (aIsConnected && aIsLiteral)
                     {
-                        data.SetExpectedType(literal.type);
+                        data.SetExpectedType(sourceType);
                     }
                     var code = base.GenerateValue(Unit.b, data);
-                    if (Unit.a.hasValidConnection && Unit.a.GetPesudoSource()?.unit is Literal)
+                    if (aIsConnected && aIsLiteral)
                     {
                         data.RemoveExpectedType();
                     }

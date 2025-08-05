@@ -12,13 +12,10 @@ public class SequenceGenerator : NodeGenerator<Sequence>
 
     public override string GenerateControl(ControlInput input, ControlGenerationData data, int indent)
     {
-        // Use StringBuilder to avoid repeated string concatenation
         var outputBuilder = new StringBuilder();
 
-        // Cache multiOutputs to avoid repeated access
         var outputs = Unit.multiOutputs;
 
-        // Iterate only over connected outputs
         foreach (var controlOutput in outputs)
         {
             if (controlOutput.hasValidConnection)
@@ -27,7 +24,6 @@ public class SequenceGenerator : NodeGenerator<Sequence>
             }
         }
 
-        // Return the final generated string
         return outputBuilder.ToString();
     }
 }

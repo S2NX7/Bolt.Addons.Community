@@ -26,10 +26,15 @@ namespace Unity.VisualScripting.Community
     public interface IMatchHandler
     {
         bool CanHandle(IGraphElement element);
-        NodeFinderWindow.MatchObject HandleMatch(IGraphElement element, string pattern);
+        NodeFinderWindow.MatchObject HandleMatch(IGraphElement element, string pattern, NodeFinderWindow.SearchMode searchMode);
     }
     public class NodeFinderWindow : EditorWindow
     {
+        public enum SearchMode
+        {
+            Relevant,
+            StartsWith
+        }
         public abstract class BaseGraphProvider : IGraphProvider
         {
             protected readonly NodeFinderWindow _window;
@@ -50,7 +55,6 @@ namespace Unity.VisualScripting.Community
                 _isEnabled = enabled;
             }
 
-            // Add these methods to handle results
             protected Dictionary<Object, List<MatchObject>> MatchMap { get; } = new();
             protected List<Object> SortedKeys { get; private set; } = new();
 
@@ -96,18 +100,15 @@ namespace Unity.VisualScripting.Community
             }
         }
 
-        // Optimized data structures
         private readonly Dictionary<Type, IGraphProvider> _graphProviders = new();
         private readonly Dictionary<Type, IMatchHandler> _matchHandlers = new();
         private readonly Dictionary<Type, List<MatchObject>> _matchMap = new();
         private readonly List<MatchObject> _matchObjects = new();
 
-        // Cache
-        private readonly Dictionary<GraphReference, List<(GraphReference, IGraphElement)>> _graphElementCache = new();
         private float _lastSearchTime;
-        private const float SearchCooldown = 0.5f; // Prevent too frequent searches
+        private const float SearchCooldown = 0.5f;
 
-        // State
+
         private string _pattern = "";
         private string _previousPattern = "";
         private Vector2 _scrollViewRoot;
@@ -115,7 +116,7 @@ namespace Unity.VisualScripting.Community
         private float _lastErrorCheckTime;
         private const float ErrorCheckInterval = 1.0f;
 
-        // Add these near the top with other private fields
+
         private class FilterOption
         {
             public string Label { get; set; }
@@ -133,13 +134,14 @@ namespace Unity.VisualScripting.Community
         private bool _showTypeFilters = true;
         private bool _showSpecialFilters = true;
         private Dictionary<MatchType, bool> _typeFilters = new();
+        private SearchMode _searchMode;
 
         [MenuItem("Window/Community Addons/Node Finder")]
         public static void Open()
         {
             var window = GetWindow<NodeFinderWindow>();
 
-            // Get the built-in search icon
+
             GUIContent searchIconContent = EditorGUIUtility.IconContent("d_ViewToolZoom");
             window.titleContent = new GUIContent("Node Finder", searchIconContent.image);
         }
@@ -226,13 +228,15 @@ namespace Unity.VisualScripting.Community
                 fontStyle = FontStyle.Bold
             };
             HUMEditor.Horizontal().Box(HUMEditorColor.DefaultEditorBackground.Darken(0.1f), Color.black, new RectOffset(0, 0, 0, 0), new RectOffset(1, 1, 1, 1), () =>
+            {
+                HUMEditor.Horizontal().Box(HUMEditorColor.DefaultEditorBackground, Color.black, 7, () =>
                 {
-                    HUMEditor.Horizontal().Box(HUMEditorColor.DefaultEditorBackground, Color.black, 7, () =>
-                                          {
-                                              EditorGUILayout.LabelField("Find:", findLabelStyle, GUILayout.Width(40));
-                                              _pattern = EditorGUILayout.TextField(_pattern, EditorStyles.toolbarTextField, GUILayout.ExpandWidth(true));
-                                          }, false, false);
-                });
+                    EditorGUILayout.LabelField("Find:", findLabelStyle, GUILayout.Width(40));
+                    _pattern = EditorGUILayout.TextField(_pattern, EditorStyles.toolbarTextField, GUILayout.ExpandWidth(true));
+                    GUILayout.Space(8);
+                    _searchMode = (SearchMode)EditorGUILayout.EnumPopup(_searchMode, GUILayout.Width(80));
+                }, false, false);
+            });
         }
 
         private void InitializeFilters()
@@ -255,7 +259,7 @@ namespace Unity.VisualScripting.Community
                     provider.GetType());
             }
 
-            // Add special filters like errors that aren't tied to providers
+
             AddFilter("Errors",
                 () => _matchError,
                 (enabled) =>
@@ -307,7 +311,7 @@ namespace Unity.VisualScripting.Community
             {
                 HUMEditor.Vertical().Box(HUMEditorColor.DefaultEditorBackground.Darken(0.1f), Color.black, new RectOffset(2, 2, 2, 2), new RectOffset(1, 1, 1, 1), () =>
                 {
-                    // Provider Filters Section
+
                     _showProviderFilters = EditorGUILayout.Foldout(_showProviderFilters, "Provider Filters", true, foldoutStyle);
                     if (_showProviderFilters)
                     {
@@ -326,7 +330,7 @@ namespace Unity.VisualScripting.Community
                 DrawSeparator();
                 HUMEditor.Vertical().Box(HUMEditorColor.DefaultEditorBackground.Darken(0.1f), Color.black, new RectOffset(2, 2, 2, 2), new RectOffset(1, 1, 1, 1), () =>
                 {
-                    // Match Type Filters Section
+
                     _showTypeFilters = EditorGUILayout.Foldout(_showTypeFilters, "Type Filters", true, foldoutStyle);
                     if (_showTypeFilters)
                     {
@@ -347,7 +351,7 @@ namespace Unity.VisualScripting.Community
                 DrawSeparator();
                 HUMEditor.Vertical().Box(HUMEditorColor.DefaultEditorBackground.Darken(0.1f), Color.black, new RectOffset(2, 2, 2, 2), new RectOffset(1, 1, 1, 1), () =>
                 {
-                    // Special Filters Section
+
                     _showSpecialFilters = EditorGUILayout.Foldout(_showSpecialFilters, "Special Filters", true, foldoutStyle);
                     if (_showSpecialFilters)
                     {
@@ -409,12 +413,11 @@ namespace Unity.VisualScripting.Community
 
                 bool empty = string.IsNullOrEmpty(_pattern) || _matchObjects.Count == 0;
                 bool isShowingErrors = false;
-                // Show total results count
+
                 if (!empty)
                 {
                     EditorGUILayout.LabelField($"Total Results: {_matchObjects.Count}", EditorStyles.boldLabel);
 
-                    // Display all results
                     foreach (var provider in _graphProviders.Values.Where(p => p.IsEnabled))
                     {
                         foreach (var (key, matches) in (provider as BaseGraphProvider)?.GetResults() ?? Enumerable.Empty<(Object, List<MatchObject>)>())
@@ -426,7 +429,6 @@ namespace Unity.VisualScripting.Community
                 }
                 else if (_matchError)
                 {
-                    // Show errors
                     foreach (var provider in _graphProviders.Values.Where(p => p.IsEnabled))
                     {
                         foreach (var (key, matches) in (provider as BaseGraphProvider)?.GetResults() ?? Enumerable.Empty<(Object, List<MatchObject>)>())
@@ -528,7 +530,7 @@ namespace Unity.VisualScripting.Community
                     (handler as ErrorMatchHandler).graphPointer = element.Item1;
                     if (!handler.CanHandle(element.Item2) || elements.Contains(element.Item2)) continue;
                     elements.Add(element.Item2);
-                    var match = handler.HandleMatch(element.Item2, _pattern);
+                    var match = handler.HandleMatch(element.Item2, _pattern, _searchMode);
                     if (match != null)
                     {
                         match.Reference = element.Item1;
@@ -559,7 +561,7 @@ namespace Unity.VisualScripting.Community
                     {
                         if (!handler.CanHandle(element.Item2) || elements.Contains(element.Item2)) continue;
                         elements.Add(element.Item2);
-                        var match = handler.HandleMatch(element.Item2, _pattern);
+                        var match = handler.HandleMatch(element.Item2, _pattern, _searchMode);
                         if (match != null)
                         {
                             match.Reference = element.Item1;
@@ -570,74 +572,12 @@ namespace Unity.VisualScripting.Community
             }
         }
 
-        private IEnumerable<(GraphReference, IGraphElement)> GetCachedElements(IGraphProvider provider)
-        {
-            // Check if we need to refresh the cache
-            bool shouldRefreshCache = false;
-            foreach (var graphRef in _graphElementCache.Keys.ToList())
-            {
-                if (graphRef?.graph == null || !graphRef.isValid)
-                {
-                    _graphElementCache.Remove(graphRef);
-                    shouldRefreshCache = true;
-                }
-            }
-
-            // Get elements from provider
-            var elements = provider.GetElements();
-
-            // Process each element
-            foreach (var (reference, element) in elements)
-            {
-                // Skip invalid references
-                if (reference == null || !reference.isValid) continue;
-
-                // Check cache for this reference
-                if (!shouldRefreshCache && _graphElementCache.TryGetValue(reference, out var cachedElements))
-                {
-                    // Verify cached elements are still valid
-                    bool cacheValid = true;
-                    foreach (var (_, cachedElement) in cachedElements)
-                    {
-                        if (cachedElement is Unit unit && !unit.graph.elements.Contains(unit))
-                        {
-                            cacheValid = false;
-                            break;
-                        }
-                    }
-
-                    // Use cache if valid
-                    if (cacheValid)
-                    {
-                        foreach (var cachedElement in cachedElements)
-                        {
-                            yield return cachedElement;
-                        }
-                        continue;
-                    }
-                }
-
-                // Build new cache entry
-                var newElements = new List<(GraphReference, IGraphElement)>();
-
-                // Process the element
-                if (element != null)
-                {
-                    newElements.Add((reference, element));
-                    yield return (reference, element);
-                }
-
-                // Cache the results
-                _graphElementCache[reference] = newElements;
-            }
-        }
-
         private void ProcessMatch(MatchObject match, IGraphProvider provider)
         {
             if (match == null || match.Matches.Count == 0) return;
 
             _matchObjects.Add(match);
-            // Assign the appropriate asset type based on provider
+
             if (provider is ScriptGraphProvider)
                 match.ScriptGraphAsset = provider.GetAssetForElement(match.Reference) as ScriptGraphAsset;
             else if (provider is StateGraphProvider)
@@ -647,19 +587,8 @@ namespace Unity.VisualScripting.Community
             else if (provider is StructAssetProvider)
                 match.StructAsset = provider.GetAssetForElement(match.Reference) as StructAsset;
 
-            // Let provider handle the match
-            provider.HandleMatch(match);
-        }
 
-        private Object GetAssetKeyForMatch(MatchObject match)
-        {
-            if (match.ScriptGraphAsset != null) return match.ScriptGraphAsset;
-            if (match.StateGraphAsset != null) return match.StateGraphAsset;
-            if (match.ClassAsset != null) return match.ClassAsset;
-            if (match.StructAsset != null) return match.StructAsset;
-            if (match.ScriptMachine != null) return match.ScriptMachine;
-            if (match.StateMachine != null) return match.StateMachine;
-            return null;
+            provider.HandleMatch(match);
         }
 
         public IEnumerable<GraphReference> GetReferences(ClassAsset asset)
@@ -706,287 +635,6 @@ namespace Unity.VisualScripting.Community
             }
         }
 
-        private bool HandleUnitSearch(IUnit unit, out string name)
-        {
-            if (unit is null) { name = ""; return false; }
-            if (unit is MemberUnit memberUnit)
-            {
-                var _name = memberUnit.member.ToPseudoDeclarer().ToString();
-                name = _name;
-                return SearchUtility.Matches(SearchUtility.Relevance(_pattern, _name));
-            }
-            else if (unit is SubgraphUnit subgraphUnit)
-            {
-                var _name = subgraphUnit.nest != null ? GetGraphName(subgraphUnit.nest.graph).Replace("Graph", "Subgraph") : "Subgraph";
-                name = _name;
-                return SearchUtility.Matches(SearchUtility.Relevance(_pattern, _name));
-            }
-            else
-            {
-                var _name = BoltFlowNameUtility.UnitTitle(unit.GetType(), false, false);
-                name = _name;
-                return SearchUtility.Matches(SearchUtility.Relevance(_pattern, _name));
-            }
-        }
-#if VISUAL_SCRIPTING_1_8_0_OR_GREATER
-        private bool HandleStickyNoteSearch(StickyNote note, out string name)
-        {
-            var _name = StickyNoteFullName(note);
-            name = _name;
-            return SearchUtility.Matches(SearchUtility.Relevance(_pattern, _name));
-        }
-#endif
-        private bool HandleGraphGroupSearch(GraphGroup group, out string name)
-        {
-            var _name = GroupFullName(group);
-            name = _name;
-            return SearchUtility.Matches(SearchUtility.Relevance(_pattern, _name));
-        }
-
-        private MatchObject MatchUnit(Regex matchWord, IGraphElement element)
-        {
-            MatchObject matchRecord = null;
-#if VISUAL_SCRIPTING_1_8_0_OR_GREATER
-            if (element is StickyNote stickyNote)
-            {
-                matchRecord = matchRecord = new MatchObject
-                {
-                    Matches = new List<MatchType>(),
-                    stickyNote = stickyNote,
-                    FullTypeName = StickyNoteFullName(stickyNote)
-                };
-                if (HandleStickyNoteSearch(stickyNote, out string name))
-                {
-                    matchRecord.Matches.Add(MatchType.StickyNote);
-                }
-            }
-            else if (element is GraphGroup graphGroup)
-            {
-                matchRecord = matchRecord = new MatchObject
-                {
-                    Matches = new List<MatchType>(),
-                    group = graphGroup,
-                    FullTypeName = GroupFullName(graphGroup)
-                };
-                if (HandleGraphGroupSearch(graphGroup, out string name))
-                {
-                    matchRecord.Matches.Add(MatchType.Group);
-                }
-            }
-            else
-            {
-                var unit = element as Unit;
-                matchRecord = new MatchObject
-                {
-                    Matches = new List<MatchType>(),
-                    Unit = unit,
-                    FullTypeName = GetUnitFullName(unit)
-                };
-                CheckMemberUnit(matchWord, unit, matchRecord);
-                CheckLiteralUnit(unit, matchRecord);
-                CheckDefaultValues(matchWord, unit, matchRecord);
-                if (HandleUnitSearch(unit, out string name))
-                {
-                    matchRecord.FullTypeName = GetFullNameWithInputs(unit, name);
-                    matchRecord.Matches.Add(MatchType.Unit);
-                }
-            }
-#else
-            if (element is GraphGroup graphGroup)
-            {
-                matchRecord = matchRecord = new MatchObject
-                {
-                    Matches = new List<MatchType>(),
-                    group = graphGroup,
-                    FullTypeName = GroupFullName(graphGroup)
-                };
-                if (HandleGraphGroupSearch(graphGroup, out string name))
-                {
-                    matchRecord.Matches.Add(MatchType.Group);
-                }
-            }
-            else
-            {
-                var unit = element as Unit;
-                matchRecord = new MatchObject
-                {
-                    Matches = new List<MatchType>(),
-                    Unit = unit,
-                    FullTypeName = GetUnitFullName(unit)
-                };
-                CheckMemberUnit(matchWord, unit, matchRecord);
-                CheckLiteralUnit(unit, matchRecord);
-                CheckFields(matchWord, unit, matchRecord);
-                CheckDefaultValues(matchWord, unit, matchRecord);
-                if (HandleUnitSearch(unit, out string name))
-                {
-                    matchRecord.FullTypeName = GetFullNameWithInputs(unit, name);
-                    matchRecord.Matches.Add(MatchType.Unit);
-                }
-            }
-#endif      
-            return matchRecord.Matches.Count > 0 ? matchRecord : null;
-        }
-
-        private MatchObject MatchUnit(Unit unit, GraphReference baseRef)
-        {
-            if (unit == null) return null;
-
-            var matchRecord = new MatchObject
-            {
-                Matches = new List<MatchType>(),
-                Unit = unit,
-                FullTypeName = GetUnitFullName(unit)
-            };
-#if VISUAL_SCRIPTING_1_8_0_OR_GREATER
-            bool hasError = unit.GetException(baseRef) != null || unit is MissingType;
-            if (!hasError) return null;
-#else
-            bool hasError = unit.GetException(baseRef) != null;
-            if (!hasError) return null;
-#endif
-
-            if (unit.GetException(baseRef) != null)
-            {
-                matchRecord.FullTypeName += $" ({unit.GetException(baseRef).Message})";
-            }
-#if VISUAL_SCRIPTING_1_8_0_OR_GREATER
-            else if (unit is MissingType missingType)
-            {
-                matchRecord.FullTypeName += $" {(missingType.formerType == null ? "Missing Type" : "Missing Type : " + missingType.formerType)}";
-            }
-#endif
-
-            matchRecord.Matches.Add(MatchType.Error);
-            return matchRecord;
-        }
-
-        private string GetUnitFullName(Unit unit)
-        {
-            var typeName = GetUnitName(unit);
-
-            if (unit is MemberUnit invoker && invoker.member.targetType != null)
-            {
-                typeName = invoker.member.ToPseudoDeclarer().ToString();
-            }
-
-            return typeName;
-        }
-#if VISUAL_SCRIPTING_1_8_0_OR_GREATER
-        private string StickyNoteFullName(StickyNote note)
-        {
-            if (!string.IsNullOrEmpty(note.title) && !string.IsNullOrEmpty(note.body))
-            {
-                return "StickyNote : " + note.title + "." + note.body;
-            }
-            else if (!string.IsNullOrEmpty(note.title))
-            {
-                return "StickyNote : " + note.title;
-            }
-            else if (!string.IsNullOrEmpty(note.body))
-            {
-                return "StickyNote : " + note.body;
-            }
-            return "Empty StickyNote";
-        }
-#endif
-        private string GroupFullName(GraphGroup group)
-        {
-            if (!string.IsNullOrEmpty(group.label) && !string.IsNullOrEmpty(group.comment))
-            {
-                return "Graph Group : " + group.label + "." + group.comment;
-            }
-            else if (!string.IsNullOrEmpty(group.label))
-            {
-                return "Graph Group : " + group.label;
-            }
-            else if (!string.IsNullOrEmpty(group.comment))
-            {
-                return "Graph Group : " + group.comment;
-            }
-            return "Unnamed Graph Group";
-        }
-
-        private void CheckMemberUnit(Regex matchWord, Unit unit, MatchObject matchRecord)
-        {
-            if (unit is null) return;
-            if (unit is MemberUnit)
-            {
-                if (matchWord.IsMatch(matchRecord.FullTypeName))
-                {
-                    matchRecord.Matches.Add(MatchType.Unit);
-                }
-            }
-        }
-
-        private void CheckLiteralUnit(Unit unit, MatchObject matchRecord)
-        {
-            if (unit is null) return;
-            if (unit is Literal literal)
-            {
-                matchRecord.FullTypeName = $"{matchRecord.FullTypeName} (Type : {literal.type.As().CSharpName(false, false, false)}, Value : {literal.value})";
-            }
-            else if (unit.valueInputs.Count > 0)
-            {
-                matchRecord.FullTypeName += $" : ({string.Join(", ", unit.valueInputs.Select(port => GetValue(port)))})";
-            }
-        }
-
-        private void CheckDefaultValues(Regex matchWord, Unit unit, MatchObject matchRecord)
-        {
-            if (unit is null) return;
-            foreach (var kvp in unit.defaultValues)
-            {
-                var value = kvp.Value;
-                if (value == null) continue;
-                if (matchWord.IsMatch(value.ToString()))
-                {
-                    matchRecord.Matches.Add(MatchType.Unit);
-                    matchRecord.FullTypeName += $" ({kvp.Key.LegalMemberName().Prettify()} : {(value is Type type ? type.HumanName() : value is Object @object ? @object.name : value)})";
-                    break;
-                }
-            }
-        }
-
-        private string GetFullNameWithInputs(Unit unit, string baseName)
-        {
-            if (unit is null) return "";
-            if (unit is Literal literal)
-            {
-                return $"{baseName} (Type : {literal.type.As().CSharpName(false, false, false)}, Value : {literal.value})";
-            }
-            else if (unit is MemberUnit memberUnit && memberUnit.member.targetType != null)
-            {
-                return $"{memberUnit.member.ToPseudoDeclarer()} : ({string.Join(", ", unit.valueInputs.Select(port => GetValue(port)))})";
-            }
-            else if (unit.valueInputs.Count > 0)
-            {
-                return $"{baseName} : ({string.Join(", ", unit.valueInputs.Select(port => GetValue(port)))})";
-            }
-            return baseName;
-        }
-
-        private string GetUnitName(IGraphElement element)
-        {
-            if (element is Unit unit)
-                return BoltFlowNameUtility.UnitTitle(unit.GetType(), true, false);
-            else if (element is not null) return element.Descriptor().description.title;
-            return "Null Element";
-        }
-
-        private string GetValue(ValueInput valueInput)
-        {
-            if (valueInput.hasDefaultValue && !valueInput.hasAnyConnection)
-            {
-                return $"{valueInput.key.LegalMemberName().Prettify()} : " + (!valueInput.nullMeansSelf && !(typeof(Component).IsAssignableFrom(valueInput.type) || valueInput.type == typeof(GameObject)) ? valueInput.unit.defaultValues[valueInput.key] is Type type ? type.HumanName() : (valueInput.unit.defaultValues[valueInput.key] is Object obj ? obj.name : valueInput.unit.defaultValues[valueInput.key]?.ToString()) ?? "null" : "This");
-            }
-            else if (valueInput.hasAnyConnection)
-            {
-                return valueInput.key.LegalMemberName().Prettify() + " : " + "Connected";
-            }
-            return valueInput.key.LegalMemberName().Prettify() + " : " + "No Value";
-        }
-
         bool ShouldShowItem(IEnumerable<MatchObject> list)
         {
             foreach (var match in list)
@@ -1025,29 +673,29 @@ namespace Unity.VisualScripting.Community
             if (match.ScriptGraphAsset != null)
             {
                 var asset = match.ScriptGraphAsset;
-                // Locate
+
                 EditorGUIUtility.PingObject(asset);
                 Selection.activeObject = asset;
             }
             else if (match.StateGraphAsset != null)
             {
                 var asset = match.StateGraphAsset;
-                // Locate
+
                 EditorGUIUtility.PingObject(asset);
                 Selection.activeObject = asset;
             }
             else if (match.ScriptMachine != null)
             {
                 var machine = match.ScriptMachine.gameObject;
-                // Locate
+
                 EditorGUIUtility.PingObject(machine);
                 Selection.activeObject = machine;
             }
 
-            // open
+
             var target = OpenReferencePath(match.Reference);
             GraphWindow.OpenActive(target);
-            // focus
+
             var context = target.Context();
             if (context == null)
                 return;
@@ -1121,17 +769,17 @@ namespace Unity.VisualScripting.Community
         {
             switch (key)
             {
-                case ScriptGraphAsset _:
+                case ScriptGraphAsset:
                     return EditorGUIUtility.ObjectContent(key, typeof(ScriptGraphAsset)).image;
-                case StateGraphAsset _:
+                case StateGraphAsset:
                     return EditorGUIUtility.ObjectContent(key, typeof(StateGraphAsset)).image;
-                case ScriptMachine _:
-                case StateMachine _:
+                case ScriptMachine:
+                case StateMachine:
                     return EditorGUIUtility.IconContent("GameObject Icon").image;
                 case ClassAsset classAsset:
-                    return classAsset.icon ?? typeof(ClassAsset).Icon()[1];
+                    return classAsset.icon != null ? classAsset.icon : typeof(ClassAsset).Icon()[1];
                 case StructAsset structAsset:
-                    return structAsset.icon ?? typeof(StructAsset).Icon()[1];
+                    return structAsset.icon != null ? structAsset.icon : typeof(StructAsset).Icon()[1];
                 default:
                     return null;
             }
@@ -1149,7 +797,26 @@ namespace Unity.VisualScripting.Community
                     return key.name;
             }
         }
+        private string HighlightQuery(string text, string pattern)
+        {
+            if (string.IsNullOrEmpty(pattern)) return text;
 
+            if (_searchMode == SearchMode.StartsWith)
+            {
+                if (text.StartsWith(pattern, StringComparison.OrdinalIgnoreCase))
+                {
+                    return $"<b>{text[..pattern.Length]}</b>{text[pattern.Length..]}";
+                }
+                else
+                {
+                    return text;
+                }
+            }
+            else
+            {
+                return SearchUtility.HighlightQuery(text, pattern);
+            }
+        }
         private void DrawMatchItem(MatchObject match, ref bool isShowingErrors, bool errorsOnly = false)
         {
             var pathNames = GraphTraversal.GetElementPath(match.Reference);
@@ -1161,8 +828,8 @@ namespace Unity.VisualScripting.Community
             }
 
             var label = isError
-                ? $"      {pathNames} <color=#FF6800>{SearchUtility.HighlightQuery(match.FullTypeName, _pattern)}</color>"
-                : $"      {pathNames} {SearchUtility.HighlightQuery(match.FullTypeName, _pattern)}";
+                ? $"      {pathNames} <color=#FF6800>{HighlightQuery(match.FullTypeName, _pattern)}</color>"
+                : $"      {pathNames} {HighlightQuery(match.FullTypeName, _pattern)}";
 
             var pathStyle = new GUIStyle(LudiqStyles.paddedButton)
             {
@@ -1186,6 +853,20 @@ namespace Unity.VisualScripting.Community
             if (buttonClicked)
             {
                 FocusMatchObject(match);
+            }
+        }
+
+        public static bool SearchMatches(string query, string haystack, SearchMode searchMode)
+        {
+            if (string.IsNullOrEmpty(query) || string.IsNullOrEmpty(haystack)) return false;
+
+            if (searchMode == SearchMode.StartsWith)
+            {
+                return haystack.StartsWith(query, StringComparison.OrdinalIgnoreCase);
+            }
+            else
+            {
+                return SearchUtility.Matches(query, haystack);
             }
         }
     }
@@ -1249,7 +930,7 @@ namespace Unity.VisualScripting.Community
         }
     }
 
-    // Implement concrete providers and handlers
+
     public class ScriptGraphProvider : NodeFinderWindow.BaseGraphProvider
     {
         public override string Name => "ScriptGraphAssets";
@@ -1448,7 +1129,7 @@ namespace Unity.VisualScripting.Community
             return element is Unit && element is not CommentNode;
         }
 
-        public NodeFinderWindow.MatchObject HandleMatch(IGraphElement element, string pattern)
+        public NodeFinderWindow.MatchObject HandleMatch(IGraphElement element, string pattern, NodeFinderWindow.SearchMode searchMode)
         {
             if (element is Unit unit)
             {
@@ -1456,37 +1137,12 @@ namespace Unity.VisualScripting.Community
                 {
                     Matches = new List<NodeFinderWindow.MatchType>(),
                     Unit = unit,
-                    FullTypeName = GetFullNameWithInputs(unit, GetUnitFullName(unit))
+                    FullTypeName = GetUnitName(unit)
                 };
 
-                // Check for matches in the unit name
-                if (SearchUtility.Matches(pattern, matchRecord.FullTypeName))
+                if (NodeFinderWindow.SearchMatches(pattern, matchRecord.FullTypeName, searchMode))
                 {
                     matchRecord.Matches.Add(NodeFinderWindow.MatchType.Unit);
-                }
-
-                // Check member unit
-                if (unit is MemberUnit && SearchUtility.Matches(pattern, GetUnitFullName(unit)))
-                {
-                    matchRecord.Matches.Add(NodeFinderWindow.MatchType.Unit);
-                }
-
-                if (unit.valueInputs.Count > 0)
-                {
-                    var inputValues = GetFullNameWithInputs(unit, matchRecord.FullTypeName);
-                    if (SearchUtility.Matches(pattern, inputValues))
-                    {
-                        matchRecord.Matches.Add(NodeFinderWindow.MatchType.Unit);
-                    }
-                }
-
-                // Check literal values
-                if (unit is Literal literal)
-                {
-                    if (literal.value != null && SearchUtility.Matches(pattern, literal.value.ToString()))
-                    {
-                        matchRecord.Matches.Add(NodeFinderWindow.MatchType.Unit);
-                    }
                 }
 
                 if (matchRecord.Matches.Count > 0)
@@ -1495,31 +1151,6 @@ namespace Unity.VisualScripting.Community
                 }
             }
             return null;
-        }
-
-        private string GetValue(ValueInput valueInput)
-        {
-            if (valueInput.hasDefaultValue && !valueInput.hasAnyConnection)
-            {
-                return $"{valueInput.key.LegalMemberName().Prettify()} : " + (!valueInput.nullMeansSelf && !(typeof(Component).IsAssignableFrom(valueInput.type) || valueInput.type == typeof(GameObject)) ? valueInput.unit.defaultValues[valueInput.key] is Type type ? type.HumanName() : (valueInput.unit.defaultValues[valueInput.key] is Object obj ? obj.name : valueInput.unit.defaultValues[valueInput.key]?.ToString()) ?? "null" : "This");
-            }
-            else if (valueInput.hasAnyConnection)
-            {
-                return valueInput.key.LegalMemberName().Prettify() + " : " + "Connected";
-            }
-            return valueInput.key.LegalMemberName().Prettify() + " : " + "No Value";
-        }
-
-        private string GetUnitFullName(Unit unit)
-        {
-            var typeName = GetUnitName(unit);
-
-            if (unit is MemberUnit member && member.member.targetType != null)
-            {
-                typeName = member.member.ToPseudoDeclarer().ToString();
-            }
-
-            return typeName;
         }
 
         private string GetUnitName(IGraphElement element)
@@ -1541,28 +1172,14 @@ namespace Unity.VisualScripting.Community
                         return !string.IsNullOrEmpty(subgraphUnit.nest.graph.title) ? subgraphUnit.nest.graph.title : !string.IsNullOrEmpty(subgraphUnit.nest.macro.name) ? subgraphUnit.nest.macro.name : "Unnamed Subgraph";
                     }
                 }
-                return BoltFlowNameUtility.UnitTitle(unit.GetType(), false, false);
+                if (unit is Literal literal)
+                {
+                    return literal.value != null ? literal.value.ToString() : "Literal";
+                }
+                return element.Descriptor().description.title ?? BoltFlowNameUtility.UnitTitle(unit.GetType(), true, false);
             }
             else if (element is not null) return element.Descriptor().description.title;
             return "Invalid Element";
-        }
-
-        private string GetFullNameWithInputs(Unit unit, string baseName)
-        {
-            if (unit is null) return "";
-            if (unit is Literal literal)
-            {
-                return $"{baseName} (Type : {literal.type.As().CSharpName(false, false, false)}, Value : {literal.value ?? "No Value"})";
-            }
-            else if (unit is MemberUnit memberUnit && memberUnit.member.targetType != null)
-            {
-                return $"{memberUnit.member.ToPseudoDeclarer()} : ({string.Join(", ", unit.valueInputs.Select(port => GetValue(port)))})";
-            }
-            else if (unit.valueInputs.Count > 0)
-            {
-                return $"{baseName} : ({string.Join(", ", unit.valueInputs.Select(port => GetValue(port)))})";
-            }
-            return baseName;
         }
     }
 
@@ -1573,7 +1190,7 @@ namespace Unity.VisualScripting.Community
             return element is GraphGroup;
         }
 
-        public NodeFinderWindow.MatchObject HandleMatch(IGraphElement element, string pattern)
+        public NodeFinderWindow.MatchObject HandleMatch(IGraphElement element, string pattern, NodeFinderWindow.SearchMode searchMode)
         {
             if (element is GraphGroup group)
             {
@@ -1584,7 +1201,7 @@ namespace Unity.VisualScripting.Community
                     FullTypeName = GetGroupFullName(group)
                 };
 
-                if (SearchUtility.Matches(pattern, matchRecord.FullTypeName))
+                if (NodeFinderWindow.SearchMatches(pattern, matchRecord.FullTypeName, searchMode))
                 {
                     matchRecord.Matches.Add(NodeFinderWindow.MatchType.Group);
                     return matchRecord;
@@ -1597,15 +1214,15 @@ namespace Unity.VisualScripting.Community
         {
             if (!string.IsNullOrEmpty(group.label) && !string.IsNullOrEmpty(group.comment))
             {
-                return "Graph Group : " + group.label + "." + group.comment;
+                return group.label + "." + group.comment;
             }
             else if (!string.IsNullOrEmpty(group.label))
             {
-                return "Graph Group : " + group.label;
+                return group.label;
             }
             else if (!string.IsNullOrEmpty(group.comment))
             {
-                return "Graph Group : " + group.comment;
+                return group.comment;
             }
             return "Unnamed Graph Group";
         }
@@ -1619,7 +1236,7 @@ namespace Unity.VisualScripting.Community
             return element is StickyNote;
         }
 
-        public NodeFinderWindow.MatchObject HandleMatch(IGraphElement element, string pattern)
+        public NodeFinderWindow.MatchObject HandleMatch(IGraphElement element, string pattern, NodeFinderWindow.SearchMode searchMode)
         {
             if (element is StickyNote note)
             {
@@ -1630,7 +1247,7 @@ namespace Unity.VisualScripting.Community
                     FullTypeName = GetStickyNoteFullName(note)
                 };
 
-                if (SearchUtility.Matches(pattern, matchRecord.FullTypeName))
+                if (NodeFinderWindow.SearchMatches(pattern, matchRecord.FullTypeName, searchMode))
                 {
                     matchRecord.Matches.Add(NodeFinderWindow.MatchType.StickyNote);
                     return matchRecord;
@@ -1643,15 +1260,15 @@ namespace Unity.VisualScripting.Community
         {
             if (!string.IsNullOrEmpty(note.title) && !string.IsNullOrEmpty(note.body))
             {
-                return "StickyNote : " + note.title + "." + note.body;
+                return note.title + "." + note.body;
             }
             else if (!string.IsNullOrEmpty(note.title))
             {
-                return "StickyNote : " + note.title;
+                return note.title;
             }
             else if (!string.IsNullOrEmpty(note.body))
             {
-                return "StickyNote : " + note.body;
+                return note.body;
             }
             return "Empty StickyNote";
         }
@@ -1666,7 +1283,7 @@ namespace Unity.VisualScripting.Community
             return element is CommentNode;
         }
 
-        public NodeFinderWindow.MatchObject HandleMatch(IGraphElement element, string pattern)
+        public NodeFinderWindow.MatchObject HandleMatch(IGraphElement element, string pattern, NodeFinderWindow.SearchMode searchMode)
         {
             if (element is CommentNode comment)
             {
@@ -1677,7 +1294,7 @@ namespace Unity.VisualScripting.Community
                     FullTypeName = GetCommentFullName(comment)
                 };
 
-                if (SearchUtility.Matches(pattern, matchRecord.FullTypeName))
+                if (NodeFinderWindow.SearchMatches(pattern, matchRecord.FullTypeName, searchMode))
                 {
                     matchRecord.Matches.Add(NodeFinderWindow.MatchType.Comment);
                     return matchRecord;
@@ -1690,15 +1307,15 @@ namespace Unity.VisualScripting.Community
         {
             if (!string.IsNullOrEmpty(note.title) && !string.IsNullOrEmpty(note.comment))
             {
-                return "Comment : " + note.title + "." + note.comment;
+                return note.title + "." + note.comment;
             }
             else if (!string.IsNullOrEmpty(note.title))
             {
-                return "Comment : " + note.title;
+                return note.title;
             }
             else if (!string.IsNullOrEmpty(note.comment))
             {
-                return "Comment : " + note.comment;
+                return note.comment;
             }
             return "Empty Comment";
         }
@@ -1721,7 +1338,7 @@ namespace Unity.VisualScripting.Community
 #endif
             return false;
         }
-        public NodeFinderWindow.MatchObject HandleMatch(IGraphElement element, string pattern)
+        public NodeFinderWindow.MatchObject HandleMatch(IGraphElement element, string pattern, NodeFinderWindow.SearchMode searchMode)
         {
             if (element is Unit unit)
             {
@@ -1744,11 +1361,6 @@ namespace Unity.VisualScripting.Community
         private string GetUnitFullName(Unit unit)
         {
             var typeName = GetUnitName(unit);
-
-            if (unit is MemberUnit member && member.member.targetType != null)
-            {
-                typeName = member.member.ToPseudoDeclarer().ToString();
-            }
 #if VISUAL_SCRIPTING_1_8_0_OR_GREATER
             if (unit is MissingType missingType)
             {
@@ -1757,7 +1369,7 @@ namespace Unity.VisualScripting.Community
 #endif
             if (unit.GetException(graphPointer) != null)
             {
-                typeName += " Error : " + unit.GetException(graphPointer).Message;
+                typeName += " " + unit.GetException(graphPointer).Message;
             }
             return typeName;
         }
@@ -1781,7 +1393,7 @@ namespace Unity.VisualScripting.Community
                         return !string.IsNullOrEmpty(subgraphUnit.nest.graph.title) ? subgraphUnit.nest.graph.title : !string.IsNullOrEmpty(subgraphUnit.nest.macro.name) ? subgraphUnit.nest.macro.name : "Unnamed Subgraph";
                     }
                 }
-                return BoltFlowNameUtility.UnitTitle(unit.GetType(), false, false);
+                return element.Descriptor().description.title ?? BoltFlowNameUtility.UnitTitle(unit.GetType(), true, false);
             }
 
             return "Invalid Element";

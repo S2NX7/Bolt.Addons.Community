@@ -63,14 +63,14 @@ namespace Unity.VisualScripting.Community
                 VariableKind.Object => MakeClickableForThisUnit(variables + $".Object(") + $"{GenerateValue(Unit.@object, data)}{MakeClickableForThisUnit($").Get{typeString}(")}",
                 VariableKind.Scene => MakeClickableForThisUnit(variables + $"." + "ActiveScene".VariableHighlight() + $".Get{typeString}("),
                 VariableKind.Application => MakeClickableForThisUnit(variables + "." + "Application".VariableHighlight() + $".Get{typeString}("),
-                VariableKind.Saved => MakeClickableForThisUnit(variables + "." + "Saved".VariableHighlight()) + $".Get{typeString}(",
+                VariableKind.Saved => MakeClickableForThisUnit(variables + "." + "Saved".VariableHighlight() + $".Get{typeString}("),
                 _ => string.Empty,
             };
         }
 
         private string GenerateDisconnectedVariableCode(ControlGenerationData data)
         {
-            var name = Unit.defaultValues[Unit.name.key] as string;
+            var name = (Unit.defaultValues[Unit.name.key] as string).LegalMemberName();
             variableType = GetVariableType(name, data, true);
             if (Unit.kind == VariableKind.Object || Unit.kind == VariableKind.Scene || Unit.kind == VariableKind.Application || Unit.kind == VariableKind.Saved)
             {

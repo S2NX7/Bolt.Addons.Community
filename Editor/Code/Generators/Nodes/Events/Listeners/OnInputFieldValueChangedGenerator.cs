@@ -12,9 +12,7 @@ namespace Unity.VisualScripting.Community
     [NodeGenerator(typeof(OnInputFieldValueChanged))]
     public class OnInputFieldValueChangedGenerator : EventListenerMethodGenerator<OnInputFieldValueChanged>
     {
-        public OnInputFieldValueChangedGenerator(Unit unit) : base(unit)
-        {
-        }
+        public OnInputFieldValueChangedGenerator(Unit unit) : base(unit) { NameSpaces = "UnityEngine.UI"; }
         public override List<ValueOutput> OutputValues => new() { Unit.value };
 
         public override List<TypeParam> Parameters => new() { new TypeParam(typeof(string), "value") };

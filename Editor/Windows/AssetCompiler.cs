@@ -80,7 +80,6 @@ namespace Unity.VisualScripting.Community
             paths.EnsureDirectories();
             if (asset is GameObject @object)
             {
-                Debug.Log($"Compiling GameObject: {@object.name}");
                 var gen = CodeGenerator.GetSingleDecorator(@object) as GameObjectGenerator;
                 var scriptMachine = gen?.current ?? @object.GetComponent<ScriptMachine>();
                 if (scriptMachine != null)

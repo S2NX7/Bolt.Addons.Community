@@ -13,8 +13,8 @@ namespace Unity.VisualScripting.Community
 	/// <summary>
 	/// Gets a dictionary item with the specified key.
 	/// </summary>
-    [UnitTitle("Get Dictionary Variable")]
-    [RenamedFrom("Bolt.Addons.Community.Fundamentals.GetDictionaryVariableItem")]
+	[UnitTitle("Get Dictionary Variable")]
+	[RenamedFrom("Bolt.Addons.Community.Fundamentals.GetDictionaryVariableItem")]
 	public sealed class GetDictionaryVariableItem : DictionaryVariableItem
 	{
 		/// <summary>
@@ -48,7 +48,6 @@ namespace Unity.VisualScripting.Community
 
 			output = ValueOutput(nameof(output), Get).PredictableIf(IsDefined);
 
-
 			if (specifyFallback)
 			{
 				fallback = ValueInput<object>(nameof(fallback), 0);
@@ -60,21 +59,6 @@ namespace Unity.VisualScripting.Community
 				Requirement(fallback, output);
 		}
 
-
-
-		object GetDefaultValue(Type t)
-		{
-			if (t.IsValueType)
-				return Activator.CreateInstance(t);
-
-			if (t == typeof(string))
-				return "";
-
-			return null;
-		}
-
-
-
 		private bool IsDefined(Flow flow)
 		{
 			var nameValue = flow.GetValue<string>(this.name);
@@ -84,12 +68,10 @@ namespace Unity.VisualScripting.Community
 			return GetDeclarations(flow)?.IsDefined(nameValue) ?? false;
 		}
 
-
-
 		private object Get(Flow flow)
 		{
 			var name = flow.GetValue<string>(this.name);
-			var keyValue = flow.GetValue<string>(this.key);
+			var keyValue = flow.GetConvertedValue(key);
 
 			var variableValue = GetDeclarations(flow).Get(name);
 			if (variableValue == null)

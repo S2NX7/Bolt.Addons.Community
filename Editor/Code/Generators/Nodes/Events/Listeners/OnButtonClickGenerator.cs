@@ -7,13 +7,7 @@ namespace Unity.VisualScripting.Community
     [NodeGenerator(typeof(OnButtonClick))]
     public class OnButtonClickGenerator : EventListenerMethodGenerator<OnButtonClick>
     {
-        public OnButtonClickGenerator(Unit unit) : base(unit)
-        {
-        }
-        public override List<ValueOutput> OutputValues => new List<ValueOutput>();
-
-        public override List<TypeParam> Parameters => new List<TypeParam>();
-
+        public OnButtonClickGenerator(Unit unit) : base(unit) { NameSpaces = "UnityEngine.UI"; }
         public override ControlOutput OutputPort => Unit.trigger;
 
         protected override bool IsCoroutine()

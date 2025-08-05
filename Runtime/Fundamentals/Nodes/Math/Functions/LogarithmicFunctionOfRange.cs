@@ -99,7 +99,7 @@
 
         private float Operation(Flow flow)
         {
-            return MathLibrary.LogarithmicFunctionOfRange(flow.GetValue<float>(input), flow.GetValue<float>(minimumRange), flow.GetValue<float>(maximumRange), flow.GetValue<float>(maximumRange), flow.GetValue<float>(exponent), flow.GetValue<float>(scale));
+            return MathLibrary.LogarithmicFunctionOfRange(flow.GetValue<float>(input), flow.GetValue<float>(minimumRange), flow.GetValue<float>(maximumRange), flow.GetValue<float>(minimumValue), flow.GetValue<float>(exponent), flow.GetValue<float>(scale));
         }
     }
 }

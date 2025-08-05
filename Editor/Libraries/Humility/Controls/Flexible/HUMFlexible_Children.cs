@@ -21,14 +21,24 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
 
         public static void Box(this HUMEditor.Data.Vertical vertical, Color backgroundColor, Color borderColor, int border = 1, Action action = null, bool stretchHorizontal = false, bool stretchVertical = false, params GUILayoutOption[] options)
         {
-            var style = new GUIStyle(GUI.skin.box);
+            var style = new GUIStyle();
+            var borderStyle = new GUIStyle();
             style.normal.background = HUMColor.CacheTexture(backgroundColor);
-            style.stretchWidth = stretchHorizontal;
+            borderStyle.normal.background = HUMColor.CacheTexture(borderColor);
+            borderStyle.padding = new RectOffset(border, border, border, border);
+            borderStyle.stretchHeight = stretchVertical;
+            borderStyle.stretchWidth = stretchHorizontal;
+            style.padding = new RectOffset(6, 6, 6, 6);
             style.stretchHeight = stretchVertical;
-            style.margin = new RectOffset();
-            GUILayout.BeginVertical(style, options);
-            action?.Invoke();
-            GUILayout.EndVertical();
+            style.stretchWidth = stretchHorizontal;
+
+            HUMEditor.Vertical(borderStyle, () =>
+            {
+                HUMEditor.Vertical(style, () =>
+                {
+                    action?.Invoke();
+                });
+            }, options);
         }
 
         public static Vector2 ScrollView(this HUMEditor.Data.Flexible flexible, Vector2 scrollPosition, GUIStyle backgroundStyle, Action contents, params GUILayoutOption[] options)

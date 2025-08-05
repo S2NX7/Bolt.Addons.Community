@@ -16,7 +16,9 @@ namespace Unity.VisualScripting.Community
 
         public override string GenerateControl(ControlInput input, ControlGenerationData data, int indent)
         {
-            return CodeBuilder.Indent(indent) + MakeClickableForThisUnit("throw ".ControlHighlight()) + (Unit.custom ? GenerateValue(Unit.exception, data) : GenerateValue(Unit.message, data)) + MakeClickableForThisUnit(";") + "\n";
+            if (data.MustBreak) data.SetHasBroke(true);
+            else if (data.MustReturn) data.SetHasReturned(true);
+            return CodeBuilder.Indent(indent) + MakeClickableForThisUnit("throw ".ControlHighlight()) + (Unit.custom ? GenerateValue(Unit.exception, data) : Unit.CreateClickableString("new".ConstructHighlight() + " " + "System".NamespaceHighlight() + "." + "Exception".TypeHighlight()).Parentheses(inner => inner.Ignore(GenerateValue(Unit.message, data)))) + MakeClickableForThisUnit(";") + "\n";
         }
     }
 }

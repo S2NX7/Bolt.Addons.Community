@@ -12,9 +12,7 @@ namespace Unity.VisualScripting.Community
     [NodeGenerator(typeof(OnInputFieldEndEdit))]
     public class OnInputFieldEndEditGeneratorGenerator : EventListenerMethodGenerator<OnInputFieldEndEdit>
     {
-        public OnInputFieldEndEditGeneratorGenerator(Unit unit) : base(unit)
-        {
-        }
+        public OnInputFieldEndEditGeneratorGenerator(Unit unit) : base(unit) { NameSpaces = "UnityEngine.UI"; }
         public override List<ValueOutput> OutputValues => new() { Unit.value };
 
         public override List<TypeParam> Parameters => new() { new TypeParam(typeof(string), "value") };

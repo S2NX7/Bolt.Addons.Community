@@ -21,7 +21,7 @@ namespace Unity.VisualScripting.Community
             this.type = type;
         }
 
-        [Serialize, Inspectable, TypeFilter(), TypeSet(TypeSet.SettingsAssembliesTypes)]
+        [Serialize, Inspectable, TypeFilter, TypeSet(TypeSet.SettingsAssembliesTypes)]
         public Type type = typeof(float);
 
         [Serialize, Inspectable, UnitHeaderInspectable("Instance"), InspectorToggleLeft]

@@ -13,10 +13,8 @@ namespace Unity.VisualScripting.Community
     [NodeGenerator(typeof(InvokeMember))]
     public sealed class InvokeMemberGenerator : NodeGenerator<InvokeMember>
     {
-        private ControlGenerationData controlGenerationData;
-
         private Dictionary<ValueOutput, string> outputNames;
-        public InvokeMemberGenerator(Unity.VisualScripting.InvokeMember unit) : base(unit)
+        public InvokeMemberGenerator(InvokeMember unit) : base(unit)
         {
             if (Unit.member.isExtension)
             {
@@ -36,37 +34,50 @@ namespace Unity.VisualScripting.Community
                 {
                     return $"/* Control Port Enter of {Unit.member.ToDeclarer()} requires a connection */".WarningHighlight();
                 }
-                var _output = string.Empty;
+                var _output = Unit.CreateClickableString();
 
                 if (Unit.member.isConstructor)
                 {
                     string parameters = string.Empty;
-                    string typeName = MakeClickableForThisUnit(Unit.member.pseudoDeclaringType.As().CSharpName(false, true));
+                    string typeName = Unit.member.pseudoDeclaringType.As().CSharpName(false, true);
                     if (Unit.member.pseudoDeclaringType.IsArray)
-                        typeName = typeName.Replace("[]", "") + MakeClickableForThisUnit("[") + GenerateArguments(data) + MakeClickableForThisUnit("]");
+                    {
+                        int count = 0;
+                        var type = Unit.member.pseudoDeclaringType;
+                        while (type.IsArray)
+                        {
+                            count++;
+                            type = type.GetElementType();
+                        }
+
+                        typeName = MakeClickableForThisUnit(typeName.Replace("[]", "")) + MakeClickableForThisUnit("[") + GenerateArguments(data) + MakeClickableForThisUnit("]") + MakeClickableForThisUnit(string.Concat(Enumerable.Repeat("[]", count - 1)));
+                    }
                     else
+                    {
                         parameters = MakeClickableForThisUnit("(") + GenerateArguments(data) + MakeClickableForThisUnit(")");
-                    _output += new ValueCode(MakeClickableForThisUnit($"{"new".ConstructHighlight()} ") + typeName + parameters);
+                        typeName = MakeClickableForThisUnit(typeName);
+                    }
+                    _output.Clickable("new ".ConstructHighlight()).Ignore(typeName).Ignore(parameters);
                 }
                 else
                 {
                     if (Unit.target == null)
                     {
-                        _output += new ValueCode(MakeClickableForThisUnit($"{Unit.member.pseudoDeclaringType.As().CSharpName(false, true)}.{Unit.member.name}(") + $"{GenerateArguments(data)}{MakeClickableForThisUnit(")")}");
+                        _output.Clickable(Unit.member.pseudoDeclaringType.As().CSharpName(false, true)).Dot().Clickable(Unit.member.name).Parentheses(inner => inner.Ignore(GenerateArguments(data)));
                     }
                     else
                     {
                         if (Unit.target.hasValidConnection && Unit.target.type != Unit.target.connection.source.type && Unit.member.pseudoDeclaringType.IsSubclassOf(typeof(Component)))
                         {
-                            _output += new ValueCode(GenerateValue(Unit.target, data) + MakeClickableForThisUnit(GetComponent(Unit.target, data) + "." + Unit.member.name + $"(") + $"{GenerateArguments(data)}{MakeClickableForThisUnit(")")}");
+                            _output.Ignore(GenerateValue(Unit.target, data)).Clickable(GetComponent(Unit.target, data)).Dot().Clickable(Unit.member.name).Parentheses(inner => inner.Ignore(GenerateArguments(data)));
                         }
                         else if (Unit.member.pseudoDeclaringType.IsSubclassOf(typeof(Component)))
                         {
-                            _output += new ValueCode(GenerateValue(Unit.target, data) + MakeClickableForThisUnit(GetComponent(Unit.target, data) + "." + Unit.member.name + $"(") + $"{GenerateArguments(data)}{MakeClickableForThisUnit(")")}", typeof(GameObject), ShouldCast(Unit.target, data, false));
+                            _output.Ignore(GenerateValue(Unit.target, data)).Clickable(GetComponent(Unit.target, data)).Dot().Clickable(Unit.member.name).Parentheses(inner => inner.Ignore(GenerateArguments(data))).Cast(typeof(GameObject), ShouldCast(Unit.target, data, false));
                         }
                         else
                         {
-                            _output += new ValueCode($"{GenerateValue(Unit.target, data)}" + MakeClickableForThisUnit($".{Unit.member.name}(") + $"{GenerateArguments(data)}{MakeClickableForThisUnit(")")}");
+                            _output.Ignore(GenerateValue(Unit.target, data)).Dot().Clickable(Unit.member.name).Parentheses(inner => inner.Ignore(GenerateArguments(data)));
                         }
                     }
                 }
@@ -76,7 +87,7 @@ namespace Unity.VisualScripting.Community
             {
                 if (!Unit.enter.hasValidConnection && Unit.outputParameters.Count > 0)
                 {
-                    return $"/* Control Port Enter of {Unit.member.ToDeclarer()} requires a connection */".WarningHighlight();
+                    return MakeClickableForThisUnit($"/* Control Port Enter of {Unit.member.ToDeclarer()} requires a connection */".WarningHighlight());
                 }
 
                 if (Unit.member.GetParameterInfos().ToArray()[Unit.outputParameters.FirstOrDefault(parameter => parameter.Value == output).Key].ParameterType.IsByRef)
@@ -117,48 +128,59 @@ namespace Unity.VisualScripting.Community
         public override string GenerateControl(ControlInput input, ControlGenerationData data, int indent)
         {
             outputNames = new Dictionary<ValueOutput, string>();
-            controlGenerationData = data;
-            var output = string.Empty;
+            var output = Unit.CreateClickableString();
             if (Unit.result == null || !Unit.result.hasValidConnection)
             {
                 if (Unit.member.isConstructor)
                 {
                     string parameters;
                     if (Unit.member.pseudoDeclaringType.IsArray)
-                        parameters = MakeClickableForThisUnit("[") + GenerateArguments(data) + MakeClickableForThisUnit("];");
+                    {
+                        int count = 0;
+                        var type = Unit.member.pseudoDeclaringType;
+                        while (type.IsArray)
+                        {
+                            count++;
+                            type = type.GetElementType();
+                        }
+
+                        string typeName = Unit.member.pseudoDeclaringType.As().CSharpName(false, true);
+                        parameters = MakeClickableForThisUnit(typeName.Replace("[]", "")) + MakeClickableForThisUnit("[") + GenerateArguments(data) + MakeClickableForThisUnit("]") + MakeClickableForThisUnit(string.Concat(Enumerable.Repeat("[]", count - 1)));
+                    }
                     else
                         parameters = MakeClickableForThisUnit("(") + GenerateArguments(data) + MakeClickableForThisUnit(");");
 
-                    output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit($"{"new".ConstructHighlight()} {Unit.member.pseudoDeclaringType.As().CSharpName(false, true)}") + parameters + "\n";
+                    output.Clickable("new ".ConstructHighlight()).Clickable(Unit.member.pseudoDeclaringType.As().CSharpName(false, true)).Ignore(parameters).Clickable(";").NewLine();
                 }
                 else
                 {
                     if (Unit.target == null)
                     {
-                        output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit($"{Unit.member.pseudoDeclaringType.As().CSharpName(false, true)}.{Unit.member.name}(") + $"{GenerateArguments(data)}{MakeClickableForThisUnit(");")}" + "\n";
+                        output.Clickable(Unit.member.pseudoDeclaringType.As().CSharpName(false, true)).Dot().Clickable(Unit.member.name).Parentheses(inner => inner.Ignore(GenerateArguments(data))).Clickable(";").NewLine();
                     }
                     else
                     {
                         var target = GenerateValue(Unit.target, data);
                         if (Unit.member.pseudoDeclaringType == typeof(GameObject) && Unit.target.hasValidConnection && typeof(Component).IsAssignableFrom(GetSourceType(Unit.target, data) ?? Unit.target.connection.source.type))
                         {
-                            output += CodeBuilder.Indent(indent) + target + (typeof(Component).IsAssignableFrom(Unit.target.type) && Unit.target.type != typeof(object) ? MakeClickableForThisUnit($".{"gameObject".VariableHighlight()}.GetComponent<{(GetSourceType(Unit.target, data) ?? Unit.target.connection.source.type).As().CSharpName(false, true)}>().{Unit.member.name}(") : MakeClickableForThisUnit($".{"gameObject".VariableHighlight()}.{Unit.member.name}(")) + $"{GenerateArguments(data)}{MakeClickableForThisUnit(");")}" + "\n";
+                            output.Ignore(target).Clickable(typeof(Component).IsAssignableFrom(Unit.target.type) && Unit.target.type != typeof(object) ? $".{"gameObject".VariableHighlight()}.GetComponent<{(GetSourceType(Unit.target, data) ?? Unit.target.connection.source.type).As().CSharpName(false, true)}>().{Unit.member.name}" : $".{"gameObject".VariableHighlight()}.{Unit.member.name}").Parentheses(inner => inner.Ignore(GenerateArguments(data))).Clickable(";").NewLine();
                         }
                         else if (Unit.target.hasValidConnection && Unit.target.type != Unit.target.connection.source.type && typeof(Component).IsAssignableFrom(Unit.member.pseudoDeclaringType))
                         {
-                            output += CodeBuilder.Indent(indent) + target + MakeClickableForThisUnit($"{GetComponent(Unit.target, data)}.{Unit.member.name}(") + GenerateArguments(data) + MakeClickableForThisUnit(");") + "\n";
+                            output.Ignore(target).Clickable(GetComponent(Unit.target, data)).Dot().Clickable(Unit.member.name).Parentheses(inner => inner.Ignore(GenerateArguments(data))).Clickable(";").NewLine();
                         }
                         else if (typeof(Component).IsAssignableFrom(Unit.member.pseudoDeclaringType))
                         {
-                            output += CodeBuilder.Indent(indent) + target + MakeClickableForThisUnit($"{GetComponent(Unit.target, data)}.{Unit.member.name}(") + GenerateArguments(data) + MakeClickableForThisUnit(");") + "\n";
+                            output.Ignore(target).Clickable(GetComponent(Unit.target, data)).Dot().Clickable(Unit.member.name).Parentheses(inner => inner.Ignore(GenerateArguments(data))).Clickable(";").NewLine();
                         }
                         else
                         {
-                            output += CodeBuilder.Indent(indent) + target + MakeClickableForThisUnit($".{Unit.member.name}(") + GenerateArguments(data) + MakeClickableForThisUnit(");") + "\n";
+
+                            output.Ignore(target).Dot().Clickable(Unit.member.name).Parentheses(inner => inner.Ignore(GenerateArguments(data))).Clickable(";").NewLine();
                         }
                     }
                 }
-                output += GetNextUnit(Unit.exit, data, indent);
+                output.Ignore(GetNextUnit(Unit.exit, data, indent));
                 return output;
             }
             return GetNextUnit(Unit.exit, data, indent);
@@ -169,11 +191,11 @@ namespace Unity.VisualScripting.Community
             if (input.hasValidConnection)
             {
                 var shouldCast = ShouldCast(input, data, false);
-                if (input.type.IsSubclassOf(typeof(Component))) return new ValueCode(GetNextValueUnit(input, data), typeof(GameObject), shouldCast);
+                if (input.type.IsSubclassOf(typeof(Component))) return Unit.CreateClickableString().Ignore(GetNextValueUnit(input, data)).Cast(typeof(GameObject), shouldCast);
                 data.SetExpectedType(input.type);
                 var connectedCode = GetNextValueUnit(input, data);
                 data.RemoveExpectedType();
-                return new ValueCode(connectedCode, input.type, shouldCast);
+                return Unit.CreateClickableString().Ignore(connectedCode).Cast(input.type, shouldCast);
             }
             else if (input.hasDefaultValue)
             {
@@ -211,12 +233,11 @@ namespace Unity.VisualScripting.Community
             }
         }
 
-        private string GenerateArguments(ControlGenerationData data = null)
+        private string GenerateArguments(ControlGenerationData data)
         {
             var method = Unit.member.methodInfo;
             var parameters = method?.GetParameters();
-
-            if (controlGenerationData != null && Unit.member.isMethod)
+            if (data != null && Unit.member.isMethod)
             {
                 var output = new List<string>();
                 int count = parameters.Length;
@@ -227,8 +248,8 @@ namespace Unity.VisualScripting.Community
                     var input = Unit.inputParameters.TryGetValue(i, out var p) ? p : null;
                     if (parameter.HasOutModifier())
                     {
-                        var name = controlGenerationData.AddLocalNameInScope(parameter.Name, parameter.ParameterType).VariableHighlight();
-                        output.Add(MakeClickableForThisUnit("out ".ConstructHighlight() + "var " + name));
+                        var name = data.AddLocalNameInScope(parameter.Name, parameter.ParameterType).VariableHighlight();
+                        output.Add(MakeClickableForThisUnit("out var".ConstructHighlight() + name));
 
                         if (Unit.outputParameters.TryGetValue(i, out var outValue) && !outputNames.ContainsKey(outValue))
                             outputNames.Add(outValue, "&" + name);
@@ -237,25 +258,37 @@ namespace Unity.VisualScripting.Community
                     {
                         if (input == null)
                         {
-                            output.Add($"/* Missing input for {parameter.Name} */".WarningHighlight());
+                            output.Add(MakeClickableForThisUnit($"/* Missing input for {parameter.Name} */".WarningHighlight()));
                             continue;
                         }
 
-                        var name = controlGenerationData.AddLocalNameInScope(parameter.Name, parameter.ParameterType).VariableHighlight();
-
-                        if (!input.hasValidConnection || (input.connection?.source.unit is not GetVariable and not AssetFieldUnit and not InheritedFieldUnit and not GetMember))
+                        if (!input.hasValidConnection || (input.hasValidConnection && !input.connection.source.unit.IsValidRefUnit()))
                         {
-                            output.Add($"/* {input.key.Replace("%", "")} needs connection to a variable or member unit */".WarningHighlight());
+                            output.Add(MakeClickableForThisUnit($"/* {input.key.Replace("%", "")} needs connection to a variable or member unit */".WarningHighlight()));
                             continue;
                         }
 
+                        var name = data.AddLocalNameInScope(parameter.Name, parameter.ParameterType).VariableHighlight();
                         output.Add(MakeClickableForThisUnit("ref ".ConstructHighlight()) + GenerateValue(input, data));
                         if (Unit.outputParameters.TryGetValue(i, out var outRef) && !outputNames.ContainsKey(outRef))
                             outputNames.Add(outRef, "&" + name);
                     }
-                    else if (parameter.IsOptional && (input == null || (!input.hasValidConnection && !input.hasDefaultValue)))
+                    if (parameter.IsOptional && !input.hasValidConnection && !input.hasDefaultValue)
                     {
-                        continue;
+                        bool hasLaterConnection = false;
+
+                        for (int j = i + 1; j < count; j++)
+                        {
+                            var laterParam = Unit.inputParameters[j];
+                            if (laterParam != null && (laterParam.hasValidConnection || laterParam.hasDefaultValue))
+                            {
+                                hasLaterConnection = true;
+                                break;
+                            }
+                        }
+
+                        if (!hasLaterConnection)
+                            continue;
                     }
                     else if (parameter.IsDefined(typeof(ParamArrayAttribute), false) && (input == null || !input.hasValidConnection))
                     {
@@ -280,7 +313,25 @@ namespace Unity.VisualScripting.Community
                         continue;
 
                     var param = parameters[i];
-                    if ((param.IsOptional && !input.hasValidConnection) || (param.IsDefined(typeof(ParamArrayAttribute), false) && !input.hasValidConnection))
+                    if (param.IsOptional && !input.hasValidConnection && !input.hasDefaultValue)
+                    {
+                        bool hasLaterConnection = false;
+
+                        for (int j = i + 1; j < count; j++)
+                        {
+                            var laterParam = Unit.inputParameters[j];
+                            if (laterParam != null && (laterParam.hasValidConnection || laterParam.hasDefaultValue))
+                            {
+                                hasLaterConnection = true;
+                                break;
+                            }
+                        }
+
+                        if (!hasLaterConnection)
+                            continue;
+                    }
+
+                    if (param.IsDefined(typeof(ParamArrayAttribute), false) && !input.hasValidConnection)
                         continue;
 
                     output.Add(GenerateValue(input, data));

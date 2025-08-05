@@ -22,6 +22,7 @@ namespace Unity.VisualScripting.Community
             if (Data.inspectable) @struct.AddAttribute(AttributeGenerator.Attribute<InspectableAttribute>());
             if (Data.serialized) @struct.AddAttribute(AttributeGenerator.Attribute<SerializableAttribute>());
             if (Data.includeInSettings) @struct.AddAttribute(AttributeGenerator.Attribute<IncludeInSettingsAttribute>().AddParameter(true));
+            @namespace.beforeUsings = "#pragma warning disable".ConstructHighlight();
             foreach (var @interface in Data.interfaces.Select(i => i.type))
             {
                 @struct.ImplementInterface(@interface);
@@ -70,10 +71,19 @@ namespace Unity.VisualScripting.Community
                     var usings = new List<string>();
                     foreach (var _unit in Data.constructors[i].graph.GetUnitsRecursive(Recursion.New(Recursion.defaultMaxDepth)).Cast<Unit>())
                     {
-                        if (!string.IsNullOrEmpty(NodeGenerator.GetSingleDecorator(_unit, _unit).NameSpaces))
-                            usings.Add(NodeGenerator.GetSingleDecorator(_unit, _unit).NameSpaces);
+                        var generator = _unit.GetGenerator();
+                        if (!string.IsNullOrEmpty(generator.NameSpaces))
+                            usings.Add(generator.NameSpaces.Replace("`", ",").Trim());
 
-                        HandleOtherGenerators(@struct, _unit.GetGenerator(), Data.constructors[i].GetReference());
+                        if (generator is InterfaceNodeGenerator interfaceNodeGenerator)
+                        {
+                            foreach (var interfaceType in interfaceNodeGenerator.InterfaceTypes)
+                            {
+                                @struct.ImplementInterface(interfaceType);
+                            }
+                        }
+
+                        HandleOtherGenerators(@struct, _unit.GetGenerator());
                     }
 
                     @struct.AddUsings(usings);
@@ -82,6 +92,10 @@ namespace Unity.VisualScripting.Community
                     for (int item = 0; item < Data.variables.Count; item++)
                     {
                         data.AddLocalNameInScope(Data.variables[item].name, Data.variables[item].type);
+                    }
+                    foreach (var param in Data.methods[i].parameters)
+                    {
+                        data.AddLocalNameInScope(param.name, param.type);
                     }
                     constructor.Body(unit.GenerateControl(null, data, 0));
                     data.ExitScope();
@@ -140,10 +154,17 @@ namespace Unity.VisualScripting.Community
                             var usings = new List<string>();
                             foreach (var _unit in Data.variables[i].getter.graph.GetUnitsRecursive(Recursion.New(Recursion.defaultMaxDepth)).Cast<Unit>())
                             {
-                                if (!string.IsNullOrEmpty(NodeGenerator.GetSingleDecorator(_unit, _unit).NameSpaces))
-                                    usings.Add(NodeGenerator.GetSingleDecorator(_unit, _unit).NameSpaces);
-
-                                HandleOtherGenerators(@struct, _unit.GetGenerator(), Data.variables[i].getter.GetReference());
+                                var generator = _unit.GetGenerator();
+                                if (!string.IsNullOrEmpty(generator.NameSpaces))
+                                    usings.Add(generator.NameSpaces.Replace("`", ",").Trim());
+                                if (generator is InterfaceNodeGenerator interfaceNodeGenerator)
+                                {
+                                    foreach (var interfaceType in interfaceNodeGenerator.InterfaceTypes)
+                                    {
+                                        @struct.ImplementInterface(interfaceType);
+                                    }
+                                }
+                                HandleOtherGenerators(@struct, _unit.GetGenerator());
                             }
 
                             @struct.AddUsings(usings);
@@ -164,10 +185,17 @@ namespace Unity.VisualScripting.Community
                             var usings = new List<string>();
                             foreach (var _unit in Data.variables[i].setter.graph.GetUnitsRecursive(Recursion.New(Recursion.defaultMaxDepth)).Cast<Unit>())
                             {
-                                if (!string.IsNullOrEmpty(NodeGenerator.GetSingleDecorator(_unit, _unit).NameSpaces))
-                                    usings.Add(NodeGenerator.GetSingleDecorator(_unit, _unit).NameSpaces);
-
-                                HandleOtherGenerators(@struct, _unit.GetGenerator(), Data.variables[i].setter.GetReference());
+                                var generator = _unit.GetGenerator();
+                                if (!string.IsNullOrEmpty(generator.NameSpaces))
+                                    usings.Add(generator.NameSpaces.Replace("`", ",").Trim());
+                                if (generator is InterfaceNodeGenerator interfaceNodeGenerator)
+                                {
+                                    foreach (var interfaceType in interfaceNodeGenerator.InterfaceTypes)
+                                    {
+                                        @struct.ImplementInterface(interfaceType);
+                                    }
+                                }
+                                HandleOtherGenerators(@struct, _unit.GetGenerator());
                             }
 
                             @struct.AddUsings(usings);
@@ -178,6 +206,9 @@ namespace Unity.VisualScripting.Community
                             {
                                 data.AddLocalNameInScope(variable.FieldName, variable.type);
                             }
+
+                            data.AddLocalNameInScope("value", Data.variables[i].type);
+
                             property.MultiStatementSetter(AccessModifier.Public, (Data.variables[i].setter.graph.units[0] as Unit)
                             .GenerateControl(null, data, 0));
                             data.ExitScope();
@@ -271,9 +302,17 @@ namespace Unity.VisualScripting.Community
                         var usings = new List<string>();
                         foreach (var _unit in Data.methods[i].graph.GetUnitsRecursive(Recursion.New(Recursion.defaultMaxDepth)).Cast<Unit>())
                         {
-                            if (!string.IsNullOrEmpty(NodeGenerator.GetSingleDecorator(_unit, _unit).NameSpaces))
-                                usings.Add(NodeGenerator.GetSingleDecorator(_unit, _unit).NameSpaces);
-                            HandleOtherGenerators(@struct, _unit.GetGenerator(), Data.methods[i].GetReference());
+                            var generator = _unit.GetGenerator();
+                            if (!string.IsNullOrEmpty(generator.NameSpaces))
+                                usings.Add(generator.NameSpaces.Replace("`", ",").Trim());
+                            if (generator is InterfaceNodeGenerator interfaceNodeGenerator)
+                            {
+                                foreach (var interfaceType in interfaceNodeGenerator.InterfaceTypes)
+                                {
+                                    @struct.ImplementInterface(interfaceType);
+                                }
+                            }
+                            HandleOtherGenerators(@struct, _unit.GetGenerator());
                         }
 
                         @struct.AddUsings(usings);
@@ -284,6 +323,10 @@ namespace Unity.VisualScripting.Community
                         for (int item = 0; item < Data.variables.Count; item++)
                         {
                             data.AddLocalNameInScope(Data.variables[item].name, Data.variables[item].type);
+                        }
+                        foreach (var param in Data.methods[i].parameters)
+                        {
+                            data.AddLocalNameInScope(param.name, param.type);
                         }
                         method.Body(unit.GenerateControl(null, data, 0));
                         data.ExitScope();
@@ -324,31 +367,30 @@ namespace Unity.VisualScripting.Community
             return @struct;
         }
 
-        private void HandleOtherGenerators(StructGenerator @struct, NodeGenerator generator, GraphPointer graphPointer)
+        Dictionary<Type, int> generatorCounts = new Dictionary<Type, int>();
+        private void HandleOtherGenerators(StructGenerator @struct, NodeGenerator generator)
         {
             if (generator is VariableNodeGenerator variableGenerator)
             {
-                var existingFields = new HashSet<string>(@struct.GetFields().Select(f => f.name));
-                variableGenerator.count = 0;
-
-                while (existingFields.Contains(variableGenerator.Name))
+                var type = variableGenerator.unit.GetType();
+                if (!generatorCounts.ContainsKey(type))
                 {
-                    variableGenerator.count++;
+                    generatorCounts[type] = 0;
                 }
-
+                variableGenerator.count = generatorCounts[type];
+                generatorCounts[type]++;
                 @struct.AddField(FieldGenerator.Field(variableGenerator.AccessModifier, variableGenerator.FieldModifier, variableGenerator.Type, variableGenerator.Name));
             }
             else if (generator is MethodNodeGenerator methodGenerator && methodGenerator.unit is not IEventUnit)
             {
-                var existingMethods = new HashSet<string>(@struct.GetMethods().Select(m => m.name));
-                methodGenerator.count = 0;
-
-                while (existingMethods.Contains(methodGenerator.Name))
+                var type = methodGenerator.unit.GetType();
+                if (!generatorCounts.ContainsKey(type))
                 {
-                    methodGenerator.count++;
+                    generatorCounts[type] = 0;
                 }
+                methodGenerator.count = generatorCounts[type];
+                generatorCounts[type]++;
                 data.NewScope();
-                data.SetReturns(methodGenerator.ReturnType);
                 foreach (var item in @struct.GetFields())
                 {
                     data.AddLocalNameInScope(item.name, item.type);
@@ -363,16 +405,16 @@ namespace Unity.VisualScripting.Community
                     else if (methodGenerator.GenericCount > 0 && param.usesGeneric)
                     {
                         var genericString = method.generics[param.generic].name;
-                        method.AddParameter(ParameterGenerator.Parameter(param.name, genericString, param.type, param.modifier));
+                        method.AddParameter(ParameterGenerator.Parameter(param.name, genericString.TypeHighlight(), param.type, param.modifier));
                     }
                 }
 
                 foreach (var variable in Data.variables)
                 {
-                    methodGenerator.Data.AddLocalNameInScope(variable.FieldName, variable.type);
+                    data.AddLocalNameInScope(variable.FieldName, variable.type);
                 }
                 methodGenerator.Data = data;
-                method.Body(string.IsNullOrEmpty(methodGenerator.MethodBody) ? methodGenerator.GenerateControl(methodGenerator.unit.controlInputs.Count == 0 ? null : methodGenerator.unit.controlInputs[0], data, 0) : methodGenerator.MethodBody);
+                method.Body(string.IsNullOrEmpty(methodGenerator.MethodBody) ? methodGenerator.GenerateControl(null, data, 0) : methodGenerator.MethodBody);
                 @struct.AddMethod(method);
                 data.ExitScope();
             }

@@ -33,12 +33,11 @@ namespace Unity.VisualScripting.Community
 
             if (Unit.enter != null && !Unit.enter.hasValidConnection && Unit.OutputParameters.Count > 0)
             {
-                return $"/* Control Port Enter requires a connection */".WarningHighlight();
+                return MakeClickableForThisUnit($"/* Control Port Enter requires a connection */".WarningHighlight());
             }
 
             if (Unit.OutputParameters.ContainsValue(output))
             {
-
                 var transformedKey = outputNames[output].Replace("&", "").Replace("%", "");
 
                 return MakeClickableForThisUnit(transformedKey.VariableHighlight());
@@ -49,42 +48,74 @@ namespace Unity.VisualScripting.Community
 
         private string GenerateArguments(List<ValueInput> arguments, ControlGenerationData data)
         {
-            if (controlGenerationData != null)
+            if (data != null)
             {
-                List<string> output = new List<string>();
-                var index = 0;
-                foreach (var parameter in Unit.method.parameters)
+                var output = new List<string>();
+                var parameters = Unit.method.parameters;
+                int paramCount = parameters.Count;
+
+                for (int i = 0; i < paramCount; i++)
                 {
-                    var name = controlGenerationData.AddLocalNameInScope(parameter.name, parameter.type).VariableHighlight();
+                    var parameter = parameters[i];
+                    var name = data.AddLocalNameInScope(parameter.name, parameter.type).VariableHighlight();
+
                     if (parameter.modifier == ParameterModifier.Out)
                     {
-                        output.Add("out var ".ConstructHighlight() + name);
-                        if (Unit.OutputParameters.Values.Any(output => output.key == "&" + parameter.name && !outputNames.ContainsKey(Unit.OutputParameters[index])))
-                            outputNames.Add(Unit.OutputParameters.Values.First(output => output.key == "&" + parameter.name), "&" + name);
+                        output.Add(MakeClickableForThisUnit("out var ".ConstructHighlight() + name));
+
+                        if (Unit.OutputParameters.Values.Any(o => o.key == "&" + parameter.name && !outputNames.ContainsKey(Unit.OutputParameters[i])))
+                            outputNames.Add(Unit.OutputParameters[i], "&" + name);
+
+                        continue;
                     }
-                    else if (parameter.modifier == ParameterModifier.Ref)
+
+                    if (parameter.modifier == ParameterModifier.Ref)
                     {
-                        var input = Unit.InputParameters.Values.First(value => value.key == "%" + parameter.name);
-                        if (!input.hasValidConnection || input.hasValidConnection && input.connection.source.unit is not GetVariable)
+                        var input = Unit.InputParameters.Values.FirstOrDefault(v => v.key == "%" + parameter.name);
+
+                        if (input == null || !input.hasValidConnection || (input.hasValidConnection && !input.connection.source.unit.IsValidRefUnit()))
                         {
-                            output.Add($"/* {input.key.Replace("%", "")} needs to be connected to a variable unit or a get member unit */".WarningHighlight());
+                            output.Add(MakeClickableForThisUnit($"/* {parameter.name} needs to be connected to a variable unit or a get member unit */".WarningHighlight()));
                             continue;
                         }
-                        output.Add("ref ".ConstructHighlight() + GenerateValue(input, data));
-                        if (Unit.OutputParameters.Values.Any(output => output.key == "&" + parameter.name && !outputNames.ContainsKey(Unit.OutputParameters[index])))
-                            outputNames.Add(Unit.OutputParameters[index], "&" + name);
+
+                        output.Add(MakeClickableForThisUnit("ref ".ConstructHighlight()) + GenerateValue(input, data));
+
+                        if (Unit.OutputParameters.Values.Any(o => o.key == "&" + parameter.name && !outputNames.ContainsKey(Unit.OutputParameters[i])))
+                            outputNames.Add(Unit.OutputParameters[i], "&" + name);
+
+                        continue;
                     }
-                    else
+
+                    var inputAtIndex = (i < Unit.InputParameters.Count) ? Unit.InputParameters[i] : null;
+                    if (parameter.hasDefault && (inputAtIndex == null || (!inputAtIndex.hasValidConnection && !inputAtIndex.hasDefaultValue)))
                     {
-                        output.Add(GenerateValue(Unit.InputParameters[index], data));
+                        bool hasLaterConnection = false;
+                        for (int j = i + 1; j < paramCount; j++)
+                        {
+                            var laterInput = (j < Unit.InputParameters.Count) ? Unit.InputParameters[j] : null;
+                            if (laterInput != null && (laterInput.hasValidConnection || laterInput.hasDefaultValue))
+                            {
+                                hasLaterConnection = true;
+                                break;
+                            }
+                        }
+
+                        if (!hasLaterConnection)
+                            continue;
                     }
-                    index++;
+
+                    if (inputAtIndex != null)
+                        output.Add(GenerateValue(inputAtIndex, data));
+                    else if (i < arguments.Count)
+                        output.Add(GenerateValue(arguments[i], data));
                 }
+
                 return string.Join(MakeClickableForThisUnit(", "), output);
             }
             else
             {
-                List<string> output = arguments.Select(arg => GenerateValue(arg, data)).ToList();
+                var output = arguments.Select(arg => GenerateValue(arg, data)).ToList();
                 return string.Join(MakeClickableForThisUnit(", "), output);
             }
         }

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using Unity.VisualScripting;
 using Unity.VisualScripting.Community.Libraries.CSharp;
+using UnityEngine;
 
 namespace Unity.VisualScripting.Community
 {
@@ -71,7 +72,6 @@ namespace Unity.VisualScripting.Community
 
         private static readonly Dictionary<Unit, NodeGenerator> generatorCache = new();
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static NodeGenerator GetGenerator(this Unit node)
         {
             if (!generatorCache.TryGetValue(node, out var generator))
@@ -85,31 +85,34 @@ namespace Unity.VisualScripting.Community
 
         public static void ClearGeneratorCache() => generatorCache.Clear();
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static MethodNodeGenerator GetMethodGenerator<T>(this T node) where T : Unit
+        public static MethodNodeGenerator GetMethodGenerator<T>(this T node, bool throwError = true) where T : Unit
         {
             if (GetGenerator(node) is MethodNodeGenerator methodNodeGenerator)
                 return methodNodeGenerator;
-
-            throw new InvalidOperationException($"{node.GetType()} is not a method generator.");
+            if (throwError)
+                throw new InvalidOperationException($"{node.GetType()} is not a method generator.");
+            else
+                return null;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static VariableNodeGenerator GetVariableGenerator<T>(this T node) where T : Unit
+        public static VariableNodeGenerator GetVariableGenerator<T>(this T node, bool throwError = true) where T : Unit
         {
             if (GetGenerator(node) is VariableNodeGenerator variableNodeGenerator)
                 return variableNodeGenerator;
-
-            throw new InvalidOperationException($"{node.GetType()} is not a variable generator.");
+            if (throwError)
+                throw new InvalidOperationException($"{node.GetType()} is not a variable generator.");
+            else
+                return null;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static LocalVariableGenerator GetLocalVariableGenerator<T>(this T node) where T : Unit
+        public static LocalVariableGenerator GetLocalVariableGenerator<T>(this T node, bool throwError = true) where T : Unit
         {
             if (GetGenerator(node) is LocalVariableGenerator localVariableGenerator)
                 return localVariableGenerator;
-
-            throw new InvalidOperationException($"{node.GetType()} is not a local variable generator.");
+            if (throwError)
+                throw new InvalidOperationException($"{node.GetType()} is not a local variable generator.");
+            else
+                return null;
         }
 
         public static IUnitValuePort GetPesudoSource(this ValueInput input)
@@ -156,6 +159,15 @@ namespace Unity.VisualScripting.Community
             }
 
             return null;
+        }
+
+        public static bool IsValidRefUnit(this Unit unit)
+        {
+            return unit is GetVariable || (unit is AssetFieldUnit fieldUnit && fieldUnit.actionDirection == ActionDirection.Get) || (unit is InheritedFieldUnit inheritedField && inheritedField.actionDirection == ActionDirection.Get);
+        }
+        public static bool IsValidRefUnit(this IUnit unit)
+        {
+            return IsValidRefUnit(unit as Unit);
         }
     }
 }

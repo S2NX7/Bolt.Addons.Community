@@ -1,7 +1,7 @@
 ﻿namespace Unity.VisualScripting.Community
 {
     /// <summary>
-    /// Takes a given float input (0-1) and scales it across the specified range.
+    /// Takes a given float input (0-1) and scales it exponentially across the specified range.
     /// </summary>
     [UnitCategory("Community\\Math\\Functions")]
     [RenamedFrom("Bolt.Addons.Community.Custom_Units.Math.Functions.ExponentialFunctionOfRange")]
@@ -82,7 +82,7 @@
         protected override void Definition()
         {
             input = ValueInput<float>(nameof(input), 0);
-            minimumRange = ValueInput<float>(nameof(minimumRange),defaultMinimumRange);
+            minimumRange = ValueInput<float>(nameof(minimumRange), defaultMinimumRange);
             maximumRange = ValueInput<float>(nameof(maximumRange), defaultMaximumRange);
             minimumValue = ValueInput<float>(nameof(minimumValue), defaultMinimum);
             exponent = ValueInput<float>(nameof(exponent), defaultExponent);
@@ -99,7 +99,7 @@
 
         private float Operation(Flow flow)
         {
-            return MathLibrary.ExponentialFunctionOfRange(flow.GetValue<float>(input), flow.GetValue<float>(minimumRange), flow.GetValue<float>(maximumRange), flow.GetValue<float>(maximumRange), flow.GetValue<float>(exponent), flow.GetValue<float>(scale));
+            return MathLibrary.ExponentialFunctionOfRange(flow.GetValue<float>(input), flow.GetValue<float>(minimumRange), flow.GetValue<float>(maximumRange), flow.GetValue<float>(minimumValue), flow.GetValue<float>(exponent), flow.GetValue<float>(scale));
         }
     }
 }

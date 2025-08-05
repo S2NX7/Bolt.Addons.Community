@@ -10,7 +10,9 @@ namespace Unity.VisualScripting.Community
     public class NodeGenerator : Decorator<NodeGenerator, NodeGeneratorAttribute, Unit>
     {
         public Unit unit;
-
+        /// <summary>
+        /// Seperate each namespace with ',' if ',' is required in the namespace it's self use '`'
+        /// </summary>
         public string NameSpaces = "";
 
         public string variableName = "";
@@ -102,7 +104,7 @@ namespace Unity.VisualScripting.Community
             {
                 return null;
             }
-            
+
             if (data == null)
             {
                 return valueInput.type;
@@ -224,20 +226,40 @@ namespace Unity.VisualScripting.Community
                 return code;
         }
 
-        protected bool CanPredictConnection(ValueInput target, ControlGenerationData data)
+        public static bool CanPredictConnection(ValueInput target, ControlGenerationData data)
         {
-            if (target.connection.source.unit is UnifiedVariableUnit variableUnit)
+            if (data.TryGetGraphPointer(out var graphPointer) && target.GetPesudoSource()?.unit is UnifiedVariableUnit variableUnit)
             {
                 // This is one of the main problems so we check this first.
                 if (variableUnit.kind == VariableKind.Scene)
                 {
-                    if (data.TryGetGraphPointer(out var graphPointer) && graphPointer.scene != null)
+                    if (graphPointer.scene != null)
                         return Flow.CanPredict(target, graphPointer.AsReference());
                     else return false;
                 }
             }
 
-            return true;
+            return graphPointer != null;
+        }
+
+        protected bool IsSourceLiteral(ValueInput valueInput, out Type sourceType)
+        {
+            var source = valueInput.GetPesudoSource();
+            if (source != null)
+            {
+                if (source.unit is Literal literal)
+                {
+                    sourceType = literal.type;
+                    return true;
+                }
+                else if (source is ValueInput v && !v.hasValidConnection && v.hasDefaultValue)
+                {
+                    sourceType = v.type;
+                    return true;
+                }
+            }
+            sourceType = null;
+            return false;
         }
     }
 

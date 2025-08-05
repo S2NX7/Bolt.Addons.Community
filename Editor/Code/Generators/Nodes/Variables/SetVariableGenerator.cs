@@ -10,7 +10,6 @@ using UnityEngine.SceneManagement;
 
 namespace Unity.VisualScripting.Community
 {
-
     [NodeGenerator(typeof(SetVariable))]
     public class SetVariableGenerator : LocalVariableGenerator
     {
@@ -106,7 +105,7 @@ namespace Unity.VisualScripting.Community
                         var target = GetTarget(data);
                         if (target != null && VisualScripting.Variables.Object(target).IsDefined(name))
                         {
-                            variableType = ResolveVariableType(VisualScripting.Variables.Object(GetTarget(data)), name);
+                            variableType = ResolveVariableType(VisualScripting.Variables.Object(target), name);
                         }
                         else
                             variableType = typeof(object);
@@ -136,15 +135,15 @@ namespace Unity.VisualScripting.Community
                             variableType = typeof(object);
                         return CodeBuilder.Indent(indent) + MakeClickableForThisUnit($"{variables}{"." + "Saved".VariableHighlight() + ".Set("}") + $"{GenerateValue(Unit.name, data)}{MakeClickableForThisUnit(", ")}{(Unit.input.hasValidConnection ? GenerateValue(Unit.input, data) : MakeClickableForThisUnit("null".ConstructHighlight()))}" + MakeClickableForThisUnit(");") + "\n" + GetNextUnit(Unit.assigned, data, indent);
                 }
-                var _name = data.GetVariableName(name);
+                var _name = data.GetVariableName(name.LegalMemberName());
                 CodeBuilder.Indent(indent); // To Ensure indentation is correct
                 if (data.ContainsNameInAnyScope(_name))
                 {
                     var inputCode = GenerateValue(Unit.input, data);
-                    variableName = _name;
+                    variableName = _name.LegalMemberName();
                     variableType = data.GetVariableType(_name);
                     data.SetExpectedType(variableType);
-                    var code = MakeClickableForThisUnit($"{_name.VariableHighlight()} = ") + inputCode + MakeClickableForThisUnit(";");
+                    var code = MakeClickableForThisUnit($"{variableName.VariableHighlight()} = ") + inputCode + MakeClickableForThisUnit(";");
                     data.RemoveExpectedType();
                     data.CreateSymbol(Unit, variableType);
                     output += CodeBuilder.Indent(indent) + code + "\n";
@@ -160,8 +159,8 @@ namespace Unity.VisualScripting.Community
                     var newName = data.AddLocalNameInScope(_name, variableType);
                     data.SetExpectedType(variableType);
                     data.CreateSymbol(Unit, variableType);
-                    variableName = newName;
-                    output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit($"{inputType} {newName.VariableHighlight()} = ") + (Unit.input.hasValidConnection ? inputCode : MakeClickableForThisUnit("null".ConstructHighlight())) + MakeClickableForThisUnit(";") + "\n";
+                    variableName = newName.LegalMemberName();
+                    output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit($"{inputType} {variableName.VariableHighlight()} = ") + (Unit.input.hasValidConnection ? inputCode : MakeClickableForThisUnit("null".ConstructHighlight())) + MakeClickableForThisUnit(";") + "\n";
                     data.RemoveExpectedType();
                     output += GetNextUnit(Unit.assigned, data, indent);
                     return output;

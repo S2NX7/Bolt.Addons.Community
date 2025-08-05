@@ -155,6 +155,7 @@ namespace Unity.VisualScripting.Community.Libraries.CSharp
 
         public StructGenerator ImplementInterface(Type type)
         {
+            if (interfaces.Contains(type)) return this;
             interfaces.Add(type);
             return this;
         }

@@ -3,7 +3,7 @@ using Unity.VisualScripting.Community;
 using UnityEditor;
 using UnityEngine;
 
-namespace Unity.VisualScripting.Community 
+namespace Unity.VisualScripting.Community
 {
     [Descriptor(typeof(Arrow))]
     [RenamedFrom("ArrowDescriptor")]
@@ -16,5 +16,10 @@ namespace Unity.VisualScripting.Community
         {
             return PathUtil.Load("ArrowIcon", CommunityEditorPath.Fundamentals);
         }
-    } 
+
+        protected override string DefaultSummary()
+        {
+            return "Displays an arrow in the graph to visually point to anything.";
+        }
+    }
 }

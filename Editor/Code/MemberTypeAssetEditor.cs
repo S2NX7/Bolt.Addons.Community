@@ -67,24 +67,28 @@ namespace Unity.VisualScripting.Community
 
         protected override void BeforePreview()
         {
-            if (GraphWindow.active != null && GraphWindow.active.context != null)
-                GraphWindow.active.context.BeginEdit();
-            Constructors();
-            GUILayout.Space(4);
-            Variables();
-            GUILayout.Space(4);
-            Methods();
-
-            // Check if the target is a ClassAsset and if it has required information
-            if (typeof(TMemberTypeAsset) == typeof(ClassAsset) && (Target as ClassAsset).inheritsType)
+            var context = GraphWindow.active?.context;
+            try
             {
+                context?.BeginEdit();
+                Constructors();
                 GUILayout.Space(4);
-                RequiredInfo();
+                Variables();
                 GUILayout.Space(4);
-                OverridableMembersInfo();
+                Methods();
+
+                if (typeof(TMemberTypeAsset) == typeof(ClassAsset) && (Target as ClassAsset).inheritsType)
+                {
+                    GUILayout.Space(4);
+                    RequiredInfo();
+                    GUILayout.Space(4);
+                    OverridableMembersInfo();
+                }
             }
-            if (GraphWindow.active != null && GraphWindow.active.context != null)
-                GraphWindow.active.context.EndEdit();
+            finally
+            {
+                context?.EndEdit();
+            }
         }
 
         private bool RequiresInfo()
@@ -92,20 +96,15 @@ namespace Unity.VisualScripting.Community
             var classAsset = Target as ClassAsset;
             var inheritedType = classAsset.inherits.type;
 
-            // Check for abstract methods
             if (inheritedType == null) return false;
             if (inheritedType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance).Where(m => !m.Name.Contains("get_") && !m.Name.Contains("set_")).Any(m => m.IsAbstract && !MethodExists(m)))
             {
                 return true;
             }
-
-            // Check for abstract properties
             if (inheritedType.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance).Any(p => (p.GetMethod?.IsAbstract == true || p.SetMethod?.IsAbstract == true) && !PropertyExists(p)))
             {
                 return true;
             }
-
-            // Check if the inherited type is not abstract and is a class with parameterized constructors
             if (!inheritedType.IsAbstract && inheritedType.IsClass)
             {
                 if (inheritedType.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
@@ -427,16 +426,14 @@ namespace Unity.VisualScripting.Community
         private bool OverridableMembers()
         {
             var classAsset = Target as ClassAsset;
-            var inheritedType = classAsset.inherits.type;
+            var inheritedType = classAsset.GetInheritedType();
 
-            // Check for methods that can be overridden
             if (inheritedType == null) return false;
             if (inheritedType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance).Where(m => m.Overridable()).Any(m => !MethodExists(m)))
             {
                 return true;
             }
 
-            // Check for properties that can be overridden
             if (inheritedType.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
                 .Any(p => (p.GetMethod?.IsFinal == false || p.SetMethod?.IsFinal == false) && !PropertyExists(p)))
             {
@@ -1521,7 +1518,7 @@ namespace Unity.VisualScripting.Community
                             {
                                 param.modifier &= ~ParameterModifier.Params;
                             }
-                            if (GUILayout.Button(modifiers.GetEnumString(ParameterModifier.None), EditorStyles.popup, GUILayout.MaxHeight(19f)))
+                            if (GUILayout.Button(modifiers.GetEnumString(ParameterModifier.None, "None"), EditorStyles.popup, GUILayout.MaxHeight(19f)))
                             {
                                 GenericMenu menu = new GenericMenu();
                                 menu.AddItem(new GUIContent("None"), modifiers == ParameterModifier.None, (obj) =>

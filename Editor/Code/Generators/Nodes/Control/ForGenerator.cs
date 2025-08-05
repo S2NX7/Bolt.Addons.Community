@@ -67,7 +67,7 @@ namespace Unity.VisualScripting.Community
                 data.SetExpectedType(input.type);
                 var connectedCode = GetNextValueUnit(input, data);
                 data.RemoveExpectedType();
-                return new ValueCode(connectedCode, input.type, ShouldCast(input, data, false));
+                return Unit.CreateIgnoreString(connectedCode).EndIgnoreContext().Cast(input.type, ShouldCast(input, data, false));
             }
             else
             {

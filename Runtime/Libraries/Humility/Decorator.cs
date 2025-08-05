@@ -23,7 +23,7 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
         private static Dictionary<TDecoratedType, TDecorator> singleDecorators = new Dictionary<TDecoratedType, TDecorator>();
         public static TDecorator activeDecorator; /// <summary> The current active editor. </summary>
         public static TDecoratedType activeDecorated; /// <summary> The current active editor. </summary>
-        [SerializeField] public TDecoratedType decorated; 
+        [SerializeField] public TDecoratedType decorated;
 
         /// <summary>
         /// Find a decorator based on its type.
@@ -162,5 +162,26 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                 }
             }
         }
+        public static bool HasDirectDecorator<T>(Type decoratedType, Type[] typesToSearch = null) where T : DecoratorAttribute
+        {
+            var decoratorTypes = typesToSearch ?? typeof(TDecorator).Get().Derived();
+
+            foreach (var decorator in decoratorTypes)
+            {
+                if (decorator.IsAbstract || !typeof(Decorator<,,>).IsAssignableFromGeneric(decorator))
+                    continue;
+
+                var attributes = decorator.GetCustomAttributes(typeof(T), false);
+
+                foreach (T attr in attributes)
+                {
+                    if (attr.type == decoratedType)
+                        return true;
+                }
+            }
+
+            return false;
+        }
+
     }
 }

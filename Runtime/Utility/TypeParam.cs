@@ -3,6 +3,7 @@ using System;
 using UnityEngine;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using Unity.VisualScripting.Community.Libraries.Humility;
 
 namespace Unity.VisualScripting.Community.Utility
 {
@@ -118,7 +119,7 @@ namespace Unity.VisualScripting.Community.Utility
             if (modifier == ParameterModifier.None)
                 modifierSerialization = "";
             else
-                modifierSerialization = modifier.GetEnumString(ParameterModifier.None);
+                modifierSerialization = modifier.GetEnumString(ParameterModifier.None, "None");
         }
 
         public void OnAfterDeserialize()
@@ -146,6 +147,28 @@ namespace Unity.VisualScripting.Community.Utility
                 modifier |= ParameterModifier.Params;
             if (modifierSerialization.Contains("This"))
                 modifier |= ParameterModifier.This;
+        }
+
+        public string GetTypeName(bool useFullName = false, bool highlight = true)
+        {
+            if (usesGeneric)
+            {
+                return !highlight ? "T" + generic : ("T" + generic).TypeHighlight();
+            }
+            return type.As().CSharpName(false, useFullName, highlight);
+        }
+        
+        public static string GetGenericsString(int genericCount, bool highlight = true)
+        {
+            if (genericCount <= 0)
+                return string.Empty;
+
+            var generics = new List<string>();
+            for (int i = 0; i < genericCount; i++)
+            {
+                generics.Add(!highlight ? "T" + i : ("T" + i).TypeHighlight());
+            }
+            return "<" + string.Join(", ", generics) + ">";
         }
     }
 }

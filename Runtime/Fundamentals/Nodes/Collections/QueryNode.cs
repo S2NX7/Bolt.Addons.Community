@@ -96,7 +96,9 @@ namespace Unity.VisualScripting.Community
                     break;
                 case QueryOperation.Skip:
                 case QueryOperation.Take:
-                    value = ValueInput<int>("value");
+                    showItem = false;
+                    showBody = false;
+                    value = ValueInput<int>("value", default);
                     break;
             }
 
@@ -173,11 +175,11 @@ namespace Unity.VisualScripting.Community
             switch (operation)
             {
                 case QueryOperation.Any:
-                    outCondition = flow.GetValue<IEnumerable>(collection).Cast<object>().Any();
+                    outCondition = Cast(flow.GetValue<IEnumerable>(collection)).Any();
                     break;
 
                 case QueryOperation.AnyWithCondition:
-                    outCondition = flow.GetValue<IEnumerable>(collection).Cast<object>().Any<object>((item) =>
+                    outCondition = Cast(flow.GetValue<IEnumerable>(collection)).Any((item) =>
                     {
                         current = item;
                         _flow = Flow.New(flow.stack.AsReference());
@@ -187,7 +189,7 @@ namespace Unity.VisualScripting.Community
                     break;
 
                 case QueryOperation.First:
-                    single = flow.GetValue<IEnumerable>(collection).Cast<object>().First<object>((item) =>
+                    single = Cast(flow.GetValue<IEnumerable>(collection)).First((item) =>
                     {
                         current = item;
                         _flow = Flow.New(flow.stack.AsReference());
@@ -197,7 +199,7 @@ namespace Unity.VisualScripting.Community
                     break;
 
                 case QueryOperation.FirstOrDefault:
-                    single = flow.GetValue<IEnumerable>(collection).Cast<object>().FirstOrDefault<object>((item) =>
+                    single = Cast(flow.GetValue<IEnumerable>(collection)).FirstOrDefault((item) =>
                     {
                         current = item;
                         _flow = Flow.New(flow.stack.AsReference());
@@ -207,7 +209,7 @@ namespace Unity.VisualScripting.Community
                     break;
 
                 case QueryOperation.OrderBy:
-                    output = flow.GetValue<IEnumerable>(collection).Cast<object>().OrderBy((item) =>
+                    output = Cast(flow.GetValue<IEnumerable>(collection)).OrderBy((item) =>
                     {
                         current = item;
                         _flow = Flow.New(flow.stack.AsReference());
@@ -217,7 +219,7 @@ namespace Unity.VisualScripting.Community
                     break;
 
                 case QueryOperation.OrderByDescending:
-                    output = flow.GetValue<IEnumerable>(collection).Cast<object>().OrderByDescending((item) =>
+                    output = Cast(flow.GetValue<IEnumerable>(collection)).OrderByDescending((item) =>
                     {
                         current = item;
                         _flow = Flow.New(flow.stack.AsReference());
@@ -227,7 +229,7 @@ namespace Unity.VisualScripting.Community
                     break;
 
                 case QueryOperation.Single:
-                    single = flow.GetValue<IEnumerable>(collection).Cast<object>().Single((item) =>
+                    single = Cast(flow.GetValue<IEnumerable>(collection)).Single((item) =>
                     {
                         current = item;
                         _flow = Flow.New(flow.stack.AsReference());
@@ -237,7 +239,7 @@ namespace Unity.VisualScripting.Community
                     break;
 
                 case QueryOperation.Where:
-                    output = flow.GetValue<IEnumerable>(collection).Cast<object>().Where((item) =>
+                    output = Cast(flow.GetValue<IEnumerable>(collection)).Where((item) =>
                     {
                         current = item;
                         _flow = Flow.New(flow.stack.AsReference());
@@ -247,7 +249,7 @@ namespace Unity.VisualScripting.Community
                     break;
 
                 case QueryOperation.Last:
-                    single = flow.GetValue<IEnumerable>(collection).Cast<object>().Last<object>((item) =>
+                    single = Cast(flow.GetValue<IEnumerable>(collection)).Last((item) =>
                     {
                         current = item;
                         _flow = Flow.New(flow.stack.AsReference());
@@ -257,7 +259,7 @@ namespace Unity.VisualScripting.Community
                     break;
 
                 case QueryOperation.LastOrDefault:
-                    single = flow.GetValue<IEnumerable>(collection).Cast<object>().LastOrDefault<object>((item) =>
+                    single = Cast(flow.GetValue<IEnumerable>(collection)).LastOrDefault((item) =>
                     {
                         current = item;
                         _flow = Flow.New(flow.stack.AsReference());
@@ -267,7 +269,7 @@ namespace Unity.VisualScripting.Community
                     break;
 
                 case QueryOperation.Select:
-                    output = flow.GetValue<IEnumerable>(collection).Cast<object>().Select((item) =>
+                    output = Cast(flow.GetValue<IEnumerable>(collection)).Select((item) =>
                     {
                         current = item;
                         _flow = Flow.New(flow.stack.AsReference());
@@ -277,21 +279,27 @@ namespace Unity.VisualScripting.Community
                     break;
 
                 case QueryOperation.Skip:
-                    output = flow.GetValue<IEnumerable>(collection).Cast<object>().Skip(flow.GetValue<int>(value));
+                    output = Cast(flow.GetValue<IEnumerable>(collection)).Skip(flow.GetValue<int>(value));
                     break;
 
                 case QueryOperation.Take:
-                    output = flow.GetValue<IEnumerable>(collection).Cast<object>().Take(flow.GetValue<int>(value));
+                    output = Cast(flow.GetValue<IEnumerable>(collection)).Take(flow.GetValue<int>(value));
                     break;
 
                 case QueryOperation.Count:
-                    outCondition = flow.GetValue<IEnumerable>(collection).Cast<object>().Count() > 0;
+                    outCondition = Cast(flow.GetValue<IEnumerable>(collection)).Count() > 0;
                     break;
 
                 case QueryOperation.Sum:
-                    output = flow.GetValue<IEnumerable>(collection).Cast<object>();
+                    output = Cast(flow.GetValue<IEnumerable>(collection));
                     break;
             }
+        }
+
+        IEnumerable<object> Cast(IEnumerable source)
+        {
+            foreach (var item in source)
+                yield return item;
         }
     }
 }

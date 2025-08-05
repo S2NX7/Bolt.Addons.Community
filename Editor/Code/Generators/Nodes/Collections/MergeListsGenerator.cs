@@ -13,35 +13,36 @@ namespace Unity.VisualScripting.Community
     {
         public MergeListsGenerator(Unit unit) : base(unit)
         {
+            NameSpaces = "Unity.VisualScripting.Community";
         }
 
         public override string GenerateValue(ValueOutput output, ControlGenerationData data)
         {
-
             if (data.GetExpectedType() != null && GetExpectedType(data.GetExpectedType()) != null)
             {
-                return MakeClickableForThisUnit("CSharpUtility".TypeHighlight() + $".MergeLists<{GetExpectedType(data.GetExpectedType()).As().CSharpName(false, true)}>(") + $"{string.Join(MakeClickableForThisUnit(", "), Unit.multiInputs.Select(input => GenerateValue(input, data)))}{MakeClickableForThisUnit(")")}";
+                return CodeBuilder.CallCSharpUtilityGenericMethod(Unit, MakeClickableForThisUnit(nameof(CSharpUtility.MergeLists)), Unit.multiInputs.Select(input => GenerateValue(input, data)).ToArray(), GetExpectedType(data.GetExpectedType()));
             }
             else
-                return MakeClickableForThisUnit("CSharpUtility".TypeHighlight() + $".MergeLists(") + $"{string.Join(MakeClickableForThisUnit(", "), Unit.multiInputs.Select(input => GenerateValue(input, data)))}{MakeClickableForThisUnit(")")}";
+                return CodeBuilder.CallCSharpUtilityMethod(Unit, MakeClickableForThisUnit(nameof(CSharpUtility.MergeLists)), Unit.multiInputs.Select(input => GenerateValue(input, data)).ToArray());
         }
 
         private Type GetExpectedType(Type type)
         {
             if (typeof(IList).IsAssignableFrom(type) || typeof(IList<>).IsAssignableFrom(type))
             {
+                NameSpaces = type.Namespace;
                 if (type.IsGenericType)
                 {
-                    return type.GetGenericArguments()[0];
+                    var types = type.GetGenericArguments();
+                    NameSpaces += "," + types[0].Namespace;
+                    return types[0];
                 }
-
-                if (type == typeof(AotList))
+                else if (type == typeof(AotList))
                 {
                     return typeof(object);
                 }
-                NameSpaces = type.Namespace;
             }
-            return null;
+            return typeof(object);
         }
     }
 }

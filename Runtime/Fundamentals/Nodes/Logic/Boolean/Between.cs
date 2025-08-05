@@ -1,8 +1,8 @@
 ﻿namespace Unity.VisualScripting.Community
-{   
+{
     /// <summary>
-     /// Returns whether the value is within the given range (inclusive).
-     /// </summary>
+    /// Returns whether the value is within the given range (inclusive).
+    /// </summary>
     [UnitCategory("Community\\Logic")]
     [RenamedFrom("Bolt.Addons.Community.Logic.Units.Between")]
     [RenamedFrom("Bolt.Addons.Community.Fundamentals.Between")]
@@ -46,7 +46,7 @@
             input = ValueInput<float>(nameof(input));
             min = ValueInput<float>(nameof(min), 0);
             max = ValueInput<float>(nameof(max), 0);
-            within = ValueOutput<bool>(nameof(within), (flow)=>GetWithin(flow));
+            within = ValueOutput<bool>(nameof(within), (flow) => GetWithin(flow));
 
             Requirement(input, within);
             Requirement(min, within);

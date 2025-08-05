@@ -58,9 +58,9 @@ namespace Unity.VisualScripting.Community
 
             if (data.EventListener != null || !UnityEvent.hasValidConnection) return;
 
+            var stackRef = stack.ToReference();
             UpdatePorts();
 
-            var stackRef = stack.ToReference();
             var eventBase = Flow.FetchValue<UnityEventBase>(UnityEvent, stackRef);
             var method = Type.GetMethod(nameof(UnityEngine.Events.UnityEvent.AddListener));
             var delegateType = method?.GetParameters()[0].ParameterType;
@@ -219,30 +219,29 @@ namespace Unity.VisualScripting.Community
         }
         private static Type AotSupportMethodsType;
         private static bool aotSupportMethodsTypeChecked = false;
+        const string AotSupportTypeFullName = "Unity.VisualScripting.Community.Generated.AotSupportMethods";
         private Type GetAotSupportMethodsType()
         {
             if (AotSupportMethodsType != null || aotSupportMethodsTypeChecked)
-            {
                 return AotSupportMethodsType;
-            }
+
             aotSupportMethodsTypeChecked = true;
-            Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
 
-            foreach (Assembly assembly in assemblies)
+            AotSupportMethodsType = Type.GetType(AotSupportTypeFullName);
+            if (AotSupportMethodsType != null)
+                return AotSupportMethodsType;
+
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
-                Type[] types = assembly.GetTypes();
+                if (!assembly.FullName.StartsWith("Unity.VisualScripting.Community"))
+                    continue;
 
-                foreach (Type type in types)
-                {
-                    if (type.Name == "AotSupportMethods")
-                    {
-                        AotSupportMethodsType = type;
-                        return type;
-                    }
-                }
+                AotSupportMethodsType = assembly.GetType(AotSupportTypeFullName);
+                if (AotSupportMethodsType != null)
+                    break;
             }
-            return null;
-        }
 
+            return AotSupportMethodsType;
+        }
     }
 }

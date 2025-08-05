@@ -20,9 +20,6 @@ namespace Unity.VisualScripting.Community
         public void Compile(UnityEngine.Object asset, PathConfig paths)
         {
             string fullPath = GetFilePath(asset, paths);
-            HUMIO.Delete(fullPath);
-            HUMIO.Ensure(fullPath).Path();
-
             string code = GenerateCode(asset);
             HUMIO.Save(code).Custom(fullPath).Text(false);
 
@@ -42,28 +39,24 @@ namespace Unity.VisualScripting.Community
 
             var name = assembly.GetName().Name;
 
-            // Early exit for known runtime assemblies
             if (IsRuntimeAssembly(name))
             {
                 _editorAssemblyCache[assembly] = false;
                 return false;
             }
 
-            // Early return for explicit editor assemblies
             if (IsExplicitEditorAssembly(assembly, name))
             {
                 _editorAssemblyCache[assembly] = true;
                 return true;
             }
 
-            // Prevent circular references
             if (visited.Contains(name))
             {
                 return false;
             }
             visited.Add(name);
 
-            // Check direct editor dependencies only
             var editorDependency = assembly.GetReferencedAssemblies()
                 .Where(dep => !visited.Contains(dep.Name))
                 .Any(dep =>

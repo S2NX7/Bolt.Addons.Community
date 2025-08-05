@@ -7,12 +7,15 @@
 
         protected override EditorTexture DefinedIcon()
         {
-            switch (unit.BranchingType)
+            return unit.BranchingType switch
             {
-                case LogicParamNode.BranchType.And: return typeof(Unity.VisualScripting.And).Icon();
-                case LogicParamNode.BranchType.Or: return typeof(Unity.VisualScripting.Or).Icon();
-                default: return base.DefinedIcon();
-            }
+                LogicParamNode.BranchType.And => typeof(And).Icon(),
+                LogicParamNode.BranchType.Or => typeof(Or).Icon(),
+                LogicParamNode.BranchType.GreaterThan => unit.AllowEquals ? typeof(GreaterOrEqual).Icon() : typeof(Greater).Icon(),
+                LogicParamNode.BranchType.LessThan => unit.AllowEquals ? typeof(LessOrEqual).Icon() : typeof(Less).Icon(),
+                LogicParamNode.BranchType.Equal => typeof(Equal).Icon(),
+                _ => base.DefinedIcon(),
+            };
         }
     }
 }
