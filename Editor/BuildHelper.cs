@@ -16,11 +16,11 @@ namespace RealityStop.LinkMerge
 
     public class PackagesLinkXmlExtractor : IPreprocessBuildWithReport
     {
-        public string TemporaryFolder => $"{Application.dataPath}/Temporary-Build/";
+        public static string TemporaryFolder => $"{Application.dataPath}/Temporary-Build/";
 
         public static string TemporaryFolderMeta => $"{Application.dataPath}/Temporary-Build.meta";
 
-        public string LinkFilePath => $"{TemporaryFolder}link.xml";
+        public static string LinkFilePath => $"{TemporaryFolder}link.xml";
 
         // We execute the script after the others ones
         public int callbackOrder => 10;
@@ -34,7 +34,12 @@ namespace RealityStop.LinkMerge
         }
 
         [PostProcessBuild]
-        private void Cleanup()
+        private static void Cleanup(BuildTarget target, string s)
+        {
+            CleanupInternal();
+        }
+
+        private static void CleanupInternal()
         {
             if (File.Exists(LinkFilePath))
                 File.Delete(LinkFilePath);
@@ -102,7 +107,7 @@ namespace RealityStop.LinkMerge
             }
             finally
             {
-                Cleanup();
+                CleanupInternal();
             }
         }
     }

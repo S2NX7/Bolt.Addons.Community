@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using Unity.VisualScripting;
 using Unity.VisualScripting.Community.Libraries.CSharp;
 using UnityEngine;
 
@@ -17,7 +15,7 @@ namespace Unity.VisualScripting.Community
 
             if (!generator.recursion?.TryEnter(node) ?? false)
             {
-                return generator.MakeClickableForThisUnit(CodeUtility.ToolTip($"{input.key} is infinitely generating itself. Consider reviewing your graph logic.", "Infinite recursion detected!", ""));
+                return generator.MakeClickableForThisUnit(CodeUtility.ToolTip($"{input.key} is infinitely generating itself. Consider reviewing your graph logic or Increasing recursion depth in preview Settings.", "Infinite recursion detected!", ""));
             }
 
             try
@@ -37,7 +35,7 @@ namespace Unity.VisualScripting.Community
 
             if (!generator.recursion?.TryEnter(node) ?? false)
             {
-                return generator.MakeClickableForThisUnit(CodeUtility.ToolTip($"{output.key} is infinitely generating itself. Consider reviewing your graph logic.", "Infinite recursion detected!", ""));
+                return generator.MakeClickableForThisUnit(CodeUtility.ToolTip($"{output.key} is infinitely generating itself. Consider reviewing your graph logic or Increasing recursion depth in preview Settings.", "Infinite recursion detected!", ""));
             }
 
             try
@@ -57,7 +55,7 @@ namespace Unity.VisualScripting.Community
 
             if (!generator.recursion?.TryEnter(node) ?? false)
             {
-                return CodeBuilder.Indent(indent) + generator.MakeClickableForThisUnit(CodeUtility.ToolTip("This node appears to cause infinite recursion(The flow is leading back to this node). Consider using a While loop instead.", "Infinite recursion detected!", ""));
+                return CodeBuilder.Indent(indent) + generator.MakeClickableForThisUnit(CodeUtility.ToolTip("This node appears to cause infinite recursion(The flow is leading back to this node). Consider using a While loop instead or Increasing recursion depth in preview Settings.", "Infinite recursion detected!", ""));
             }
 
             try
@@ -82,8 +80,6 @@ namespace Unity.VisualScripting.Community
 
             return generator;
         }
-
-        public static void ClearGeneratorCache() => generatorCache.Clear();
 
         public static MethodNodeGenerator GetMethodGenerator<T>(this T node, bool throwError = true) where T : Unit
         {

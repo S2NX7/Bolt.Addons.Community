@@ -18,15 +18,12 @@ namespace Unity.VisualScripting.Community
         {
             position = BeginLabeledBlock(metadata, position, label);
 
-            // Retrieve the color value from the HDRColor struct
             HDRColor hdrColor = (HDRColor)metadata.value;
             var newValue = EditorGUI.ColorField(position, new(), hdrColor.color, true, true, true);
 
             if (EndBlock(metadata))
             {
                 metadata.RecordUndo();
-
-                // Update the color value in the HDRColor struct
                 hdrColor.color = newValue;
                 metadata.value = hdrColor;
             }

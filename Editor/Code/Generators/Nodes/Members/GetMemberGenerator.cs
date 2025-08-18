@@ -38,18 +38,14 @@ namespace Unity.VisualScripting.Community
                         name = Unit.member.ToPseudoDeclarer().ToString(); // I don't think this should be possible.
                     }
 
-                    var outputCode = Unit.CreateClickableString();
-
                     if (typeof(Component).IsAssignableFrom(Unit.member.pseudoDeclaringType))
                     {
-                        outputCode.Ignore(GenerateValue(Unit.target, data)).Clickable(GetComponent(Unit.target, data)).Dot().Clickable(name.VariableHighlight());
+                        return GenerateValue(Unit.target, data) + MakeClickableForThisUnit(GetComponent(Unit.target, data) + "." + name.VariableHighlight());
                     }
                     else
                     {
-                        outputCode.Ignore(GenerateValue(Unit.target, data)).Dot().Clickable(name.VariableHighlight());
+                        return GenerateValue(Unit.target, data) + MakeClickableForThisUnit("." + name.VariableHighlight());
                     }
-
-                    return outputCode;
                 }
                 else
                 {
@@ -76,9 +72,9 @@ namespace Unity.VisualScripting.Community
                         data.RemoveExpectedType();
                         if (Unit.member.pseudoDeclaringType.IsSubclassOf(typeof(Component)))
                         {
-                            return Unit.CreateIgnoreString(connectedCode).EndIgnoreContext().Cast(typeof(GameObject), ShouldCast(input, data));
+                            return connectedCode.CastAs(typeof(GameObject), Unit, ShouldCast(input, data));
                         }
-                        return Unit.CreateIgnoreString(connectedCode).EndIgnoreContext().Cast(input.type, ShouldCast(input, data));
+                        return connectedCode.CastAs(input.type, Unit, ShouldCast(input, data));
                     }
                     else if (Unit.target.hasDefaultValue)
                     {
@@ -104,7 +100,7 @@ namespace Unity.VisualScripting.Community
             {
                 if (valueInput.type == valueInput.connection.source.type && valueInput.connection.source.unit is MemberUnit or InheritedMemberUnit or AssetFieldUnit or AssetMethodCallUnit)
                 {
-                    return "";
+                    return string.Empty;
                 }
                 else
                 {
@@ -116,7 +112,7 @@ namespace Unity.VisualScripting.Community
                 if (Unit.member.pseudoDeclaringType != typeof(GameObject))
                     return $".GetComponent<{Unit.member.pseudoDeclaringType.As().CSharpName(false, true)}>()";
                 else
-                    return "";
+                    return string.Empty;
             }
         }
 

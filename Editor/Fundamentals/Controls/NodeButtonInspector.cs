@@ -28,18 +28,15 @@ namespace Unity.VisualScripting.Community
                 16
                 );
 
-            if (GUI.Button(buttonPosition, "Trigger", new GUIStyle(UnityEditor.EditorStyles.miniButton)))
+            var attribute = metadata.GetAttribute<NodeButtonAttribute>(true);
+            if (attribute != null)
             {
-                var attribute = metadata.GetAttribute<NodeButtonAttribute>(true);
-
-                if (attribute != null)
+                if (GUI.Button(buttonPosition, string.IsNullOrEmpty(attribute.label) ? "Trigger" : attribute.label, new GUIStyle(UnityEditor.EditorStyles.miniButton)))
                 {
                     var method = attribute.action;
-
                     object typeObject = metadata.parent.value;
                     GraphReference reference = GraphWindow.activeReference;
                     typeObject.GetType().GetMethod(method).Invoke(typeObject, new object[1] { reference });
-
                 }
             }
 

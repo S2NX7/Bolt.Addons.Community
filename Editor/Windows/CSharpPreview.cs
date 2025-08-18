@@ -154,7 +154,7 @@ namespace Unity.VisualScripting.Community
                         result += region.code;
                     }
                 }
-                var outputToCopy = CodeUtility.RemoveAllClickableTags(CodeUtility.RemoveCustomHighlights(RemoveColorTags(result)));
+                var outputToCopy = CodeUtility.RemoveAllClickableTags(RemoveColorTags(result));
                 EditorGUIUtility.systemCopyBuffer = outputToCopy;
             }
 

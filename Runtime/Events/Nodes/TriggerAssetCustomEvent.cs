@@ -10,9 +10,9 @@ namespace Unity.VisualScripting.Community
     {
         [Serialize]
         private int _count;
-        [UnitHeaderInspectable]
+        [UnitHeaderInspectable("Arguments")]
         [Inspectable]
-        [InspectorLabel("Count")]
+        [InspectorLabel("Arguments")]
         public int count
         {
             get => _count;
@@ -49,19 +49,19 @@ namespace Unity.VisualScripting.Community
                     argList.Add(flow.GetValue<object>(args[i]));
                 }
 
-                GraphReference.New(flow.GetValue<ScriptGraphAsset>(asset), true).TriggerEventHandler<CustomEventArgs>(hook => hook == "Custom", new CustomEventArgs(flow.GetValue<string>(name), argList.ToArray()), parent => true, true);
+                GraphReference.New(flow.GetValue<ScriptGraphAsset>(asset), true).TriggerEventHandler(hook => hook == "Custom", new CustomEventArgs(flow.GetValue<string>(name), argList.ToArray()), parent => true, true);
 
                 return exit;
             });
 
-            asset = ValueInput<ScriptGraphAsset>("asset", (ScriptGraphAsset)null);
-            name = ValueInput<string>("name", string.Empty);
+            asset = ValueInput("asset", (ScriptGraphAsset)null);
+            name = ValueInput("name", string.Empty);
 
             args.Clear();
 
             for (int i = 0; i < count; i++)
             {
-                args.Add(ValueInput<object>($"arg {i.ToString()}"));
+                args.Add(ValueInput<object>($"arg {i}"));
                 Requirement(args[i], enter);
             }
 

@@ -178,6 +178,7 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
             Type,
             Construct,
             Comment,
+            Control,
             Variable
         }
 
@@ -199,6 +200,8 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                     return text.TypeHighlight();
                 case HighlightType.Variable:
                     return text.VariableHighlight();
+                case HighlightType.Control:
+                    return text.ControlHighlight();
                 default:
                     return text;
             }
@@ -461,6 +464,30 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
             }
             if (includeSelf) result.Add(derived.type);
             return result.ToArray();
+        }
+
+        /// <summary>
+        /// Returns all types that derive or have a base type of a this type.
+        /// </summary>
+        public static void Derived(this HUMType.Data.Get derived, Action<Type> action, bool includeSelf = false)
+        {
+            List<Type> result = new List<Type>();
+            Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            if (includeSelf)
+                action?.Invoke(derived.type);
+            for (int assembly = 0; assembly < assemblies.Length; assembly++)
+            {
+                Type[] types = assemblies[assembly].GetTypes();
+
+                for (int i = 0; i < types.Length; i++)
+                {
+                    var type = types[i];
+                    if (!type.IsAbstract && !type.IsInterface && derived.type.IsAssignableFrom(type))
+                    {
+                        action?.Invoke(type);
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -938,17 +965,28 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
             return highlight ? type.TypeHighlight() : type;
         }
 
-        private static readonly Dictionary<Type, FieldInfo[]> FieldCache = new();
+        private static readonly Dictionary<Type, MemberInfo[]> memberCache = new();
 
-        private static FieldInfo[] GetCachedFields(Type type)
+        private static MemberInfo[] GetCachedMembers(Type type)
         {
-            if (type == null) return new FieldInfo[0];
-            if (!FieldCache.TryGetValue(type, out var fields))
+            if (type == null) return Array.Empty<MemberInfo>();
+
+            if (!memberCache.TryGetValue(type, out var members))
             {
-                fields = type.GetFields(BindingFlags.Public);
-                FieldCache[type] = fields;
+                var memberList = new List<MemberInfo>();
+
+                memberList.AddRange(type.GetFields(BindingFlags.Public | BindingFlags.Instance));
+
+                memberList.AddRange(
+                    type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                        .Where(p => p.HasAttribute<GeneratePropertyAttribute>())
+                );
+
+                members = memberList.ToArray();
+                memberCache[type] = members;
             }
-            return fields;
+
+            return members;
         }
 
         private static string Literal(object value, bool newLine = false, bool fullName = false, bool highlight = true, bool variableForObjects = true)
@@ -957,10 +995,10 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
             {
                 return HightlightedLiteral(value, newLine, fullName, variableForObjects);
             }
-            var fields = GetCachedFields(value?.GetType());
+            var members = GetCachedMembers(value?.GetType());
             var output = string.Empty;
-            var usableFields = new List<FieldInfo>();
-            var isMultiLine = fields.Length > 2;
+            var usableMembers = new List<MemberInfo>();
+            var isMultiLine = members.Length > 2;
 
             // Check if the value is a dictionary and if it has more than 0 elements
             if (value is IDictionary dictionary && dictionary.Count > 0)
@@ -968,11 +1006,22 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                 isMultiLine = true;
             }
 
-            for (int i = 0; i < fields.Length; i++)
+            for (int i = 0; i < members.Length; i++)
             {
-                if (fields[i].IsPublic && !fields[i].IsStatic && !fields[i].IsInitOnly)
+                var member = members[i];
+                if (member is FieldInfo field)
                 {
-                    usableFields.Add(fields[i]);
+                    if (field.IsPublic && !field.IsStatic && !field.IsInitOnly)
+                    {
+                        usableMembers.Add(field);
+                    }
+                }
+                else if (member is PropertyInfo property)
+                {
+                    if (property.SetMethod != null && property.SetMethod.IsPublic && !property.IsStatic())
+                    {
+                        usableMembers.Add(property);
+                    }
                 }
             }
 
@@ -980,11 +1029,11 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
 
             if (isMultiLine)
             {
-                output += "\n" + CodeBuilder.GetCurrentIndent() + ((value is ICollection collection && collection.Count > 0) || usableFields.Count > 0 ? "{" : string.Empty) + "\n";
+                output += "\n" + CodeBuilder.GetCurrentIndent() + ((value is ICollection collection && collection.Count > 0) || usableMembers.Count > 0 ? "{" : string.Empty) + "\n";
             }
             else
             {
-                output += (value is ICollection collection && collection.Count > 0) || usableFields.Count > 0 ? $"\n{CodeBuilder.GetCurrentIndent()}{{" : string.Empty;
+                output += (value is ICollection collection && collection.Count > 0) || usableMembers.Count > 0 ? $"\n{CodeBuilder.GetCurrentIndent()}{{" : string.Empty;
             }
 
             if (value is IDictionary or IList)
@@ -1054,37 +1103,48 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
 
             if (isMultiLine)
                 CodeBuilder.Indent(CodeBuilder.currentIndent + 1);
-            for (int i = 0; i < usableFields.Count; i++)
+            for (int i = 0; i < usableMembers.Count; i++)
             {
-                output += (isMultiLine ? CodeBuilder.GetCurrentIndent() : string.Empty) + usableFields[i].Name + " = " + usableFields[i].GetValue(value).As().Code(true, true, false, "", false, fullName, variableForObjects);
-                output += i < usableFields.Count - 1 ? ", " + (isMultiLine ? "\n" : string.Empty) : string.Empty;
+                var _value = usableMembers[i] is FieldInfo fieldInfo ? fieldInfo.GetValueOptimized(value) : ((PropertyInfo)usableMembers[i]).GetValueOptimized(value);
+                output += (isMultiLine ? CodeBuilder.GetCurrentIndent() : string.Empty) + usableMembers[i].Name + " = " + _value.As().Code(true, true, false, "", false, fullName, variableForObjects);
+                output += i < usableMembers.Count - 1 ? ", " + (isMultiLine ? "\n" : string.Empty) : string.Empty;
             }
             if (isMultiLine)
                 CodeBuilder.Indent(CodeBuilder.currentIndent - 1);
 
-            output += isMultiLine ? "\n" + (value is ICollection ? CodeBuilder.Indent(CodeBuilder.currentIndent - 1) : CodeBuilder.Indent(CodeBuilder.currentIndent)) + "}" : (value is ICollection collectionWithItems && collectionWithItems.Count > 0) || usableFields.Count > 0 ? $"\n{CodeBuilder.Indent(CodeBuilder.currentIndent - 1)}}}" : string.Empty;
+            output += isMultiLine ? "\n" + (value is ICollection ? CodeBuilder.Indent(CodeBuilder.currentIndent - 1) : CodeBuilder.Indent(CodeBuilder.currentIndent)) + "}" : (value is ICollection collectionWithItems && collectionWithItems.Count > 0) || usableMembers.Count > 0 ? $"\n{CodeBuilder.Indent(CodeBuilder.currentIndent - 1)}}}" : string.Empty;
 
             return output;
         }
 
         private static string HightlightedLiteral(object value, bool newLine = false, bool fullName = false, bool variableForObjects = true)
         {
-            var fields = GetCachedFields(value?.GetType());
+            var members = GetCachedMembers(value?.GetType());
             var output = string.Empty;
-            var usableFields = new List<FieldInfo>();
-            var isMultiLine = fields.Length > 2;
+            var usableMembers = new List<MemberInfo>();
+            var isMultiLine = members.Length > 2;
 
-            // Check if the value is a dictionary and if it has more than 0 elements
             if (value is IDictionary dictionary && dictionary.Count > 0)
             {
                 isMultiLine = true;
             }
 
-            for (int i = 0; i < fields.Length; i++)
+            for (int i = 0; i < members.Length; i++)
             {
-                if (fields[i].IsPublic && !fields[i].IsStatic && !fields[i].IsInitOnly)
+                var member = members[i];
+                if (member is FieldInfo field)
                 {
-                    usableFields.Add(fields[i]);
+                    if (field.IsPublic && !field.IsStatic && !field.IsInitOnly)
+                    {
+                        usableMembers.Add(field);
+                    }
+                }
+                else if (member is PropertyInfo property)
+                {
+                    if (property.SetMethod != null && property.SetMethod.IsPublic && !property.IsStatic())
+                    {
+                        usableMembers.Add(property);
+                    }
                 }
             }
 
@@ -1092,11 +1152,11 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
 
             if (isMultiLine)
             {
-                output += "\n" + CodeBuilder.GetCurrentIndent() + ((value is ICollection collection && collection.Count > 0) || usableFields.Count > 0 ? "{" : string.Empty) + "\n";
+                output += "\n" + CodeBuilder.GetCurrentIndent() + ((value is ICollection collection && collection.Count > 0) || usableMembers.Count > 0 ? "{" : string.Empty) + "\n";
             }
             else
             {
-                output += (value is ICollection collection && collection.Count > 0) || usableFields.Count > 0 ? $"\n{CodeBuilder.GetCurrentIndent()}{{\n{CodeBuilder.GetCurrentIndent(1)}" : string.Empty;
+                output += (value is ICollection collection && collection.Count > 0) || usableMembers.Count > 0 ? $"\n{CodeBuilder.GetCurrentIndent()}{{\n{CodeBuilder.GetCurrentIndent(1)}" : string.Empty;
             }
 
             if (value is IDictionary or IList)
@@ -1166,15 +1226,16 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
 
             if (isMultiLine)
                 CodeBuilder.Indent(CodeBuilder.currentIndent + 1);
-            for (int i = 0; i < usableFields.Count; i++)
+            for (int i = 0; i < usableMembers.Count; i++)
             {
-                output += (isMultiLine ? CodeBuilder.GetCurrentIndent() : string.Empty) + usableFields[i].Name + " = " + usableFields[i].GetValue(value).As().Code(true, true, true, "", false, fullName, variableForObjects);
-                output += i < usableFields.Count - 1 ? ", " + (isMultiLine ? "\n" : string.Empty) : string.Empty;
+                var _value = usableMembers[i] is FieldInfo fieldInfo ? fieldInfo.GetValueOptimized(value) : ((PropertyInfo)usableMembers[i]).GetValueOptimized(value);
+                output += (isMultiLine ? CodeBuilder.GetCurrentIndent() : string.Empty) + usableMembers[i].Name.VariableHighlight() + " = " + _value.As().Code(true, true, true, "", false, fullName, variableForObjects);
+                output += i < usableMembers.Count - 1 ? ", " + (isMultiLine ? "\n" : string.Empty) : string.Empty;
             }
             if (isMultiLine || (value is ICollection _collection && _collection.Count > 0))
                 CodeBuilder.Indent(CodeBuilder.currentIndent - 1);
 
-            output += isMultiLine ? "\n" + (value is ICollection ? CodeBuilder.Indent(CodeBuilder.currentIndent - 1) : CodeBuilder.Indent(CodeBuilder.currentIndent)) + "}" : (value is ICollection collectionWithItems && collectionWithItems.Count > 0) || usableFields.Count > 0 ? $"\n{CodeBuilder.Indent(CodeBuilder.currentIndent - 1)}}}" : string.Empty;
+            output += isMultiLine ? "\n" + (value is ICollection ? CodeBuilder.Indent(CodeBuilder.currentIndent - 1) : CodeBuilder.Indent(CodeBuilder.currentIndent)) + "}" : (value is ICollection collectionWithItems && collectionWithItems.Count > 0) || usableMembers.Count > 0 ? $"\n{CodeBuilder.Indent(CodeBuilder.currentIndent - 1)}}}" : string.Empty;
 
             return output;
         }
@@ -1185,22 +1246,32 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
             {
                 return HighlightedLiteral(value, unit, newLine, fullName, variableForObjects);
             }
-            var fields = GetCachedFields(value?.GetType());
+            var members = GetCachedMembers(value?.GetType());
             var output = string.Empty;
-            var usableFields = new List<FieldInfo>();
-            var isMultiLine = fields.Length > 2;
+            var usableMembers = new List<MemberInfo>();
+            var isMultiLine = members.Length > 2;
 
-            // Check if the value is a dictionary and if it has more than 0 elements
             if (value is IDictionary dictionary && dictionary.Count > 0)
             {
                 isMultiLine = true;
             }
 
-            for (int i = 0; i < fields.Length; i++)
+            for (int i = 0; i < members.Length; i++)
             {
-                if (fields[i].IsPublic && !fields[i].IsStatic && !fields[i].IsInitOnly)
+                var member = members[i];
+                if (member is FieldInfo field)
                 {
-                    usableFields.Add(fields[i]);
+                    if (field.IsPublic && !field.IsStatic && !field.IsInitOnly)
+                    {
+                        usableMembers.Add(field);
+                    }
+                }
+                else if (member is PropertyInfo property)
+                {
+                    if (property.SetMethod != null && property.SetMethod.IsPublic && !property.IsStatic())
+                    {
+                        usableMembers.Add(property);
+                    }
                 }
             }
 
@@ -1208,11 +1279,11 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
 
             if (isMultiLine)
             {
-                output += "\n" + CodeBuilder.GetCurrentIndent() + CodeUtility.MakeClickable(unit, (value is ICollection collection && collection.Count > 0) || usableFields.Count > 0 ? "{" : string.Empty) + "\n";
+                output += "\n" + CodeBuilder.GetCurrentIndent() + CodeUtility.MakeClickable(unit, (value is ICollection collection && collection.Count > 0) || usableMembers.Count > 0 ? "{" : string.Empty) + "\n";
             }
             else
             {
-                output += (value is ICollection collection && collection.Count > 0) || usableFields.Count > 0 ? $"\n{CodeBuilder.GetCurrentIndent()}{CodeUtility.MakeClickable(unit, "{")}" : string.Empty;
+                output += (value is ICollection collection && collection.Count > 0) || usableMembers.Count > 0 ? $"\n{CodeBuilder.GetCurrentIndent()}{CodeUtility.MakeClickable(unit, "{")}" : string.Empty;
             }
 
             if (value is IDictionary or IList)
@@ -1282,25 +1353,26 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
 
             if (isMultiLine)
                 CodeBuilder.Indent(CodeBuilder.currentIndent + 1);
-            for (int i = 0; i < usableFields.Count; i++)
+            for (int i = 0; i < usableMembers.Count; i++)
             {
-                output += (isMultiLine ? CodeBuilder.GetCurrentIndent() : string.Empty) + CodeUtility.MakeClickable(unit, usableFields[i].Name + " = " + usableFields[i].GetValue(value).As().Code(true, true, false, "", false, fullName, variableForObjects));
-                output += i < usableFields.Count - 1 ? CodeUtility.MakeClickable(unit, ", ") + (isMultiLine ? "\n" : string.Empty) : string.Empty;
+                var _value = usableMembers[i] is FieldInfo fieldInfo ? fieldInfo.GetValueOptimized(value) : ((PropertyInfo)usableMembers[i]).GetValueOptimized(value);
+                output += (isMultiLine ? CodeBuilder.GetCurrentIndent() : string.Empty) + CodeUtility.MakeClickable(unit, usableMembers[i].Name + " = " + _value.As().Code(true, true, false, "", false, fullName, variableForObjects));
+                output += i < usableMembers.Count - 1 ? CodeUtility.MakeClickable(unit, ", ") + (isMultiLine ? "\n" : string.Empty) : string.Empty;
             }
             if (isMultiLine)
                 CodeBuilder.Indent(CodeBuilder.currentIndent - 1);
 
-            output += isMultiLine ? "\n" + (value is ICollection ? CodeBuilder.Indent(CodeBuilder.currentIndent - 1) : CodeBuilder.Indent(CodeBuilder.currentIndent)) + CodeUtility.MakeClickable(unit, "}") : (value is ICollection collectionWithItems && collectionWithItems.Count > 0) || usableFields.Count > 0 ? $"\n{CodeBuilder.Indent(CodeBuilder.currentIndent - 1)}" + CodeUtility.MakeClickable(unit, "}") : string.Empty;
+            output += isMultiLine ? "\n" + (value is ICollection ? CodeBuilder.Indent(CodeBuilder.currentIndent - 1) : CodeBuilder.Indent(CodeBuilder.currentIndent)) + CodeUtility.MakeClickable(unit, "}") : (value is ICollection collectionWithItems && collectionWithItems.Count > 0) || usableMembers.Count > 0 ? $"\n{CodeBuilder.Indent(CodeBuilder.currentIndent - 1)}" + CodeUtility.MakeClickable(unit, "}") : string.Empty;
 
             return output;
         }
 
         private static string HighlightedLiteral(object value, Unit unit, bool newLine = false, bool fullName = false, bool variableForObjects = false)
         {
-            var fields = GetCachedFields(value?.GetType());
+            var members = GetCachedMembers(value?.GetType());
             var output = string.Empty;
-            var usableFields = new List<FieldInfo>();
-            var isMultiLine = fields.Length > 2;
+            var usableMembers = new List<MemberInfo>();
+            var isMultiLine = members.Length > 2;
 
             // Check if the value is a dictionary and if it has more than 0 elements
             if (value is IDictionary dictionary && dictionary.Count > 0)
@@ -1308,11 +1380,22 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                 isMultiLine = true;
             }
 
-            for (int i = 0; i < fields.Length; i++)
+            for (int i = 0; i < members.Length; i++)
             {
-                if (fields[i].IsPublic && !fields[i].IsStatic && !fields[i].IsInitOnly)
+                var member = members[i];
+                if (member is FieldInfo field)
                 {
-                    usableFields.Add(fields[i]);
+                    if (field.IsPublic && !field.IsStatic && !field.IsInitOnly)
+                    {
+                        usableMembers.Add(field);
+                    }
+                }
+                else if (member is PropertyInfo property)
+                {
+                    if (property.SetMethod != null && property.SetMethod.IsPublic && !property.IsStatic())
+                    {
+                        usableMembers.Add(property);
+                    }
                 }
             }
 
@@ -1320,11 +1403,11 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
 
             if (isMultiLine)
             {
-                output += "\n" + CodeBuilder.GetCurrentIndent() + CodeUtility.MakeClickable(unit, (value is ICollection collection && collection.Count > 0) || usableFields.Count > 0 ? "{" : string.Empty) + "\n";
+                output += "\n" + CodeBuilder.GetCurrentIndent() + CodeUtility.MakeClickable(unit, (value is ICollection collection && collection.Count > 0) || usableMembers.Count > 0 ? "{" : string.Empty) + "\n";
             }
             else
             {
-                output += (value is ICollection collection && collection.Count > 0) || usableFields.Count > 0 ? $"\n{CodeBuilder.GetCurrentIndent()}{CodeUtility.MakeClickable(unit, "{")}" : string.Empty;
+                output += (value is ICollection collection && collection.Count > 0) || usableMembers.Count > 0 ? $"\n{CodeBuilder.GetCurrentIndent()}{CodeUtility.MakeClickable(unit, "{")}" : string.Empty;
             }
 
             if (value is IDictionary or IList)
@@ -1394,15 +1477,16 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
 
             if (isMultiLine)
                 CodeBuilder.Indent(CodeBuilder.currentIndent + 1);
-            for (int i = 0; i < usableFields.Count; i++)
+            for (int i = 0; i < usableMembers.Count; i++)
             {
-                output += (isMultiLine ? CodeBuilder.GetCurrentIndent() : string.Empty) + CodeUtility.MakeClickable(unit, usableFields[i].Name + " = " + usableFields[i].GetValue(value).As().Code(true, true, true, "", false, fullName, variableForObjects));
-                output += i < usableFields.Count - 1 ? CodeUtility.MakeClickable(unit, ", ") + (isMultiLine ? "\n" : string.Empty) : string.Empty;
+                var _value = usableMembers[i] is FieldInfo fieldInfo ? fieldInfo.GetValueOptimized(value) : ((PropertyInfo)usableMembers[i]).GetValueOptimized(value);
+                output += (isMultiLine ? CodeBuilder.GetCurrentIndent() : string.Empty) + CodeUtility.MakeClickable(unit, usableMembers[i].Name.VariableHighlight() + " = " + _value.As().Code(true, true, true, "", false, fullName, variableForObjects));
+                output += i < usableMembers.Count - 1 ? CodeUtility.MakeClickable(unit, ", ") + (isMultiLine ? "\n" : string.Empty) : string.Empty;
             }
             if (isMultiLine)
                 CodeBuilder.Indent(CodeBuilder.currentIndent - 1);
 
-            output += isMultiLine ? "\n" + (value is ICollection ? CodeBuilder.Indent(CodeBuilder.currentIndent - 1) : CodeBuilder.Indent(CodeBuilder.currentIndent)) + CodeUtility.MakeClickable(unit, "}") : (value is ICollection collectionWithItems && collectionWithItems.Count > 0) || usableFields.Count > 0 ? $"\n{CodeBuilder.Indent(CodeBuilder.currentIndent - 1)}" + CodeUtility.MakeClickable(unit, "}") : string.Empty;
+            output += isMultiLine ? "\n" + (value is ICollection ? CodeBuilder.Indent(CodeBuilder.currentIndent - 1) : CodeBuilder.Indent(CodeBuilder.currentIndent)) + CodeUtility.MakeClickable(unit, "}") : (value is ICollection collectionWithItems && collectionWithItems.Count > 0) || usableMembers.Count > 0 ? $"\n{CodeBuilder.Indent(CodeBuilder.currentIndent - 1)}" + CodeUtility.MakeClickable(unit, "}") : string.Empty;
 
             return output;
         }

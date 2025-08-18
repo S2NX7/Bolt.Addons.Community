@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Unity.VisualScripting;
 using Unity.VisualScripting.Community;
 using Unity.VisualScripting.Community.Libraries.CSharp;
@@ -13,6 +14,7 @@ namespace Unity.VisualScripting.Community
         public CooldownGenerator(Cooldown unit) : base(unit)
         {
             NameSpaces = "Unity.VisualScripting.Community";
+            variableName = Name;
         }
 
         private Cooldown Unit => unit as Cooldown;
@@ -38,6 +40,31 @@ namespace Unity.VisualScripting.Community
             }
 
             var output = string.Empty;
+            if (!data.generatorData.TryGetValue(Unit.enter, out _))
+            {
+                data.generatorData.Add(Unit.enter, true);
+
+                string readyCallback = Unit.exitReady.hasValidConnection ? GetAction(Unit.exitReady, data) : null;
+                string notReadyCallback = Unit.exitNotReady.hasValidConnection ? GetAction(Unit.exitNotReady, data) : null;
+                string onTickCallback = Unit.tick.hasValidConnection ? GetAction(Unit.tick, data) : null;
+                string onCompleteCallback = Unit.becameReady.hasValidConnection ? GetAction(Unit.becameReady, data) : null;
+
+                var parameters = new[]
+                {
+                    readyCallback ?? MakeClickableForThisUnit("null".ConstructHighlight()),
+                    notReadyCallback ?? MakeClickableForThisUnit("null".ConstructHighlight()),
+                    onTickCallback ?? MakeClickableForThisUnit("null".ConstructHighlight()),
+                    onCompleteCallback ?? MakeClickableForThisUnit("null".ConstructHighlight())
+                };
+
+                string paramList = string.Join(MakeClickableForThisUnit(", "), parameters);
+
+                output += CodeBuilder.Indent(indent)
+                    + MakeClickableForThisUnit(variableName.VariableHighlight() + ".Initialize(")
+                    + paramList
+                    + MakeClickableForThisUnit(");")
+                    + "\n";
+            }
 
             if (input == Unit.enter)
             {
@@ -48,46 +75,32 @@ namespace Unity.VisualScripting.Community
                 output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit(variableName.VariableHighlight() + ".ResetCooldown();") + "\n";
             }
 
-            if (Unit.exitReady.hasValidConnection && !data.generatorData.TryGetValue(Unit.exitReady, out var readyGenerated))
-            {
-                data.generatorData.Add(Unit.exitReady, true);
-                output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit(variableName.VariableHighlight() + "." + "OnReady".VariableHighlight() + " += ") + GetAction(Unit.exitReady, indent, data) + MakeClickableForThisUnit(";") + "\n";
-            }
+            GenerateActionMethod(Unit.exitReady, data, indent);
+            GenerateActionMethod(Unit.exitNotReady, data, indent);
+            GenerateActionMethod(Unit.tick, data, indent);
+            GenerateActionMethod(Unit.becameReady, data, indent);
 
-            if (Unit.exitNotReady.hasValidConnection && !data.generatorData.TryGetValue(Unit.exitNotReady, out var notReadyGenerated))
+            void GenerateActionMethod(ControlOutput port, ControlGenerationData data, int indent)
             {
-                data.generatorData.Add(Unit.exitNotReady, true);
-                output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit(variableName.VariableHighlight() + "." + "NotReady".VariableHighlight() + " += ") + GetAction(Unit.exitNotReady, indent, data) + MakeClickableForThisUnit(";") + "\n";
-            }
-
-            if (Unit.tick.hasValidConnection && !data.generatorData.TryGetValue(Unit.tick, out var tickGenerated))
-            {
-                data.generatorData.Add(Unit.tick, true);
-                output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit(variableName.VariableHighlight() + "." + "OnTick".VariableHighlight() + " += ") + GetAction(Unit.tick, indent, data) + MakeClickableForThisUnit(";") + "\n";
-            }
-
-            if (Unit.becameReady.hasValidConnection && !data.generatorData.TryGetValue(Unit.becameReady, out var becameReadyGenerated))
-            {
-                data.generatorData.Add(Unit.becameReady, true);
-                output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit(variableName.VariableHighlight() + "." + "OnCompleteAction".VariableHighlight() + " += ") + GetAction(Unit.becameReady, indent, data) + MakeClickableForThisUnit(";") + "\n";
+                if (port.hasValidConnection && !data.generatorData.TryGetValue(port, out _))
+                {
+                    data.generatorData.Add(port, true);
+                    output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit("void ".ConstructHighlight()) + GetAction(port, data) + MakeClickableForThisUnit("()") + "\n";
+                    output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit("{") + "\n";
+                    output += GetNextUnit(port, data, indent + 1);
+                    output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit("}") + "\n";
+                }
             }
 
             return output;
         }
 
-        public string GetAction(ControlOutput controlOutput, int indent, ControlGenerationData data)
+        private string GetAction(ControlOutput controlOutput, ControlGenerationData data)
         {
             if (!controlOutput.hasValidConnection)
                 return "";
-
             var output = "";
-            output += MakeClickableForThisUnit("() =>") + "\n";
-            output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit("{") + "\n";
-            data.NewScope();
-            data.SetReturns(typeof(void));
-            output += GetNextUnit(controlOutput, data, indent + 1);
-            data.ExitScope();
-            output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit("}");
+            output += MakeClickableForThisUnit(variableName.Capitalize().First().Letter() + "_" + controlOutput.key.Capitalize().First().Letter());
             return output;
         }
 

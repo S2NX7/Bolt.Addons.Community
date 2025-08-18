@@ -35,20 +35,32 @@ namespace Unity.VisualScripting.Community
         {
             var selectiveExpose = (SelectiveExpose)metadata.value;
 
-            BeginBlock(metadata, position);
-
             Rect labelRect = new Rect(position.x, position.y, 40, EditorGUIUtility.singleLineHeight);
             GUI.Label(labelRect, "Type:");
 
-            Rect buttonRect = new Rect(position.x + 45, position.y, position.width - 45, EditorGUIUtility.singleLineHeight);  // Adjust the width of the button as needed
+            Rect buttonRect = new Rect(position.x + 45, position.y, position.width - 45, EditorGUIUtility.singleLineHeight);
+            BeginBlock(metadata["type"], position);
+            Type type = selectiveExpose.type;
             if (GUI.Button(buttonRect, new GUIContent(((Type)metadata["type"].value).DisplayName(), ((Type)metadata["type"].value).Icon()[IconSize.Small])))
             {
                 TypeBuilderWindow.ShowWindow(labelRect, metadata["type"], true, new Type[0], () =>
                 {
-                    selectiveExpose.selectedMembers.Clear();
                     selectiveExpose.Define();
                     selectiveExpose.Describe();
+                }, _type =>
+                {
+                    if (type != _type)
+                    {
+                        selectiveExpose.selectedMembers.Clear();
+                    }
+                    type = _type;
+                    selectiveExpose.type = _type;
                 });
+            }
+            if (EndBlock(metadata["type"]))
+            {
+                metadata["type"].RecordUndo();
+                metadata["type"].value = type;
             }
 
             position.y += EditorGUIUtility.singleLineHeight;
@@ -63,35 +75,37 @@ namespace Unity.VisualScripting.Community
                     var members = selectiveExpose.type.GetMembers()
                         .Where(m => m is System.Reflection.FieldInfo || m is System.Reflection.PropertyInfo)
                         .Select(m => m.ToManipulator());
-
+                    BeginBlock(metadata["selectedMembers"], position);
+                    var selectedMembers = selectiveExpose.selectedMembers ?? new List<string>();
                     foreach (var member in members)
                     {
                         var memberName = member.name;
                         if (!selectiveExpose.Include(member)) continue;
-                        bool isSelected = selectiveExpose.selectedMembers.Contains(memberName);
+                        bool isSelected = selectedMembers.Contains(memberName);
                         bool newSelection = EditorGUI.Toggle(new Rect(position.x + 10, position.y, position.width - 10, EditorGUIUtility.singleLineHeight), memberName, isSelected);
 
                         if (newSelection && !isSelected)
                         {
-                            selectiveExpose.selectedMembers.Add(memberName);
+                            selectedMembers.Add(memberName);
                         }
                         else if (!newSelection && isSelected)
                         {
-                            selectiveExpose.selectedMembers.Remove(memberName);
+                            selectedMembers.Remove(memberName);
                         }
 
                         position.y += EditorGUIUtility.singleLineHeight;
                     }
+                    if (EndBlock(metadata["selectedMembers"]))
+                    {
+                        metadata["selectedMembers"].RecordUndo();
+                        metadata["selectedMembers"].value = selectedMembers;
+                    }
+
                 }
                 else
                 {
                     EditorGUI.LabelField(new Rect(position.x, position.y, position.width, EditorGUIUtility.singleLineHeight), "No type selected.");
                 }
-            }
-            if (EndBlock(metadata))
-            {
-                metadata.RecordUndo();
-                metadata.value = selectiveExpose;
             }
         }
     }

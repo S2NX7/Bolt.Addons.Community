@@ -52,7 +52,7 @@ namespace Unity.VisualScripting.Community
 
             CompileAssets(HUMAssets.Find().Assets().OfType<CodeAsset>());
             CompileAssets(HUMAssets.Find().Assets().OfType<ScriptGraphAsset>());
-            CompileGameObjects(AssetCompilierUtility.FindObjectsOfTypeIncludingInactive<ScriptMachine>());
+            CompileScriptMachines(AssetCompilierUtility.FindObjectsOfTypeIncludingInactive<ScriptMachine>());
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -68,7 +68,7 @@ namespace Unity.VisualScripting.Community
                 CompileAsset(item);
             }
             CompileAssets(Selection.GetFiltered<ScriptGraphAsset>(SelectionMode.Assets));
-            CompileGameObjects(Selection.GetFiltered<GameObject>(SelectionMode.Unfiltered)
+            CompileScriptMachines(Selection.GetFiltered<GameObject>(SelectionMode.Unfiltered)
                 .SelectMany(go => go.GetComponents<ScriptMachine>()));
 
             AssetDatabase.SaveAssets();
@@ -80,10 +80,15 @@ namespace Unity.VisualScripting.Community
             paths.EnsureDirectories();
             if (asset is GameObject @object)
             {
-                var gen = CodeGenerator.GetSingleDecorator(@object) as GameObjectGenerator;
-                var scriptMachine = gen?.current ?? @object.GetComponent<ScriptMachine>();
+                ScriptMachine scriptMachine = null;
+                if (CodeGenerator.GetSingleDecorator(@object) is GameObjectGenerator gen && gen.current != null)
+                    scriptMachine = gen.current;
+                if (scriptMachine == null)
+                    scriptMachine = @object.GetComponent<ScriptMachine>();
                 if (scriptMachine != null)
-                    CompileGameObjects(new List<ScriptMachine>() { scriptMachine });
+                    CompileScriptMachines(new List<ScriptMachine>() { scriptMachine });
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
                 return;
             }
             var type = asset.GetType();
@@ -106,7 +111,7 @@ namespace Unity.VisualScripting.Community
             }
         }
 
-        private static void CompileGameObjects(IEnumerable<ScriptMachine> machines)
+        private static void CompileScriptMachines(IEnumerable<ScriptMachine> machines)
         {
             if (compilers.TryGetValue(typeof(ScriptMachine), out var compiler))
             {

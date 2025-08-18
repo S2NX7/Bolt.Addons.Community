@@ -139,12 +139,12 @@ namespace Unity.VisualScripting.Community
                 CodeBuilder.Indent(indent); // To Ensure indentation is correct
                 if (data.ContainsNameInAnyScope(_name))
                 {
-                    var inputCode = GenerateValue(Unit.input, data);
                     variableName = _name.LegalMemberName();
                     variableType = data.GetVariableType(_name);
                     data.SetExpectedType(variableType);
-                    var code = MakeClickableForThisUnit($"{variableName.VariableHighlight()} = ") + inputCode + MakeClickableForThisUnit(";");
+                    var inputCode = GenerateValue(Unit.input, data);
                     data.RemoveExpectedType();
+                    var code = MakeClickableForThisUnit($"{variableName.VariableHighlight()} = ") + inputCode + MakeClickableForThisUnit(";");
                     data.CreateSymbol(Unit, variableType);
                     output += CodeBuilder.Indent(indent) + code + "\n";
                     output += GetNextUnit(Unit.assigned, data, indent);
@@ -152,16 +152,16 @@ namespace Unity.VisualScripting.Community
                 }
                 else
                 {
-                    var inputCode = GenerateValue(Unit.input, data);
                     var type = GetSourceType(Unit.input, data) ?? data.GetExpectedType() ?? typeof(object);
                     var inputType = type.As().CSharpName(false, true);
                     variableType = Unit.input.hasValidConnection ? Unit.input.connection.source.type : typeof(object);
                     var newName = data.AddLocalNameInScope(_name, variableType);
                     data.SetExpectedType(variableType);
+                    var inputCode = GenerateValue(Unit.input, data);
+                    data.RemoveExpectedType();
                     data.CreateSymbol(Unit, variableType);
                     variableName = newName.LegalMemberName();
                     output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit($"{inputType} {variableName.VariableHighlight()} = ") + (Unit.input.hasValidConnection ? inputCode : MakeClickableForThisUnit("null".ConstructHighlight())) + MakeClickableForThisUnit(";") + "\n";
-                    data.RemoveExpectedType();
                     output += GetNextUnit(Unit.assigned, data, indent);
                     return output;
                 }
@@ -205,14 +205,16 @@ namespace Unity.VisualScripting.Community
 
         public override string GenerateValue(ValueOutput output, ControlGenerationData data)
         {
-            if (!Unit.assign.hasValidConnection) return $"/* ControlInput {Unit.assign.key} requires connection on {Unit.GetType()} with variable name ({GenerateValue(Unit.name, data)}) */".WarningHighlight();
+            if (!Unit.assign.hasValidConnection) return MakeClickableForThisUnit($"/* ControlInput {Unit.assign.key} requires connection on {Unit.GetType()} with variable name ({GenerateValue(Unit.name, data)}) */".WarningHighlight());
             if (output == Unit.output && (Unit.kind == VariableKind.Object || Unit.kind == VariableKind.Scene || Unit.kind == VariableKind.Application || Unit.kind == VariableKind.Saved))
             {
                 return GenerateValue(Unit.input, data);
             }
             else if (output == Unit.output && !Unit.name.hasValidConnection)
             {
-                return MakeClickableForThisUnit(variableName.VariableHighlight());
+                if (data.ContainsNameInAnyScope(variableName))
+                    return MakeClickableForThisUnit(variableName.VariableHighlight());
+                else return MakeClickableForThisUnit($"/* Could not find variable with name \"{variableName}\" */".WarningHighlight());
             }
             else return GenerateValue(Unit.input, data);
         }

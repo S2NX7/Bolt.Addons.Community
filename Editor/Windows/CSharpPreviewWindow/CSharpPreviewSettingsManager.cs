@@ -12,7 +12,7 @@ namespace Unity.VisualScripting.Community
     
         public void InitializeSettings()
         {
-            var path = "Assets/Unity.VisualScripting.Community.Generated/";
+            const string path = "Assets/Unity.VisualScripting.Community.Generated/";
             HUMIO.Ensure(path).Path();
             CSharpPreviewSettings settings = AssetDatabase.LoadAssetAtPath<CSharpPreviewSettings>(path + "CSharpPreviewSettings.asset");
             if (settings == null)

@@ -162,26 +162,5 @@ namespace Unity.VisualScripting.Community.Libraries.Humility
                 }
             }
         }
-        public static bool HasDirectDecorator<T>(Type decoratedType, Type[] typesToSearch = null) where T : DecoratorAttribute
-        {
-            var decoratorTypes = typesToSearch ?? typeof(TDecorator).Get().Derived();
-
-            foreach (var decorator in decoratorTypes)
-            {
-                if (decorator.IsAbstract || !typeof(Decorator<,,>).IsAssignableFromGeneric(decorator))
-                    continue;
-
-                var attributes = decorator.GetCustomAttributes(typeof(T), false);
-
-                foreach (T attr in attributes)
-                {
-                    if (attr.type == decoratedType)
-                        return true;
-                }
-            }
-
-            return false;
-        }
-
     }
 }

@@ -9,10 +9,14 @@ namespace Unity.VisualScripting.Community
 {
     public sealed class ControlGenerationData
     {
+        // Todo: Make Enter/Exit Method logic so scopes don't get shared between them
         private readonly Stack<GeneratorScope> scopes = new();
         private readonly Stack<GeneratorScope> preservedScopes = new();
         private readonly Stack<(Type type, bool isMet)> expectedTypes = new();
-        public readonly Dictionary<object, object> generatorData = new();
+        /// <summary>
+        /// Store any extra info
+        /// </summary>
+        public Dictionary<object, object> generatorData { get => PeekScope().generatorData; }
         private readonly Dictionary<Unit, UnitSymbol> unitSymbols = new();
 
         private GraphPointer graphPointer;
@@ -97,10 +101,26 @@ namespace Unity.VisualScripting.Community
             }
         }
         #region Scope Management
+
+        int methodId;
+        public void EnterMethod()
+        {
+            methodId++;
+            NewScope();
+        }
+        public void ExitMethod()
+        {
+            while (preservedScopes.TryPeek(out var result) && result.methodId == methodId)
+            {
+                preservedScopes.Pop();
+            }
+            methodId--;
+            ExitScope(true);
+        }
         public void NewScope()
         {
             var parent = PeekScope();
-            var newScope = new GeneratorScope(parent);
+            var newScope = new GeneratorScope(parent, methodId);
 
             if (parent != null)
             {
@@ -113,10 +133,11 @@ namespace Unity.VisualScripting.Community
         }
 
 
-        public GeneratorScope ExitScope()
+        public GeneratorScope ExitScope(bool exitingMethod = false)
         {
             var exitingScope = scopes.Pop();
-            preservedScopes.Push(exitingScope);
+            if (!exitingMethod)
+                preservedScopes.Push(exitingScope);
 
             if (exitingScope.ParentScope != null)
             {
@@ -181,9 +202,10 @@ namespace Unity.VisualScripting.Community
             }
             return false;
         }
+
         #endregion
 
-        # region Variable Management
+        #region Variable Management
         public string GetVariableName(string name)
         {
             foreach (var scope in scopes)
@@ -308,6 +330,7 @@ namespace Unity.VisualScripting.Community
             public Dictionary<string, Type> scopeVariables { get; private set; }
             public Dictionary<string, string> nameMapping { get; private set; }
             public GeneratorScope ParentScope { get; private set; }
+            public readonly Dictionary<object, object> generatorData = new();
 
             public Type Returns { get; set; } = typeof(void);
             public bool MustBreak { get; set; }
@@ -315,11 +338,14 @@ namespace Unity.VisualScripting.Community
             public bool MustReturn { get; set; }
             public bool HasReturned { get; set; }
 
-            public GeneratorScope(GeneratorScope parentScope)
+            public int methodId { get; private set; }
+
+            public GeneratorScope(GeneratorScope parentScope, int methodId)
             {
                 scopeVariables = new();
                 nameMapping = new();
                 ParentScope = parentScope;
+                this.methodId = methodId;
             }
         }
     }

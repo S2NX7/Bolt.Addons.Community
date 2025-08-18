@@ -121,11 +121,11 @@ namespace Unity.VisualScripting.Community
 
                 if (constructorData.graph.units.Count == 0) continue;
                 @class.AddUsings(ProcessGraphUnits(constructorData.graph, @class));
-                data.NewScope();
+                data.EnterMethod();
                 data.SetExpectedType(typeof(void));
                 data.SetGraphPointer(constructorData.GetReference().AsReference());
                 constructor.Body((constructorData.graph.units[0] as Unit).GenerateControl(null, data, 0));
-                data.ExitScope();
+                data.ExitMethod();
                 foreach (var param in parameters)
                 {
                     param.showInitalizer = true;
@@ -170,7 +170,7 @@ namespace Unity.VisualScripting.Community
                     var method = MethodGenerator.Method(methodData.scope, methodData.modifier, methodData.returnType, methodData.name);
                     method.AddGenerics(methodData.genericParameters.ToArray());
                     AddMethodAttributes(method, methodData);
-                    data.NewScope();
+                    data.EnterMethod();
                     data.SetExpectedType(methodData.returnType);
                     data.SetReturns(methodData.returnType);
                     data.SetGraphPointer(methodData.GetReference().AsReference());
@@ -178,7 +178,7 @@ namespace Unity.VisualScripting.Community
                     var unit = methodData.graph.units[0] as FunctionNode;
                     method.Body(unit.GenerateControl(null, data, 0));
                     if (!data.HasReturned) method.SetWarning("Not all code paths return a value");
-                    data.ExitScope();
+                    data.ExitMethod();
                     foreach (var param in methodData.parameters)
                     {
                         if (!string.IsNullOrEmpty(param.name))
@@ -193,7 +193,7 @@ namespace Unity.VisualScripting.Community
 
             if (_specialUnits.Count > 0)
             {
-                data.NewScope();
+                data.EnterMethod();
                 bool addedSpecialUpdatedCode = false;
 #if PACKAGE_INPUT_SYSTEM_EXISTS
                 bool addedSpecialFixedUpdatedCode = false;
@@ -268,7 +268,7 @@ namespace Unity.VisualScripting.Community
                     }
                 }
 #endif
-                data.ExitScope();
+                data.ExitMethod();
             }
             var values = CodeGeneratorValueUtility.GetAllValues(Data);
             var index = 0;
@@ -341,25 +341,25 @@ namespace Unity.VisualScripting.Community
             // Handle getter
             if (variableData.get)
             {
-                data.NewScope();
+                data.EnterMethod();
                 data.SetExpectedType(variableData.type);
                 data.SetGraphPointer(variableData.getter.GetReference().AsReference());
                 data.SetReturns(variableData.type);
                 @class.AddUsings(ProcessGraphUnits(variableData.getter.graph, @class));
                 property.MultiStatementGetter(variableData.getterScope, (variableData.getter.graph.units[0] as Unit).GenerateControl(null, data, 0));
                 if (!data.HasReturned) property.SetWarning("Not all code paths return a value");
-                data.ExitScope();
+                data.ExitMethod();
             }
 
             // Handle setter
             if (variableData.set)
             {
-                data.NewScope();
+                data.EnterMethod();
                 data.SetExpectedType(variableData.type);
                 data.SetGraphPointer(variableData.setter.GetReference().AsReference());
                 @class.AddUsings(ProcessGraphUnits(variableData.setter.graph, @class));
                 property.MultiStatementSetter(variableData.setterScope, (variableData.setter.graph.units[0] as Unit).GenerateControl(null, data, 0));
-                data.ExitScope();
+                data.ExitMethod();
             }
 
             @class.AddProperty(property);
@@ -474,7 +474,11 @@ namespace Unity.VisualScripting.Community
                 }
                 variableGenerator.count = generatorCounts[type];
                 generatorCounts[type]++;
-                @class.AddField(FieldGenerator.Field(variableGenerator.AccessModifier, variableGenerator.FieldModifier, variableGenerator.Type, variableGenerator.Name, variableGenerator.HasDefaultValue ? variableGenerator.DefaultValue : null));
+                var field = FieldGenerator.Field(variableGenerator.AccessModifier, variableGenerator.FieldModifier, variableGenerator.Type, variableGenerator.Name, variableGenerator.HasDefaultValue ? variableGenerator.DefaultValue : null);
+                field.SetLiteral(variableGenerator.Literal);
+                field.SetNewlineLiteral(variableGenerator.NewLineLiteral);
+                field.SetNew(variableGenerator.IsNew);
+                @class.AddField(field);
             }
             else if (generator is MethodNodeGenerator methodGenerator && methodGenerator.unit is not IEventUnit)
             {
@@ -485,10 +489,10 @@ namespace Unity.VisualScripting.Community
                 }
                 methodGenerator.count = generatorCounts[type];
                 generatorCounts[type]++;
-                data.NewScope();
                 foreach (var item in @class.fields)
                 {
-                    data.AddLocalNameInScope(item.name, item.type);
+                    if (!data.ContainsNameInAnyScope(item.name))
+                        data.AddLocalNameInScope(item.name, item.type);
                 }
                 var method = MethodGenerator.Method(methodGenerator.AccessModifier, methodGenerator.MethodModifier, methodGenerator.ReturnType, methodGenerator.Name);
                 method.AddGenerics(methodGenerator.GenericCount);
@@ -504,14 +508,52 @@ namespace Unity.VisualScripting.Community
                     }
                 }
 
+                if (methodGenerator.Attributes.Count > 0)
+                {
+                    foreach (var attribute in methodGenerator.Attributes)
+                    {
+                        var attrGenerator = AttributeGenerator.Attribute(attribute.GetAttributeType());
+                        foreach (var param in attribute.parameters)
+                        {
+                            if (param.defaultValue is IList list)
+                            {
+                                if (param.modifier == Libraries.CSharp.ParameterModifier.Params)
+                                {
+                                    foreach (var item in list)
+                                    {
+                                        attrGenerator.AddParameter(item);
+                                    }
+                                }
+                                else if (!attrGenerator.parameterValues.Contains(param))
+                                {
+                                    attrGenerator.AddParameter(param.defaultValue);
+                                }
+                            }
+                            else if (!attrGenerator.parameterValues.Contains(param))
+                            {
+                                attrGenerator.AddParameter(param.defaultValue);
+                            }
+                        }
+                        foreach (var item in attribute.fields)
+                        {
+                            attrGenerator.AddParameter(item.Key, item.Value);
+                        }
+                        method.AddAttribute(attrGenerator);
+                    }
+                }
+
                 foreach (var variable in Data.variables)
                 {
-                    data.AddLocalNameInScope(variable.FieldName, variable.type);
+                    if (!data.ContainsNameInAnyScope(variable.name))
+                        data.AddLocalNameInScope(variable.FieldName, variable.type);
                 }
                 methodGenerator.Data = data;
-                method.Body(string.IsNullOrEmpty(methodGenerator.MethodBody) ? methodGenerator.GenerateControl(null, data, 0) : methodGenerator.MethodBody);
+                methodGenerator.Data.SetReturns(methodGenerator.ReturnType);
+                methodGenerator.Data.EnterMethod();
+                var MethodBody = methodGenerator.MethodBody;
+                method.Body(string.IsNullOrEmpty(MethodBody) ? methodGenerator.GenerateControl(null, data, 0) : MethodBody);
+                methodGenerator.Data.ExitMethod();
                 @class.AddMethod(method);
-                data.ExitScope();
             }
         }
     }

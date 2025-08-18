@@ -27,8 +27,8 @@ namespace Unity.VisualScripting.Community
                 variableType = typeof(int);
     
                 string varName = MakeClickableForThisUnit(variableName.VariableHighlight());
-                string iteratorCode = !Unit.step.hasValidConnection && (int)Unit.defaultValues[Unit.step.key] == 1 ? varName.VariableHighlight() + MakeClickableForThisUnit("++") : varName.VariableHighlight() + MakeClickableForThisUnit(" += ") + iterator;
-                output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit($"for".ControlHighlight() + "(" + "int ".ConstructHighlight()) + $"{varName}".VariableHighlight() + MakeClickableForThisUnit(" = ") + initialization + MakeClickableForThisUnit("; ") + varName.VariableHighlight() + $"{MakeClickableForThisUnit(" < ")}{condition}{MakeClickableForThisUnit("; ")}" + $"{iteratorCode}{MakeClickableForThisUnit(")")}";
+                string iteratorCode = !Unit.step.hasValidConnection && (int)Unit.defaultValues[Unit.step.key] == 1 ? varName + MakeClickableForThisUnit("++") : varName + MakeClickableForThisUnit(" += ") + iterator;
+                output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit($"for".ControlHighlight() + "(" + "int ".ConstructHighlight()) + $"{varName}".VariableHighlight() + MakeClickableForThisUnit(" = ") + initialization + MakeClickableForThisUnit("; ") + varName + $"{MakeClickableForThisUnit(" < ")}{condition}{MakeClickableForThisUnit("; ")}" + $"{iteratorCode}{MakeClickableForThisUnit(")")}";
                 output += "\n";
                 output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit("{");
                 output += "\n";
@@ -67,7 +67,7 @@ namespace Unity.VisualScripting.Community
                 data.SetExpectedType(input.type);
                 var connectedCode = GetNextValueUnit(input, data);
                 data.RemoveExpectedType();
-                return Unit.CreateIgnoreString(connectedCode).EndIgnoreContext().Cast(input.type, ShouldCast(input, data, false));
+                return connectedCode.CastAs(input.type, Unit, ShouldCast(input, data, false));
             }
             else
             {

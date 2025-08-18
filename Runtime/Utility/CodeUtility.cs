@@ -13,51 +13,61 @@ namespace Unity.VisualScripting.Community
     public static class CodeUtility
     {
         private static readonly Regex RemoveHighlightsRegex = new(@"<b class='highlight'>(.*?)<\/b>", RegexOptions.Compiled | RegexOptions.Singleline);
-        private static readonly ConcurrentDictionary<string, string> RemoveAllCache = new();
+        private static readonly Dictionary<string, string> RemoveAllCache = new();
 
-        private static readonly Regex RemoveClickableTagWrapperRegex = new(@"⟦([^\⟧]+)⟧(.*?)⟧⟧", RegexOptions.Compiled | RegexOptions.Singleline);
 
-        public static string RemoveAllClickableTags(string code)
+        public static string RemoveAllClickableTags(string input)
         {
-            if (RemoveAllCache.TryGetValue(code, out string result))
-                return result;
+            if (string.IsNullOrEmpty(input)) return input;
+            if (RemoveAllCache.TryGetValue(input, out var cached)) return cached;
 
-            result = RemoveClickableTagWrapperRegex.Replace(code, "$2");
-            RemoveAllCache[code] = result;
-            return result;
-        }
+            const string openTag = "⟦";
+            const string midTag = "⟧";
+            const string closeTag = "⟧⟧";
 
-
-        public static string RemovePattern(string input, string startPattern, string endPattern)
-        {
-            if (string.IsNullOrEmpty(input) || string.IsNullOrEmpty(startPattern) || string.IsNullOrEmpty(endPattern))
-                return input;
-
-            StringBuilder result = new();
+            var result = new StringBuilder(input.Length);
             int index = 0;
 
             while (index < input.Length)
             {
-                int startIndex = input.IndexOf(startPattern, index);
-                if (startIndex == -1)
+                int openIdx = input.IndexOf(openTag, index);
+                if (openIdx == -1)
                 {
-                    result.Append(input[index..]);
+                    result.Append(input, index, input.Length - index);
                     break;
                 }
 
-                result.Append(input[index..startIndex]);
+                result.Append(input, index, openIdx - index);
 
-                int endIndex = input.IndexOf(endPattern, startIndex + startPattern.Length);
-                if (endIndex == -1)
+                int midIdx = input.IndexOf(midTag, openIdx + openTag.Length);
+                if (midIdx == -1)
                 {
-                    result.Append(input[startIndex..]);
+                    result.Append(input, openIdx, input.Length - openIdx);
                     break;
                 }
-                index = endIndex + endPattern.Length;
+
+                int closeIdx = input.IndexOf(closeTag, midIdx + midTag.Length);
+                if (closeIdx == -1)
+                {
+                    result.Append(input, openIdx, input.Length - openIdx);
+                    break;
+                }
+
+                int codeStart = midIdx + midTag.Length;
+                int codeLength = closeIdx - codeStart;
+                if (codeLength > 0)
+                {
+                    result.Append(input, codeStart, codeLength);
+                }
+
+                index = closeIdx + closeTag.Length;
             }
 
-            return result.ToString();
+            var final = result.ToString();
+            RemoveAllCache[input] = final;
+            return final;
         }
+
         public static string MakeClickable(Unit unit, string code)
         {
             return $"⟦{unit}⟧{code}⟧⟧";
@@ -72,21 +82,8 @@ namespace Unity.VisualScripting.Community
             return CSharpPreviewSettings.ShouldGenerateTooltips ? $"[CommunityAddonsCodeToolTip({ToolTip})]{(highlight ? $"/* {notifyString} (Hover for more info) */".WarningHighlight() : $"/* {notifyString} (Hover for more info) */")}[CommunityAddonsCodeToolTipEnd] {code}" : (highlight ? $"/* {notifyString} */".WarningHighlight() : $"/* {notifyString} */") + code;
         }
 
-        private static readonly Dictionary<string, string> ToolTipCache = new();
         private static readonly Dictionary<string, string> AllToolTipCache = new();
         private static readonly Regex ToolTipRegex = new(@"\[CommunityAddonsCodeToolTip\((.*?)\)\](.*?)\[CommunityAddonsCodeToolTipEnd\]", RegexOptions.Compiled);
-
-        public static string RemoveAllToolTipTags(string code)
-        {
-            if (ToolTipCache.TryGetValue(code, out string result))
-            {
-                return result;
-            }
-
-            result = ToolTipRegex.Replace(code, "$2");
-            ToolTipCache[code] = result;
-            return result;
-        }
 
         public static string RemoveAllToolTipTagsEntirely(string code)
         {
@@ -119,14 +116,9 @@ namespace Unity.VisualScripting.Community
             return RecommendationRegex.Replace(code, string.Empty);
         }
 
-        public static string RemoveCustomHighlights(string highlightedCode)
-        {
-            return RemoveHighlightsRegex.Replace(highlightedCode, "$1");
-        }
-
         public static string CleanCode(string code)
         {
-            return RemoveAllClickableTags(RemoveAllToolTipTagsEntirely(RemoveRecommendations(RemoveCustomHighlights(code))));
+            return RemoveAllClickableTags(RemoveAllToolTipTagsEntirely(RemoveRecommendations(code)));
         }
 
         private static readonly Dictionary<string, List<ClickableRegion>> clickableRegionsCache = new();

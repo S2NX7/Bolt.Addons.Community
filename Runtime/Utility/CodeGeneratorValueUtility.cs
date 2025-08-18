@@ -87,7 +87,6 @@ namespace Unity.VisualScripting.Community
             }
             else if (obj is Component comp)
             {
-                // Add component type to make path unique for different components
                 return comp.gameObject.GetInstanceID().ToString() + "," + comp.GetInstanceID().ToString() + "," + comp.GetType().FullName;
             }
             return null;

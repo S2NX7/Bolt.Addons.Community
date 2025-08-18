@@ -1,11 +1,12 @@
 using System;
+using System.Collections.Generic;
 using Unity.VisualScripting;
 using Unity.VisualScripting.Community;
 using Unity.VisualScripting.Community.Libraries.CSharp;
 using Unity.VisualScripting.Community.Libraries.Humility;
 using UnityEngine;
 
-namespace Unity.VisualScripting.Community 
+namespace Unity.VisualScripting.Community
 {
     [NodeGenerator(typeof(Timer))]
     public class TimerGenerator : VariableNodeGenerator
@@ -13,33 +14,58 @@ namespace Unity.VisualScripting.Community
         public TimerGenerator(Timer unit) : base(unit)
         {
             NameSpaces = "Unity.VisualScripting.Community";
+            variableName = Name;
         }
         private Timer Unit => unit as Timer;
         public override AccessModifier AccessModifier => AccessModifier.Private;
-    
+
         public override FieldModifier FieldModifier => FieldModifier.None;
-    
+
         public override string Name => "timer" + count;
-    
+
         public override Type Type => typeof(TimerLogic);
-    
+
         public override object DefaultValue => new TimerLogic();
-    
+
         public override bool HasDefaultValue => true;
-    
+
+        public override bool Literal => false;
+
         public override string GenerateControl(ControlInput input, ControlGenerationData data, int indent)
         {
             variableName = Name;
-            if(!typeof(MonoBehaviour).IsAssignableFrom(data.ScriptType))
+            if (!typeof(MonoBehaviour).IsAssignableFrom(data.ScriptType))
             {
-                return CodeBuilder.Indent(indent + 1) + MakeClickableForThisUnit(CodeUtility.ToolTip("Timers only works with ScriptGraphAssets, ScriptMachines or a ClassAsset that inherits MonoBehaviour",  "Could not generate Timer", ""));
+                return CodeBuilder.Indent(indent + 1) + MakeClickableForThisUnit(CodeUtility.ToolTip("Timer only works with ScriptGraphAssets, ScriptMachines or a ClassAsset that inherits MonoBehaviour", "Could not generate Timer", ""));
             }
-    
+
             var output = string.Empty;
-    
+            if (Unit.start.hasValidConnection && !data.generatorData.TryGetValue(Unit.start, out _))
+            {
+                data.generatorData.Add(Unit.start, true);
+                string turnedOnCallback = Unit.completed.hasValidConnection ? GetAction(Unit.completed, data) : null;
+                string turnedOffCallback = Unit.tick.hasValidConnection ? GetAction(Unit.tick, data) : null;
+
+                var parameters = new List<string>();
+                if (turnedOnCallback != null)
+                    parameters.Add(turnedOnCallback);
+                else if (turnedOffCallback != null)
+                    parameters.Add(MakeClickableForThisUnit("null".ConstructHighlight()));
+
+                if (turnedOffCallback != null)
+                    parameters.Add(turnedOffCallback);
+
+                string paramList = string.Join(MakeClickableForThisUnit(", "), parameters);
+
+                output += CodeBuilder.Indent(indent)
+                    + MakeClickableForThisUnit(variableName.VariableHighlight() + ".Initialize(")
+                    + paramList
+                    + MakeClickableForThisUnit(");") + "\n";
+            }
+
             if (input == Unit.start)
             {
-                var action = GetAction(Unit.started, indent, data);
+                var action = GetAction(Unit.started, data);
                 output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit(variableName.VariableHighlight() + ".StartTimer(") + GenerateValue(Unit.duration, data) + MakeClickableForThisUnit(", ") + GenerateValue(Unit.unscaledTime, data) + (!string.IsNullOrEmpty(action) ? MakeClickableForThisUnit(", ") + action : "") + MakeClickableForThisUnit(");") + "\n";
             }
             else if (input == Unit.pause)
@@ -54,37 +80,35 @@ namespace Unity.VisualScripting.Community
             {
                 output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit(variableName.VariableHighlight() + ".ToggleTimer();") + "\n";
             }
-    
-            if (Unit.tick.hasValidConnection && !data.generatorData.TryGetValue(Unit.tick, out var tickGenerated))
+
+            GenerateActionMethod(Unit.started, data, indent);
+            GenerateActionMethod(Unit.tick, data, indent);
+            GenerateActionMethod(Unit.completed, data, indent);
+
+            void GenerateActionMethod(ControlOutput port, ControlGenerationData data, int indent)
             {
-                data.generatorData.Add(Unit.tick, true);
-                output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit(variableName.VariableHighlight() + "." + "OnTick".VariableHighlight() + " += ") + GetAction(Unit.tick, indent, data) + MakeClickableForThisUnit(";") + "\n";
+                if (port.hasValidConnection && !data.generatorData.TryGetValue(port, out _))
+                {
+                    data.generatorData.Add(port, true);
+                    output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit("void ".ConstructHighlight()) + GetAction(port, data) + MakeClickableForThisUnit("()") + "\n";
+                    output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit("{") + "\n";
+                    output += GetNextUnit(port, data, indent + 1);
+                    output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit("}") + "\n";
+                }
             }
-    
-            if (Unit.completed.hasValidConnection && !data.generatorData.TryGetValue(Unit.completed, out var completedGenerated))
-            {
-                data.generatorData.Add(Unit.completed, true);
-                output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit(variableName.VariableHighlight() + "." + "OnCompleted".VariableHighlight() + " += ") + GetAction(Unit.completed, indent, data) + MakeClickableForThisUnit(";") + "\n";
-            }
-    
+
             return output;
         }
-    
-        private string GetAction(ControlOutput controlOutput, int indent, ControlGenerationData data)
+
+        private string GetAction(ControlOutput controlOutput, ControlGenerationData data)
         {
             if (!controlOutput.hasValidConnection)
                 return "";
             var output = "";
-            data.NewScope();
-            data.SetReturns(typeof(void));
-            output += MakeClickableForThisUnit("() =>") + "\n";
-            output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit("{") + "\n";
-            output += GetNextUnit(controlOutput, data, indent + 1);
-            output += CodeBuilder.Indent(indent) + MakeClickableForThisUnit("}");
-            data.ExitScope();
+            output += MakeClickableForThisUnit(variableName.Capitalize().First().Letter() + "_" + controlOutput.key.Capitalize().First().Letter());
             return output;
         }
-    
+
         public override string GenerateValue(ValueOutput output, ControlGenerationData data)
         {
             if (output == Unit.elapsedSeconds)
@@ -105,5 +129,5 @@ namespace Unity.VisualScripting.Community
             }
             return base.GenerateValue(output, data);
         }
-    } 
+    }
 }

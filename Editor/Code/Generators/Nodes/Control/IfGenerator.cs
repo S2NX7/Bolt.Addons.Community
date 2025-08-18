@@ -13,16 +13,15 @@ namespace Unity.VisualScripting.Community
         public override string GenerateControl(ControlInput input, ControlGenerationData data, int indent)
         {
             var output = new StringBuilder();
-            string cachedIndent = CodeBuilder.Indent(indent);
 
             if (input == Unit.enter)
             {
-                output.Append(cachedIndent)
+                output.Append(CodeBuilder.Indent(indent))
                       .Append(MakeClickableForThisUnit("if".ConstructHighlight() + " ("))
                       .Append(GenerateValue(Unit.condition, data))
                       .Append(MakeClickableForThisUnit(")"))
                       .AppendLine()
-                      .Append(cachedIndent)
+                      .Append(CodeBuilder.Indent(indent))
                       .AppendLine(MakeClickableForThisUnit("{"));
 
                 string trueCode;
@@ -43,7 +42,7 @@ namespace Unity.VisualScripting.Community
                 }
 
                 output.AppendLine()
-                      .Append(cachedIndent)
+                      .Append(CodeBuilder.Indent(indent))
                       .AppendLine(MakeClickableForThisUnit("}"));
 
                 if (!Unit.ifFalse.hasAnyConnection)
@@ -53,7 +52,7 @@ namespace Unity.VisualScripting.Community
 
                 if (Unit.ifFalse.hasAnyConnection)
                 {
-                    output.Append(cachedIndent)
+                    output.Append(CodeBuilder.Indent(indent))
                           .Append(MakeClickableForThisUnit("else".ConstructHighlight()));
 
                     if (!Unit.ifTrue.hasValidConnection || string.IsNullOrEmpty(trueCode))
@@ -63,7 +62,7 @@ namespace Unity.VisualScripting.Community
                     }
 
                     output.AppendLine()
-                          .Append(cachedIndent)
+                          .Append(CodeBuilder.Indent(indent))
                           .AppendLine(MakeClickableForThisUnit("{"));
 
                     if (!FalseIsUnreachable())
@@ -81,7 +80,7 @@ namespace Unity.VisualScripting.Community
                     }
 
                     output.AppendLine()
-                          .Append(cachedIndent)
+                          .Append(CodeBuilder.Indent(indent))
                           .AppendLine(MakeClickableForThisUnit("}") + "\n");
                 }
             }

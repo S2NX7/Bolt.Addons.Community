@@ -648,7 +648,8 @@ namespace Unity.VisualScripting.Community
         protected override void OnEnable()
         {
             base.OnEnable();
-            ValueInspectorType = typeof(SystemObjectInspector).Assembly.GetTypes().First(type => type.Namespace == "Unity.VisualScripting" && type.Name == "ValueInspector");
+            if (ValueInspectorType == null)
+                ValueInspectorType = typeof(SystemObjectInspector).Assembly.GetType("Unity.VisualScripting.ValueInspector", throwOnError: true);
             if (constructors == null || constructorsProp == null)
             {
                 constructors = Metadata.FromProperty(serializedObject.FindProperty("constructors"));
@@ -2276,7 +2277,7 @@ namespace Unity.VisualScripting.Community
                                         if (typeChangedLookup.TryGetValue(variables[index]["type"], out var type))
                                         {
                                             Type currentType = variables[index]["type"].value as Type;
-                                            if (type != currentType || listOfVariables[i].value?.GetType() != currentType)
+                                            if (type != currentType)
                                             {
                                                 UpdateDefaultValueType(currentType, variables[index]);
                                                 typeChangedLookup[variables[index]["type"]] = currentType;
@@ -2288,7 +2289,7 @@ namespace Unity.VisualScripting.Community
                                         }
 
                                         var inspector = variables[index]["defaultValue"].Inspector();
-                                        typeof(SystemObjectInspector).GetField("inspector", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(inspector, Activator.CreateInstance(ValueInspectorType, inspector));
+                                        typeof(SystemObjectInspector).GetField("inspector", BindingFlags.Instance | BindingFlags.NonPublic).SetValueOptimized(inspector, ValueInspectorType.Instantiate(true, inspector));
                                         Inspector.BeginBlock(variables[index]["defaultValue"], new Rect(10, 10, 10, 10));
                                         inspector.DrawLayout(new GUIContent("Value               "));
                                         if (Inspector.EndBlock(variables[index]["defaultValue"]))

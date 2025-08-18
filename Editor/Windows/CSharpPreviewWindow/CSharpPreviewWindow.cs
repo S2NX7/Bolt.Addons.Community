@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Unity.VisualScripting.Community.Libraries.CSharp;
@@ -15,6 +16,7 @@ namespace Unity.VisualScripting.Community
     public sealed class CSharpPreviewWindow : EditorWindow
     {
         public static CSharpPreviewWindow instance;
+        [SerializeField]
         private float zoomFactor = 1.0f;
         public bool showCodeWindow = true;
         private List<(Label label, int)> labels = new List<(Label, int)>();
@@ -55,6 +57,8 @@ namespace Unity.VisualScripting.Community
 
         public void CreateGUI()
         {
+            if (CodeGeneratorValueUtility.currentAsset == null && asset != null)
+                CodeGeneratorValueUtility.currentAsset = asset;
             instance = this;
             Selection.selectionChanged += () =>
             {
@@ -132,12 +136,12 @@ namespace Unity.VisualScripting.Community
                 value = zoomFactor,
                 style = { width = Length.Percent(20), alignSelf = Align.Center }
             };
-            var zoomLabel = new Label($"{GetDisplayZoom(zoomFactor):0.#}x") { style = { marginLeft = 5, alignSelf = Align.Center } };
+            var zoomLabel = new Label($"{GetDisplayZoom(zoomFactor):0.##}x") { style = { marginLeft = 5, alignSelf = Align.Center } };
 
             zoomSlider.RegisterValueChangedCallback(evt =>
             {
                 zoomFactor = evt.newValue;
-                zoomLabel.text = $"{GetDisplayZoom(zoomFactor):0.#}x";
+                zoomLabel.text = $"{GetDisplayZoom(zoomFactor):0.##}x";
                 codeContainer.style.fontSize = Mathf.RoundToInt(14 * zoomFactor);
                 lineNumbersContainer.style.fontSize = Mathf.RoundToInt(14 * zoomFactor);
 
@@ -197,7 +201,7 @@ namespace Unity.VisualScripting.Community
             var copyButton = UIBuilder.CreateToolbarButton("Copy to Clipboard", CopyToClipboard, false, true);
             toolbar.Add(copyButton);
 
-            var refreshButton = UIBuilder.CreateToolbarButton("Refresh", UpdateCodeDisplay, true, true);
+            var refreshButton = UIBuilder.CreateToolbarButton("Refresh", () => UpdateCodeDisplay(), true, true);
             toolbar.Add(refreshButton);
 
             var toggleButton = UIBuilder.CreateToolbarButton(showCodeWindow ? "Settings" : "Preview", ToggleWindowMode, true, false);
@@ -671,35 +675,88 @@ namespace Unity.VisualScripting.Community
         private float lastLineNumbersScrollPosition;
 
         private const int BUFFER_LINES = 20;
-        private Dictionary<int, (VisualElement lineNumber, VisualElement content)> virtualizedLines = new Dictionary<int, (VisualElement, VisualElement)>();
+        private readonly Dictionary<int, (VisualElement lineNumber, VisualElement content)> virtualizedLines = new Dictionary<int, (VisualElement, VisualElement)>();
         private int firstVisibleLine = 0;
         private int lastVisibleLine = 0;
         private string[] cachedLines;
         private Dictionary<int, List<ClickableRegion>> cachedRegions;
+        Dictionary<string, List<(Label, int)>> unitIDRegions = new Dictionary<string, List<(Label, int)>>();
 
-        public void UpdateCodeDisplay()
+        public void UpdateCodeDisplay(bool forceFullRebuild = false)
         {
-            if (asset != null && rootVisualElement?.Q<VisualElement>("codeView") != null)
+            if (asset == null || rootVisualElement?.Q<VisualElement>("codeView") == null)
+                return;
+
+            if (CodeGeneratorValueUtility.currentAsset == null)
+                CodeGeneratorValueUtility.currentAsset = asset;
+
+            var scrollView = rootVisualElement.Q<VisualElement>("codeView").Q<ScrollView>("codeContainer");
+            var lineNumbersScrollView = rootVisualElement.Q<VisualElement>("codeView").Q<ScrollView>("lineNumbersContainer");
+
+            lastScrollPosition = scrollView.scrollOffset;
+            lastLineNumbersScrollPosition = lineNumbersScrollView.scrollOffset.y;
+
+            var loadedCode = LoadCode();
+            var newLines = loadedCode.Split('\n');
+
+            // Full rebuild if forced or line count changed
+            if (forceFullRebuild || cachedLines == null || newLines.Length != cachedLines.Length)
             {
-                var scrollView = rootVisualElement.Q<VisualElement>("codeView").Q<ScrollView>("codeContainer");
-                var lineNumbersScrollView = rootVisualElement.Q<VisualElement>("codeView").Q<ScrollView>("lineNumbersContainer");
-
-                lastScrollPosition = scrollView.scrollOffset;
-                lastLineNumbersScrollPosition = lineNumbersScrollView.scrollOffset.y;
-
-                var loadedCode = LoadCode();
                 DisplayCode(lineNumbersScrollView, scrollView, loadedCode);
-
-                EditorApplication.delayCall += () =>
-                {
-                    scrollView.scrollOffset = lastScrollPosition;
-                    lineNumbersScrollView.scrollOffset = new Vector2(0, lastLineNumbersScrollPosition);
-                    RefreshVirtualization(scrollView, lineNumbersScrollView);
-                };
             }
+            else
+            {
+                // Partial refresh: only replace changed lines
+                for (int i = 0; i < newLines.Length; i++)
+                {
+                    if (cachedLines[i] != newLines[i] && virtualizedLines.TryGetValue(i, out var linePair))
+                    {
+                        // Replace content for that line
+                        linePair.content.Clear();
+                        if (cachedRegions.TryGetValue(i, out var regions))
+                        {
+                            AdjustLeadingWhitespacesForFirstRegion(newLines[i], regions[0]);
+                            foreach (var region in regions)
+                            {
+                                var label = CreateCodeLabel(region, i);
+                                labels.Add((label, i));
+                                linePair.content.Add(label);
+
+                                if (!unitIDRegions.ContainsKey(region.unitId))
+                                    unitIDRegions[region.unitId] = new List<(Label, int)> { (label, i) };
+                                else
+                                    unitIDRegions[region.unitId].Add((label, i));
+                            }
+                        }
+                        else
+                        {
+                            var label = CreateNonClickableLabel(newLines[i], i);
+                            labels.Add((label, i));
+                            linePair.content.Add(label);
+                        }
+                    }
+                }
+            }
+
+            cachedLines = newLines;
+
+            EditorApplication.delayCall += () =>
+            {
+                scrollView.scrollOffset = lastScrollPosition;
+                lineNumbersScrollView.scrollOffset = new Vector2(0, lastLineNumbersScrollPosition);
+
+                scrollView.MarkDirtyRepaint();
+                lineNumbersScrollView.MarkDirtyRepaint();
+                scrollView.schedule.Execute(() =>
+                {
+                    scrollView.Q("content")?.MarkDirtyRepaint();
+                    lineNumbersScrollView.Q("lineNumbers")?.MarkDirtyRepaint();
+                }).ExecuteLater(1);
+
+                RefreshVirtualization(scrollView, lineNumbersScrollView);
+            };
         }
 
-        Dictionary<string, List<(Label, int)>> unitIDRegions = new Dictionary<string, List<(Label, int)>>();
         private void DisplayCode(ScrollView lineNumbersScrollView, ScrollView scrollView, string code)
         {
             scrollView.Clear();
@@ -710,21 +767,20 @@ namespace Unity.VisualScripting.Community
 
             var clickableRegions = CodeUtility.ExtractAndPopulateClickableRegions(code);
             cachedRegions = clickableRegions.GroupBy(region => region.startLine)
-                                          .ToDictionary(g => g.Key, g => g.ToList());
+                                           .ToDictionary(g => g.Key, g => g.ToList());
 
-            var beforeRemoveLines = CodeUtility.RemovePattern(code, "[CommunityAddonsCodeSelectable(", ")]");
-            var operatedLines = CodeUtility.RemovePattern(beforeRemoveLines, "[CommunityAddonsCodeSelectableEnd(", ")]");
-            cachedLines = operatedLines.Split('\n');
+            cachedLines = code.Split('\n');
 
             var contentContainer = new VisualElement
             {
                 name = "content",
-                style = {
-                    flexShrink = 0,
-                    flexGrow = 1
-                }
+                style =
+        {
+            flexShrink = 0,
+            flexGrow = 1,
+            height = cachedLines.Length * (15 * zoomFactor)
+        }
             };
-            contentContainer.style.height = cachedLines.Length * 15;
             scrollView.Add(contentContainer);
 
             var lineNumbersContent = new VisualElement { name = "lineNumbers" };
@@ -733,20 +789,17 @@ namespace Unity.VisualScripting.Community
             lineNumbersScrollView.Add(lineNumbersContent);
 
             RenderVisibleLines(scrollView, lineNumbersScrollView, 0, Math.Min(50, cachedLines.Length));
+
             scrollView.verticalScroller.valueChanged += (value) =>
             {
                 lineNumbersScrollView.scrollOffset = new Vector2(0, value);
                 UpdateVisibleLines(scrollView, lineNumbersScrollView);
             };
 
-            SetupScrollbarMarkers(scrollView);
-
             searchResults.Clear();
             currentSearchIndex = -1;
             if (!string.IsNullOrEmpty(searchText))
-            {
                 PerformSearch();
-            }
         }
 
         private void UpdateVisibleLines(ScrollView scrollView, ScrollView lineNumbersScrollView)
@@ -1263,13 +1316,11 @@ namespace Unity.VisualScripting.Community
                         relatedLabels.Add(targetLabel);
                     }
                 }
-                UpdateScrollBarMarkers(rootVisualElement.Q<ScrollView>("codeContainer"), selectedLabels);
             }
             else
             {
                 label.style.backgroundColor = new Color(0.25f, 0.5f, 0.8f, 0.3f);
                 selectedLabels.Add((label, currentLine));
-                UpdateScrollBarMarkers(rootVisualElement.Q<ScrollView>("codeContainer"), selectedLabels);
             }
         }
 
@@ -1290,13 +1341,11 @@ namespace Unity.VisualScripting.Community
                         relatedLabels.Remove(targetLabel);
                     }
                 }
-                UpdateScrollBarMarkers(rootVisualElement.Q<ScrollView>("codeContainer"), selectedLabels);
             }
             else
             {
                 label.style.backgroundColor = new Color(1, 1, 1, 0);
                 selectedLabels.Remove((label, currentLine));
-                UpdateScrollBarMarkers(rootVisualElement.Q<ScrollView>("codeContainer"), selectedLabels);
             }
         }
 
@@ -1312,99 +1361,13 @@ namespace Unity.VisualScripting.Community
             }
             selectedLabels.Clear();
             relatedLabels.Clear();
-            UpdateScrollBarMarkers(rootVisualElement.Q<ScrollView>("codeContainer"), selectedLabels);
-        }
-
-        private VisualElement markerContainer;
-        EventManipulator scrollBarMarkerManipulator;
-        private void SetupScrollbarMarkers(ScrollView scrollView)
-        {
-            if (scrollBarMarkerManipulator != null)
-            {
-                scrollView.RemoveManipulator(scrollBarMarkerManipulator);
-                if (markerContainer != null && markerContainer.parent != null)
-                    markerContainer.parent.Remove(markerContainer);
-            }
-
-            var scroller = scrollView.verticalScroller;
-            if (scroller == null) return;
-
-            scrollBarMarkerManipulator = new EventManipulator(labels.Select(val => val.label as VisualElement).ToList(), (evt) => UpdateScrollBarMarkers(scrollView, selectedLabels));
-
-            foreach (var (label, line) in selectedLabels)
-            {
-                var marker = CreateScrollbarMarker(scroller, line, true);
-                scroller.Add(marker);
-            }
-
-            scrollView.AddManipulator(scrollBarMarkerManipulator);
-        }
-
-        private VisualElement CreateScrollbarMarker(Scroller scroller, int line, bool isSelected)
-        {
-            float lineHeight = 15 * zoomFactor;
-            float documentHeight = cachedLines.Length * lineHeight;
-            float normalizedPosition = line * lineHeight / documentHeight;
-            float scrollbarHeight = scroller.resolvedStyle.height;
-            float buttonHeight = scroller.lowButton.resolvedStyle.height;
-            float usableScrollbarHeight = scrollbarHeight - (buttonHeight * 2);
-            float position = buttonHeight + (normalizedPosition * usableScrollbarHeight);
-
-            return new VisualElement
-            {
-                name = "marker" + line,
-                style =
-                {
-                    position = Position.Absolute,
-                    top = position - 2,
-                    height = 4,
-                    width = scroller.resolvedStyle.width,
-                    backgroundColor = isSelected
-                        ? new Color(0.4f, 0.4f, 0.4f, 0.4f)
-                        : new Color(0.4f, 0.4f, 0.4f, 0.4f),
-                    borderTopLeftRadius = 2,
-                    borderTopRightRadius = 2,
-                    borderBottomLeftRadius = 2,
-                    borderBottomRightRadius = 2
-                },
-                pickingMode = PickingMode.Ignore
-            };
-        }
-
-        private void UpdateScrollBarMarkers(ScrollView scrollView, List<(Label, int)> selectedLines)
-        {
-            var scroller = scrollView.verticalScroller;
-            if (scroller == null) return;
-
-            // Remove existing markers
-            foreach (var child in scroller.Children().ToList())
-            {
-                if (child.name != null && child.name.StartsWith("marker"))
-                    scroller.Remove(child);
-            }
-
-            // Add new markers
-            foreach (var (label, line) in selectedLines)
-            {
-                var marker = CreateScrollbarMarker(scroller, line, true);
-                scroller.Add(marker);
-            }
-
-            // Add markers for related lines
-            foreach (var label in relatedLabels)
-            {
-                var lineInfo = labels.FirstOrDefault(l => l.Item1 == label);
-                if (lineInfo != default)
-                {
-                    var marker = CreateScrollbarMarker(scroller, lineInfo.Item2, false);
-                    scroller.Add(marker);
-                }
-            }
         }
 
         private string LoadCode()
         {
-            return CodeGenerator.GetSingleDecorator(asset).Generate(0).RemoveMarkdown();
+            var generator = CodeGenerator.GetSingleDecorator(asset);
+            var code = generator.Generate(0);
+            return code.RemoveMarkdown();
         }
 
         private VisualElement CreateLineContent(int lineIndex)
@@ -1494,8 +1457,6 @@ namespace Unity.VisualScripting.Community
                 Mathf.CeilToInt((scrollPos + viewportHeight) / lineHeight) + BUFFER_LINES);
 
             RenderVisibleLines(scrollView, lineNumbersScrollView, firstVisible, lastVisible);
-
-            SetupScrollbarMarkers(scrollView);
         }
 
         private void PerformSearch()
@@ -1575,7 +1536,7 @@ namespace Unity.VisualScripting.Community
         {
             if (currentSearchIndex >= 0 && currentSearchIndex < searchResults.Count)
             {
-                var (line, index, length) = searchResults[currentSearchIndex];
+                var (line, _, _) = searchResults[currentSearchIndex];
                 foreach (var current in labels)
                 {
                     if (current.Item2 == line)

@@ -117,13 +117,7 @@ namespace Unity.VisualScripting.Community.Libraries.CSharp
             if (indentCache.TryGetValue(amount, out var indent))
                 return indent;
 
-            var builder = new System.Text.StringBuilder((amount <= 0 ? 1 : amount) * 4);
-            for (int i = 0; i < amount; i++)
-            {
-                builder.Append("    ");
-            }
-
-            indent = builder.ToString();
+            indent = amount <= 0 ? "" : new string(' ', amount * 4);
             indentCache[amount] = indent;
 
             return indent;
@@ -557,16 +551,19 @@ namespace Unity.VisualScripting.Community.Libraries.CSharp
             return $"({type.As().CSharpName(false, true)})".MakeClickable(unit) + value;
         }
 
-        public static string CastAs(this string value, Type type)
+        public static string CastAs(this string value, Type type, bool shouldCast)
         {
-            return $"(({type.As().CSharpName(false, true)}){value})";
+            if (shouldCast)
+                return $"(({type.As().CSharpName(false, true)}){value})";
+            return value;
         }
 
-        public static string CastAs(this string value, Type type, Unit unit)
+        public static string CastAs(this string value, Type type, Unit unit, bool shouldCast)
         {
-            return $"(({type.As().CSharpName(false, true)})".MakeClickable(unit) + value + ")".MakeClickable(unit);
+            if (shouldCast)
+                return $"(({type.As().CSharpName(false, true)})".MakeClickable(unit) + value + ")".MakeClickable(unit);
+            return value;
         }
-
 
         public static string LegalMemberName(this string memberName)
         {

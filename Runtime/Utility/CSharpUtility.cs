@@ -132,6 +132,17 @@ namespace Unity.VisualScripting.Community
             return UnityEngine.Random.value <= probability;
         }
 
+        public static bool GetKeyAction(KeyCode key, PressState pressState)
+        {
+            return pressState switch
+            {
+                PressState.Up => Input.GetKeyUp(key),
+                PressState.Down => Input.GetKeyDown(key),
+                PressState.Hold => Input.GetKey(key),
+                _ => throw new UnexpectedEnumValueException<PressState>(pressState)
+            };
+        }
+
         /// <summary>
         /// Merges two or more dictionaries together.
         /// </summary>

@@ -40,12 +40,19 @@ public class SubgraphGenerator : NodeGenerator<SubgraphUnit>
     private void InitializeInputOutputConnections()
     {
         var units = Unit.nest.graph.units;
-        foreach (var unit in Unit.nest.graph.units)
+        foreach (var unit in units)
         {
-            if (graphInput == null && unit is GraphInput)
-                graphInput = (Unit)unit;
-            else if (graphOutput == null && unit is GraphOutput)
-                graphOutput = (Unit)unit;
+            if (graphInput == null && unit is GraphInput gi)
+            {
+                graphInput = gi;
+                continue;
+            }
+
+            if (graphOutput == null && unit is GraphOutput go)
+            {
+                graphOutput = go;
+                continue;
+            }
 
             if (unit is CustomEvent ce)
             {

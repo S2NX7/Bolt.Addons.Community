@@ -37,8 +37,11 @@ namespace Unity.VisualScripting.Community
             var machine = (ScriptMachine)asset;
             var scriptImporter = AssetImporter.GetAtPath(relativePath) as MonoImporter;
             var type = scriptImporter.GetScript().GetClass();
-            var component = machine.gameObject.GetComponent(type) ??
-                          machine.gameObject.AddComponent(type);
+            var component = machine.gameObject.GetComponent(type);
+            if (component == null)
+            {
+                component = machine.gameObject.AddComponent(type);
+            }
 
             var values = CodeGeneratorValueUtility.GetAllValues(machine);
             var variables = machine.graph.variables.Where(v =>
@@ -57,7 +60,7 @@ namespace Unity.VisualScripting.Community
                 type.GetFields()
                     .Where(f => f.IsPublic || f.HasAttribute<SerializeField>())
                     .FirstOrDefault(f => f.Name == names[i])
-                    ?.SetValue(component, objects[i]);
+                    ?.SetValueOptimized(component, objects[i]);
             }
         }
 
@@ -71,7 +74,7 @@ namespace Unity.VisualScripting.Community
 
             return machine.nest?.graph.title?.Length > 0
                 ? machine.nest.graph.title.LegalMemberName()
-                : machine.gameObject.name + "_ScriptMachine" + machineIndex++;
+                : machine.gameObject.name.Capitalize().First().Letter() + "_ScriptMachine_" + machineIndex++;
         }
     }
 }

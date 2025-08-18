@@ -122,7 +122,6 @@ namespace Unity.VisualScripting.Community
 
                 if (type.IsPublic && type.IsGenericType && !type.GetGenericArguments().Any(arg => arg.IsGenericTypeParameter) && type.GetGenericArguments().All(_type => _type.IsPublic && AllowedNameSpace(_type.Namespace)))
                 {
-                    Debug.Log($"Found {type.HumanName(true)} with base type {type.BaseType.GetGenericArguments().Length} generic arguments.");
                     EditorUtility.DisplayProgressBar("Generating Aot Support Methods for OnUnityEvent", $"Found {type.HumanName(true)}...", progress);
 
                     types.Add(new TypeGroup(currentType, type.GetGenericArguments()));

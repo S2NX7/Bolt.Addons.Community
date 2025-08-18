@@ -2,9 +2,17 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using Unity.VisualScripting.Community.Libraries.CSharp;
+using Unity.VisualScripting.Community.Libraries.Humility;
 
 namespace Unity.VisualScripting.Community
 {
+    /// <summary>
+    /// A helper for building C# code strings with optional clickable segments
+    /// for integration with <see cref="CodeUtility.MakeClickable(Unit, string)"/>.
+    /// 
+    /// Designed for use in code preview windows to make parts of generated code
+    /// interactive (clickable) while keeping other parts static.
+    /// </summary>
     public class ClickableStringBuilder
     {
         private readonly Unit unit;
@@ -17,6 +25,12 @@ namespace Unity.VisualScripting.Community
             segments.Add((value, clickable));
         }
 
+        /// <summary>
+        /// Creates a new <see cref="ClickableStringBuilder"/> starting with the specified text.
+        /// </summary>
+        /// <param name="unit">The owning unit this code is generated for.</param>
+        /// <param name="initial">Initial text to add to the builder.</param>
+        /// <param name="clickable">If <c>true</c>, the initial text will be clickable.</param>
         public static ClickableStringBuilder CreateString(Unit unit, string initial, bool clickable)
         {
             return new ClickableStringBuilder(unit, initial, clickable);
@@ -32,7 +46,8 @@ namespace Unity.VisualScripting.Community
         }
 
         /// <summary>
-        /// Returns to the default behavior of Clickable.
+        /// Disables ignore context mode and returns to the default behavior
+        /// where added text follows the <c>Clickable</c> setting.
         /// </summary>
         public ClickableStringBuilder EndIgnoreContext()
         {
@@ -40,47 +55,72 @@ namespace Unity.VisualScripting.Community
             return this;
         }
 
+        /// <summary>
+        /// Adds a clickable code segment.
+        /// </summary>
         public ClickableStringBuilder Clickable(string value)
         {
             segments.Add((value, true));
             return this;
         }
 
+        /// <summary>
+        /// Adds a non-clickable code segment.
+        /// </summary>
         public ClickableStringBuilder Ignore(string value)
         {
             segments.Add((value, false));
             return this;
         }
 
+        /// <summary>
+        /// Adds text based on the current ignore context.
+        /// </summary>
         private ClickableStringBuilder Add(string value)
         {
             return ignoreContextActive ? Ignore(value) : Clickable(value);
         }
 
         /// <summary>
-        /// Ignores the current context and uses the provided ignore and clickable code.
+        /// Adds one of two values based on a condition:
+        /// If <paramref name="ignoreCondition"/> is true, uses <paramref name="ignore"/> as non-clickable.
+        /// Otherwise, uses <paramref name="clickable"/> as clickable.
         /// </summary>
-        /// <param name="ignoreCondition">Condition for ignore string</param>
-        /// <param name="ignore">Ignore Code</param>
-        /// <param name="clickable">Clickable Code</param>
-        public ClickableStringBuilder Select(bool ignoreCondition, string ignore, string clickable)
+        public ClickableStringBuilder IgnoreIf(bool ignoreCondition, string ignore, string clickable)
         {
             return ignoreCondition ? Ignore(ignore) : Clickable(clickable);
         }
+
         #region Parentheses
         public ClickableStringBuilder OpenParentheses() => Add("(");
         public ClickableStringBuilder OpenParentheses(string before) => Add(before + "(");
         public ClickableStringBuilder CloseParentheses() => Add(")");
         public ClickableStringBuilder CloseParentheses(string after) => Add(")" + after);
+
+        /// <summary>
+        /// Creates empty parentheses: ()
+        /// </summary>
+        public ClickableStringBuilder Parentheses()
+        {
+            Add("(");
+            Add(")");
+            return this;
+        }
+
+        /// <summary>
+        /// Wraps inner content in parentheses: ( ... )
+        /// </summary>
         public ClickableStringBuilder Parentheses(Action<ClickableStringBuilder> inner)
         {
             Add("(");
             inner(this);
             Add(")");
-
             return this;
         }
 
+        /// <summary>
+        /// Wraps inner content in parentheses with optional prefix and suffix.
+        /// </summary>
         public ClickableStringBuilder Parentheses(string before, Action<ClickableStringBuilder> inner, string after = "")
         {
             Add(before);
@@ -91,6 +131,105 @@ namespace Unity.VisualScripting.Community
             return this;
         }
         #endregion
+
+        /// <summary>
+        /// Adds a member access expression: target.member
+        /// Highlights '<paramref name="member"/>' with VariableHighlight
+        /// </summary>
+        public ClickableStringBuilder GetMember(string target, string member)
+        {
+            return Add(target).Dot().Add(member.VariableHighlight());
+        }
+
+        /// <summary>
+        /// Adds a member access expression: Type.member
+        /// Highlights '<paramref name="member"/>' with VariableHighlight
+        /// </summary>
+        public ClickableStringBuilder GetMember(Type target, string member)
+        {
+            return Add(target.As().CSharpName(false, true)).Dot().Add(member.VariableHighlight());
+        }
+
+        /// <summary>
+        /// Adds a set member expression: target.member = value
+        /// Highlights '<paramref name="member"/>' with VariableHighlight
+        /// </summary>
+        public ClickableStringBuilder SetMember(string target, string member, string value)
+        {
+            return Add(target).Dot().Add(member.VariableHighlight()).Space().Equal().Space().Add(value);
+        }
+
+        /// <summary>
+        /// Adds a set member expression: target.member = value
+        /// Highlights '<paramref name="member"/>' with VariableHighlight
+        /// </summary>
+        public ClickableStringBuilder SetMember(string target, string member, Action<ClickableStringBuilder> value)
+        {
+            Add(target).Dot().Add(member.VariableHighlight()).Space().Equal().Space();
+            value?.Invoke(this);
+            return this;
+        }
+
+        /// <summary>
+        /// Adds a set member expression: Type.member = value
+        /// Highlights '<paramref name="member"/>' with VariableHighlight
+        /// </summary>
+        public ClickableStringBuilder SetMember(Type target, string member, Action<ClickableStringBuilder> value)
+        {
+            Add(target.As().CSharpName(false, true)).Dot().Add(member.VariableHighlight()).Space().Equal().Space();
+            value?.Invoke(this);
+            return this;
+        }
+
+        /// <summary>
+        /// Adds a set member expression: Type.member = value
+        /// Highlights '<paramref name="member"/>' with VariableHighlight
+        /// </summary>
+        public ClickableStringBuilder SetMember(Type target, string member, string value)
+        {
+            return Add(target.As().CSharpName(false, true)).Dot().Add(member.VariableHighlight()).Space().Equal().Space().Add(value);
+        }
+
+        /// <summary>
+        /// Adds a invoke member expression: target.member()
+        /// </summary>
+        public ClickableStringBuilder InvokeMember(string target, string member, string[] parameters)
+        {
+            return Add(target).Dot().Add(member).Parentheses(inner => inner.Add(string.Join(", ", parameters)));
+        }
+
+        /// <summary>
+        /// Adds a invoke member expression: Type.member()
+        /// </summary>
+        public ClickableStringBuilder InvokeMember(Type target, string member)
+        {
+            return Add(target.As().CSharpName(false, true)).Dot().Add(member).Parentheses();
+        }
+
+        public ClickableStringBuilder Select(Action<ClickableStringBuilder> condition, string ifTrue, string ifFalse)
+        {
+            condition(this);
+            Add(" ? ");
+            Ignore(ifTrue);
+            Add(" : ");
+            Ignore(ifFalse);
+            return this;
+        }
+
+        public ClickableStringBuilder Select(Action<ClickableStringBuilder> condition, Action<ClickableStringBuilder> ifTrue, Action<ClickableStringBuilder> ifFalse)
+        {
+            condition(this);
+            Add(" ? ");
+            ifTrue(this);
+            Add(" : ");
+            ifFalse(this);
+            return this;
+        }
+
+        public ClickableStringBuilder Select(string condition, string ifTrue, string ifFalse)
+        {
+            return Add($"{condition} ? {ifTrue} : {ifFalse}");
+        }
 
         #region Brace
         public ClickableStringBuilder OpenBrace(int indent = 0)
@@ -115,11 +254,8 @@ namespace Unity.VisualScripting.Community
         }
 
         /// <summary>
-        /// Generate { }
+        /// Appends a code block in braces: { ... }
         /// </summary>
-        /// <param name="inner">Generate code inside the braces</param>
-        /// <param name="newLine">Place { and } on a NewLine </param>
-        /// <param name="indent">The indent for { and } </param>
         public ClickableStringBuilder Braces(Action<ClickableStringBuilder> inner, bool newLine, int indent = 0)
         {
             OpenBrace(indent);
@@ -131,13 +267,8 @@ namespace Unity.VisualScripting.Community
         }
 
         /// <summary>
-        /// Generate { }
+        /// Appends a code block in braces with text before and after.
         /// </summary>
-        /// <param name="before">String before { </param>
-        /// <param name="inner">Generate code inside the braces</param>
-        /// <param name="newLine">Place { and } on a NewLine </param>
-        /// <param name="after">String after } </param>
-        /// <param name="indent">The indent for { and }</param>
         public ClickableStringBuilder Braces(string before, Action<ClickableStringBuilder> inner, bool newLine, string after = "", int indent = 0)
         {
             OpenBrace(before, indent);
@@ -147,26 +278,63 @@ namespace Unity.VisualScripting.Community
             CloseBrace(after, indent);
             return this;
         }
+
+        /// <summary>
+        /// Appends a code block with a preceding section (e.g. method header) and inner body.
+        /// </summary>
+        public ClickableStringBuilder Body(Action<ClickableStringBuilder> before, Action<ClickableStringBuilder, int> inner, bool newLine, int indent = 0)
+        {
+            Indent(indent);
+            before?.Invoke(this);
+            if (newLine) NewLine();
+            OpenBrace(indent);
+            if (newLine) NewLine();
+            inner?.Invoke(this, indent + 1);
+            if (newLine) NewLine();
+            CloseBrace(indent);
+            if (newLine) NewLine();
+            return this;
+        }
         #endregion
+
         public ClickableStringBuilder Space() => Add(" ");
         public ClickableStringBuilder Space(int count) => Add(new string(' ', count));
         public ClickableStringBuilder Comma(string after = "") => Add("," + after);
         public ClickableStringBuilder Dot() => Add(".");
-        public ClickableStringBuilder End() => Add(CodeBuilder.End());
-        public ClickableStringBuilder NewLine() => Ignore("\n");
-        public ClickableStringBuilder Indent() => Add(CodeBuilder.Indent(1));
-        public ClickableStringBuilder Indent(int indent) => Add(CodeBuilder.Indent(indent));
+        public ClickableStringBuilder Equal() => Add("=");
 
+        /// <summary>
+        /// Adds a statement terminator: );
+        /// </summary>
+        public ClickableStringBuilder EndLine() => Add(CodeBuilder.End());
+        public ClickableStringBuilder NewLine() => Ignore("\n");
+        public ClickableStringBuilder Indent() => Ignore(CodeBuilder.Indent(1));
+        public ClickableStringBuilder Indent(int indent) => Ignore(CodeBuilder.Indent(indent));
+
+        /// <summary>
+        /// Wraps the current built string in a cast expression, if required.
+        /// </summary>
+        /// <param name="castType">The type to cast to.</param>
+        /// <param name="shouldCast">Whether to apply the cast.</param>
+        /// <param name="convertType">If true, wraps the cast in parentheses; otherwise, uses direct cast syntax.</param>
         public ClickableStringBuilder Cast(Type castType, bool shouldCast, bool convertType = true)
         {
             if (castType == null || !shouldCast) return this;
 
             var code = Build();
-            var builder = CreateString(unit, "", true).Ignore(convertType ? CodeBuilder.CastAs(code, castType, ignoreContextActive ? null : unit) : CodeBuilder.Cast(code, castType, ignoreContextActive ? null : unit));
+            var builder = CreateString(unit, null, true)
+                .Ignore(convertType
+                    ? CodeBuilder.CastAs(code, castType, ignoreContextActive ? null : unit, true)
+                    : CodeBuilder.Cast(code, castType, ignoreContextActive ? null : unit));
+
             builder.ignoreContextActive = ignoreContextActive;
             return builder;
         }
 
+        /// <summary>
+        /// Builds and returns the final string, applying clickable formatting to
+        /// the appropriate segments.
+        /// </summary>
         public string Build()
         {
             var result = new StringBuilder();
@@ -207,12 +375,16 @@ namespace Unity.VisualScripting.Community
 
             return result.ToString();
         }
+
         public override string ToString() => Build();
         public static implicit operator string(ClickableStringBuilder builder) => builder.Build();
     }
 
     public static class XClickableStringBuilder
     {
+        /// <summary>
+        /// Creates a ClickableStringBuilder, should only be used for C# Preview.
+        /// </summary>
         public static ClickableStringBuilder CreateClickableString(this Unit unit, string initial = "")
         {
             return ClickableStringBuilder.CreateString(unit, initial, true);

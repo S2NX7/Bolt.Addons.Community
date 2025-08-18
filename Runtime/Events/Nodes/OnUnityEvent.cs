@@ -39,7 +39,6 @@ namespace Unity.VisualScripting.Community
         protected override void Definition()
         {
             base.Definition();
-
             UnityEvent = ValueInput<UnityEventBase>("event");
 
             if (Type != null)
@@ -226,21 +225,16 @@ namespace Unity.VisualScripting.Community
                 return AotSupportMethodsType;
 
             aotSupportMethodsTypeChecked = true;
-
-            AotSupportMethodsType = Type.GetType(AotSupportTypeFullName);
-            if (AotSupportMethodsType != null)
-                return AotSupportMethodsType;
-
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            AotSupportMethodsType = Type.GetType("Unity.VisualScripting.Community.Generated.AotSupportMethods, Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null");
+            if (AotSupportMethodsType == null)
             {
-                if (!assembly.FullName.StartsWith("Unity.VisualScripting.Community"))
-                    continue;
-
-                AotSupportMethodsType = assembly.GetType(AotSupportTypeFullName);
-                if (AotSupportMethodsType != null)
-                    break;
+                foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    AotSupportMethodsType = asm.GetType(AotSupportTypeFullName);
+                    if (AotSupportMethodsType != null)
+                        break;
+                }
             }
-
             return AotSupportMethodsType;
         }
     }

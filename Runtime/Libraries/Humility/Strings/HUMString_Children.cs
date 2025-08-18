@@ -33,7 +33,7 @@ namespace Unity.VisualScripting.Community.Libraries.Humility {
         /// </summary>
         public static string Letter(this HUMString.Data.CapitalizeFirst capitalizeFirst)
         {
-            return capitalizeFirst.capitalize.text[0].ToString().ToUpper() + capitalizeFirst.capitalize.text.Remove(0, 1);
+            return capitalizeFirst.capitalize.text[0].ToString().ToUpper() + capitalizeFirst.capitalize.text[1..];
         }
 
         /// <summary>
